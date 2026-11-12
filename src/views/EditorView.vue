@@ -9,6 +9,8 @@ import EmptyState from '@/components/EmptyState.vue'
 import IconButton from '@/components/IconButton.vue'
 import PageGrid from '@/components/PageGrid.vue'
 import PageViewer from '@/components/PageViewer.vue'
+import ToolPanel from '@/components/ToolPanel.vue'
+import ToolRail from '@/components/ToolRail.vue'
 import { useFileDrop } from '@/composables/useFileDrop'
 import { pickFiles } from '@/lib/files'
 import { useEditorStore } from '@/stores/editor'
@@ -61,7 +63,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
 <template>
   <div
-    class="grid h-full grid-cols-[260px_1fr] grid-rows-[56px_1fr] [grid-template-areas:'topbar_topbar'_'sidebar_workspace'] max-md:grid-cols-1 max-md:grid-rows-[56px_auto_1fr] max-md:[grid-template-areas:'topbar'_'sidebar'_'workspace']"
+    class="grid h-full grid-cols-[260px_minmax(0,1fr)_auto_auto] grid-rows-[56px_minmax(0,1fr)] [grid-template-areas:'topbar_topbar_topbar_topbar'_'sidebar_workspace_panel_rail'] max-md:grid-cols-[minmax(0,1fr)_auto] max-md:grid-rows-[56px_auto_minmax(0,1fr)] max-md:[grid-template-areas:'topbar_topbar'_'sidebar_sidebar'_'workspace_rail']"
   >
     <header
       class="flex items-center justify-between border-b border-line bg-surface pr-4 pl-5 [grid-area:topbar]"
@@ -85,6 +87,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       </template>
       <EmptyState v-else @open="openPicker" />
     </main>
+
+    <!--
+      Tools on the right: the icon column is always there, the panel opens
+      next to it. On narrow screens the panel floats over the pages.
+    -->
+    <ToolPanel
+      class="[grid-area:panel] max-md:fixed max-md:top-14 max-md:right-[4.5rem] max-md:bottom-0 max-md:z-30 max-md:w-[min(20rem,calc(100%-5rem))] max-md:shadow-lift"
+    />
+    <ToolRail class="[grid-area:rail]" />
 
     <PageViewer
       v-if="store.active && store.viewerPageId !== null"

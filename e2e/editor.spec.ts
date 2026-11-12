@@ -404,13 +404,16 @@ test('moves pages to another document, inserts a file and merges documents', asy
   await page.keyboard.press('ControlOrMeta+Shift+z')
   await expectAllThumbnails(page, 8)
 
-  // Merge: four_pages first (8 pages), then ten_pages as it looks (8 left).
-  await doc('four_pages.pdf').getByRole('checkbox').click()
-  await doc('ten_pages.pdf').getByRole('checkbox').click()
-  await expect(doc('ten_pages.pdf').getByRole('checkbox')).toHaveText('2')
-  await page.getByRole('button', { name: 'Unisci 2 documenti' }).click()
+  // Merge from the tools panel: every open document is listed, in the
+  // sidebar's order (ten_pages, four_pages); four_pages goes first.
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Unisci' }).click()
+  const panel = page.getByRole('complementary', { name: 'Unisci documenti' })
+  await panel.getByRole('button', { name: 'Sposta su four_pages.pdf' }).click()
+  await expect(panel.locator('[data-merge-id]').first()).toContainText('four_pages.pdf')
+  await panel.getByRole('button', { name: 'Unisci 2 documenti (16 pagine)' }).click()
   await expect(page.getByRole('heading', { name: 'Unione di 2 documenti.pdf' })).toBeVisible()
   await expect(cards(page)).toHaveCount(16)
+  await expect(panel).toBeHidden()
   await expect(docs).toHaveCount(3)
 })
 
@@ -593,4 +596,57 @@ test('renames a document from the sidebar or from its title', async ({ page }) =
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Scarica' }).click()
   expect((await downloadPromise).suggestedFilename()).toBe('Contratto firmato.pdf')
+})
+
+test('merge panel: drag to reorder, take out and add back documents', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf', 'two_pages.pdf', 'ten_pages.pdf')
+  await expect(page.locator('aside li')).toHaveCount(3)
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Unisci' }).click()
+  const panel = page.getByRole('complementary', { name: 'Unisci documenti' })
+  const order = () => panel.locator('[data-merge-id]').allInnerTexts()
+  const rows = panel.locator('[data-merge-id]')
+  await expect(rows).toHaveCount(3)
+
+  // ten_pages dragged above four_pages.
+  await rows.nth(2).dragTo(rows.nth(0), { targetPosition: { x: 40, y: 4 } })
+  await expect.poll(async () => (await order()).map((t) => t.split('\n')[1])).toEqual([
+    'ten_pages.pdf',
+    'four_pages.pdf',
+    'two_pages.pdf',
+  ])
+
+  await panel.getByRole('button', { name: 'Togli two_pages.pdf dall’unione' }).click()
+  await expect(rows).toHaveCount(2)
+  await expect(panel.getByRole('button', { name: 'Unisci 2 documenti (14 pagine)' })).toBeVisible()
+  await panel.getByRole('button', { name: 'Aggiungi two_pages.pdf all’unione' }).click()
+  await expect(rows).toHaveCount(3)
+  await expect(rows.nth(2)).toContainText('two_pages.pdf') // back at the end
+})
+
+test('sign tool: draw a signature in the panel and it lands on the selected page', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+  await cards(page).nth(2).getByRole('checkbox', { name: /Seleziona/ }).click()
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Firma' }).click()
+  const panel = page.getByRole('complementary', { name: 'Firma' })
+  await panel.getByRole('button', { name: 'Disegna una firma' }).click()
+  await drawSignature(page, panel)
+
+  // The viewer opens on the selected page, with the signature placed and selected.
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  await expect(viewer.locator('header')).toContainText('Pagina 3 di 4')
+  await expect(viewer.locator('[data-annotation]')).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(cards(page).nth(2).locator('[data-stamp]')).toHaveCount(1)
+
+  // The library keeps it: one click puts it on the page shown in the tile.
+  await expect(panel).toContainText('1 firma su 1 pagina')
+  await panel.getByRole('button', { name: 'Metti «Firma 1» sulla pagina 3' }).click()
+  await expect(viewer.locator('[data-annotation]')).toHaveCount(2)
 })

@@ -4,43 +4,24 @@ import type { ImageAsset } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
 import SignaturePad from './SignaturePad.vue'
-import { pickFiles } from '@/lib/files'
-import { assetToUrl, hasTransparency, imageFileToAsset, removeWhiteBackground } from '@/lib/images'
+import { useSignatureImport } from '@/composables/useSignatureImport'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
 const emit = defineEmits<{ place: [signatureId: number]; close: [] }>()
+const { message, fromDrawing, fromFile } = useSignatureImport()
 
 const drawing = ref(store.signatures.length === 0)
-const message = ref<string | null>(null)
 
-async function add(image: ImageAsset, name: string) {
-  const signature = store.addSignature(image, await assetToUrl(image), name)
+async function onDrawn(image: ImageAsset) {
+  const signature = await fromDrawing(image)
   drawing.value = false
   emit('place', signature.id)
 }
 
-async function onDrawn(image: ImageAsset) {
-  message.value = null
-  await add(image, `Firma ${store.signatures.length + 1}`)
-}
-
 async function upload() {
-  const [file] = await pickFiles('image/png,image/jpeg,image/webp')
-  if (!file) return
-  try {
-    let image = await imageFileToAsset(file)
-    // An image without transparency (a JPEG, a photo of a signature on
-    // paper) would paint a white box over the text: keep only the ink.
-    message.value = null
-    if (!hasTransparency(image)) {
-      image = removeWhiteBackground(image)
-      message.value = 'Lo sfondo bianco dell’immagine è stato reso trasparente.'
-    }
-    await add(image, file.name.replace(/\.[^.]+$/, ''))
-  } catch (err) {
-    message.value = `Immagine non leggibile: ${err instanceof Error ? err.message : String(err)}`
-  }
+  const signature = await fromFile()
+  if (signature) emit('place', signature.id)
 }
 </script>
 

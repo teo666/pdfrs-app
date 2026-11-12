@@ -184,6 +184,19 @@ watch(neededScale, (scale) => {
   render(props.pageId, scale, () => token === request).catch(() => {})
 })
 
+// A signature chosen in the Firma tool waits for the page to show (its size
+// is needed to centre it), then is placed and selected, ready to drag.
+watch(
+  shown,
+  (value) => {
+    if (value && store.pendingSignature !== null) {
+      const signatureId = store.takePendingSignature()
+      if (signatureId !== null) placeSignature(signatureId)
+    }
+  },
+  { immediate: true },
+)
+
 // --- Keyboard & lifecycle -----------------------------------------------
 
 function onKeyDown(event: KeyboardEvent) {

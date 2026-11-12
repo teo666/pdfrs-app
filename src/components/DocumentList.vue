@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import type { DocumentId } from 'pdfrs-editor'
 
-import AppButton from './AppButton.vue'
 import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
 import InlineRename from './InlineRename.vue'
@@ -49,8 +48,6 @@ function onDrop(event: DragEvent, id: DocumentId) {
     .filter((page) => page > 0)
   void store.transferPages(pages, id, wantsCopy(event))
 }
-
-const pickNumber = (id: DocumentId) => store.mergePicks.indexOf(id) + 1
 </script>
 
 <template>
@@ -74,25 +71,6 @@ const pickNumber = (id: DocumentId) => store.mergePicks.indexOf(id) + 1
         @dragleave="onDragLeave($event, doc.id)"
         @drop="onDrop($event, doc.id)"
       >
-        <!-- Pick for a merge; the number is the document's place in the result. -->
-        <button
-          class="ml-1.5 grid size-5 shrink-0 cursor-pointer place-items-center rounded border-2 text-[11px] font-bold transition"
-          :class="
-            pickNumber(doc.id)
-              ? 'border-accent bg-accent text-accent-fg'
-              : [
-                  'border-line bg-surface text-transparent focus-visible:opacity-100',
-                  store.mergePicks.length ? '' : 'opacity-0 group-hover:opacity-100',
-                ]
-          "
-          role="checkbox"
-          :aria-checked="pickNumber(doc.id) > 0"
-          :aria-label="`Scegli ${doc.name} per l’unione`"
-          :title="pickNumber(doc.id) ? `${pickNumber(doc.id)}° nell’unione` : 'Scegli per unire'"
-          @click="store.toggleMergePick(doc.id)"
-        >
-          {{ pickNumber(doc.id) || '' }}
-        </button>
         <!-- Renaming: the field takes the place of the name; Enter or leaving it saves. -->
         <div
           v-if="renaming === doc.id"
@@ -145,30 +123,6 @@ const pickNumber = (id: DocumentId) => store.mergePicks.indexOf(id) + 1
       </li>
     </ul>
     <p v-else class="mx-2 my-1 text-[13px] text-fg-muted">Nessun documento aperto.</p>
-
-    <div
-      v-if="store.mergePicks.length"
-      class="mx-1 mt-2 flex flex-col gap-2 rounded-card border border-line bg-canvas p-2.5"
-    >
-      <p class="text-xs text-fg-muted">
-        {{
-          store.mergePicks.length < 2
-            ? 'Scegli almeno un altro documento da unire.'
-            : 'Saranno uniti nell’ordine dei numeri, così come appaiono ora.'
-        }}
-      </p>
-      <div class="flex flex-wrap gap-1.5">
-        <AppButton
-          variant="primary"
-          class="flex-1 justify-center"
-          :disabled="store.mergePicks.length < 2"
-          @click="store.mergePicked()"
-        >
-          Unisci {{ store.mergePicks.length > 1 ? store.mergePicks.length : '' }} documenti
-        </AppButton>
-        <AppButton @click="store.clearMergePicks()">Annulla</AppButton>
-      </div>
-    </div>
 
     <p v-if="store.loading" class="mx-2 my-1 text-[13px] text-fg-muted">Elaborazione in corso…</p>
 

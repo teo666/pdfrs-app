@@ -20,6 +20,9 @@ export const PREVIEW_SCALE = 0.4
 
 export type ViewerZoom = 'actual' | 'fit'
 
+/** The tools of the right-hand panel. */
+export type ToolId = 'sign' | 'merge'
+
 /** A signature (or any stamp image) in the session's library, ready to be placed on pages. */
 export interface Signature {
   id: number
@@ -129,6 +132,15 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Documents picked for a merge, in the order they were picked: that's the merge order. */
   const mergePicks = ref<DocumentId[]>([])
+
+  /** The tool open in the right-hand panel, if any. */
+  const activeTool = ref<ToolId | null>(null)
+
+  /**
+   * A signature waiting to be placed: set by the Firma tool, which opens
+   * the viewer on the page; the viewer places it as soon as the page shows.
+   */
+  const pendingSignature = ref<number | null>(null)
 
   /** The page open in the full-size viewer, always one of the active document's. */
   const viewerPageId = ref<PageId | null>(null)
@@ -404,6 +416,41 @@ export const useEditorStore = defineStore('editor', () => {
 
   // --- Between documents ----------------------------------------------------
 
+  /** Opens a tool in the panel, or closes the panel if that tool is already open. */
+  function toggleTool(tool: ToolId) {
+    activeTool.value = activeTool.value === tool ? null : tool
+    // Merging starts from every open document, in the sidebar's order.
+    if (activeTool.value === 'merge' && mergePicks.value.length === 0) {
+      mergePicks.value = documents.value.map((d) => d.id)
+    }
+  }
+
+  /** Moves a picked document to another place in the merge order. */
+  function moveMergePick(id: DocumentId, toIndex: number) {
+    const rest = mergePicks.value.filter((pick) => pick !== id)
+    if (rest.length === mergePicks.value.length) return
+    const at = Math.max(0, Math.min(toIndex, rest.length))
+    mergePicks.value = [...rest.slice(0, at), id, ...rest.slice(at)]
+  }
+
+  /**
+   * Starts placing a library signature: opens the viewer on the first
+   * selected page (or the first page), where it's put and can be dragged.
+   */
+  function placeSignatureFromPanel(signatureId: number) {
+    const state = active.value
+    if (!state || state.pages.length === 0) return
+    const target = state.pages.find((p) => state.selection.has(p.id)) ?? state.pages[0]!
+    pendingSignature.value = signatureId
+    viewerPageId.value = target.id
+  }
+
+  function takePendingSignature(): number | null {
+    const id = pendingSignature.value
+    pendingSignature.value = null
+    return id
+  }
+
   function toggleMergePick(id: DocumentId) {
     mergePicks.value = mergePicks.value.includes(id)
       ? mergePicks.value.filter((pick) => pick !== id)
@@ -426,6 +473,7 @@ export const useEditorStore = defineStore('editor', () => {
       const mergedId = await editor.mergeDocuments(ids, { applyPending: true })
       register(mergedId, `Unione di ${ids.length} documenti.pdf`)
       mergePicks.value = []
+      if (activeTool.value === 'merge') activeTool.value = null
       select(mergedId)
       notify(`Uniti ${ids.length} documenti: gli originali restano aperti`)
     } catch (err) {
@@ -682,6 +730,12 @@ export const useEditorStore = defineStore('editor', () => {
     linkedCopies,
     draggingPages,
     mergePicks,
+    activeTool,
+    toggleTool,
+    moveMergePick,
+    pendingSignature,
+    placeSignatureFromPanel,
+    takePendingSignature,
     toggleMergePick,
     clearMergePicks,
     mergePicked,

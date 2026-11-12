@@ -619,4 +619,42 @@ describe('editor store', () => {
     store.rename(doc.id, '   ')
     expect(doc.name).toBe('Contratto firmato.pdf')
   })
+
+  it('opens tools: the merge tool starts from every open document, in order', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 1), pdfFile('b.pdf', 1), pdfFile('c.pdf', 1)])
+    const [a, b, c] = store.documents.map((d) => d.id)
+
+    store.toggleTool('merge')
+    expect(store.activeTool).toBe('merge')
+    expect(store.mergePicks).toEqual([a, b, c])
+    store.moveMergePick(c!, 0)
+    store.moveMergePick(a!, 99)
+    expect(store.mergePicks).toEqual([c, b, a])
+
+    await store.mergePicked()
+    expect(store.activeTool).toBeNull() // done: the panel closes
+    store.toggleTool('sign')
+    store.toggleTool('sign')
+    expect(store.activeTool).toBeNull()
+  })
+
+  it('places a signature from the panel on the first selected page, via the viewer', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 4)])
+    const signature = store.addSignature(
+      { pixels: new Uint8Array(4 * 4 * 2), width: 4, height: 2 },
+      'blob:firma',
+      'Firma 1',
+    )
+    store.placeSignatureFromPanel(signature.id)
+    expect(store.viewerPageId).toBe(1)
+    expect(store.takePendingSignature()).toBe(signature.id)
+    expect(store.takePendingSignature()).toBeNull()
+
+    store.closeViewer()
+    store.selectPage(3, 'only')
+    store.placeSignatureFromPanel(signature.id)
+    expect(store.viewerPageId).toBe(3)
+  })
 })

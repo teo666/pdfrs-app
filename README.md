@@ -11,8 +11,9 @@ Cosa fa oggi:
 - rinomina un documento al volo: la penna accanto al nome nella barra laterale o nel titolo (oppure doppio clic sul nome); Invio salva, Esc annulla, e il PDF si scarica con il nuovo nome;
 - sposta le pagine in un altro documento trascinandole sul suo nome nella barra laterale (con ⌥/Alt le copia);
 - inserisce le pagine di un PDF o JPEG nel documento aperto, dopo la selezione o in fondo;
-- unisce più documenti, così come appaiono, nell'ordine in cui li scegli con le caselle numerate della barra laterale;
-- mette una **firma** sulle pagine dalla modale di anteprima: la disegni con mouse o dito, oppure carichi un'immagine (lo sfondo bianco diventa trasparente); la sposti, la ridimensioni e la ruoti (maniglia sopra il box: si aggancia agli angoli retti, ⇧ a passi di 15°), con «Uguale su tutte le pagine» la metti ovunque e le copie si modificano insieme (togliendo la spunta su una pagina, quella copia si modifica da sola), si vede anche sulle miniature e finisce nel PDF quando applichi o scarichi. Le firme restano solo nella scheda del browser;
+- ha una colonna di **strumenti** sulla destra che apre un pannello: per ora **Firma** e **Unisci**;
+- unisce più documenti, così come appaiono, dal pannello Unisci: li ordini trascinandoli (o con le frecce) e togli quelli che non servono;
+- mette una **firma** sulle pagine, dal pannello Firma o dalla modale di anteprima: la disegni con mouse o dito, oppure carichi un'immagine (lo sfondo bianco diventa trasparente); la sposti, la ridimensioni e la ruoti (maniglia sopra il box: si aggancia agli angoli retti, ⇧ a passi di 15°), con «Uguale su tutte le pagine» la metti ovunque e le copie si modificano insieme (togliendo la spunta su una pagina, quella copia si modifica da sola), si vede anche sulle miniature e finisce nel PDF quando applichi o scarichi. Le firme restano solo nella scheda del browser;
 - con la lente su una miniatura (o doppio clic, o Invio) apre la pagina in una modale, al 100% (tasto 1) o adattata alla finestra (tasto 0): le frecce (oppure Pag↑/Pag↓, Home/Fine) scorrono le pagine nell'ordine corrente, Esc chiude;
 - annulla e ripete ogni modifica (⌘Z / ⇧⌘Z, oppure Ctrl+Z / Ctrl+Y), anche dopo averle applicate;
 - applica le modifiche al documento e scarica il PDF risultante.
@@ -33,6 +34,7 @@ In questo repo:
 | --- | --- |
 | `src/stores/editor.ts` | Store Pinia: tiene una copia reattiva dello stato del modello (che non è reattivo) e raggruppa per frame le richieste di miniature |
 | `src/views/EditorView.vue` | Layout, scorciatoie da tastiera, drop dei file sulla finestra |
+| `src/components/ToolRail.vue`, `ToolPanel.vue` | Colonna di icone a destra e pannello degli strumenti (`SignTool`, `MergeTool`) |
 | `src/components/` | `PageGrid` (griglia e riordino con drag & drop; vedi il commento in testa per i vincoli di prestazioni), `PageCard`, `PageViewer` (modale al 100% su `<dialog>` nativo), `DocumentList`, `DocumentToolbar`, `EmptyState` |
 | `src/assets/main.css` | Token di design per Tailwind (`@theme`): colori, ombre, raggi. Il tema scuro ridefinisce solo le variabili, quindi i componenti non usano `dark:` |
 | `src/components/AppButton.vue`, `IconButton.vue` | Pulsanti riusabili: lo stile ripetuto sta in un componente, non in classi `@apply` |

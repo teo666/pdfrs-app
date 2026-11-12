@@ -4,7 +4,26 @@ import type { ImageAsset } from 'pdfrs-editor'
 
 import { cropToInk } from '@/lib/images'
 
+/** "dark" on the viewer's black backdrop, "light" in the app's tool panel. */
+const { tone = 'dark' } = defineProps<{ tone?: 'dark' | 'light' }>()
 const emit = defineEmits<{ done: [image: ImageAsset]; cancel: [] }>()
+
+const styles = {
+  dark: {
+    muted: 'text-white/60',
+    chosen: 'border-white',
+    quiet: 'text-white/75 hover:text-white',
+    primary: 'bg-white text-black',
+    secondary: 'text-white/80 hover:bg-white/10',
+  },
+  light: {
+    muted: 'text-fg-muted',
+    chosen: 'border-fg',
+    quiet: 'text-fg-muted hover:text-fg',
+    primary: 'bg-accent text-accent-fg',
+    secondary: 'text-fg-muted hover:bg-surface-muted',
+  },
+}[tone]
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const inks = { Nero: '#111111', Blu: '#1a3fb0' } as const
@@ -102,6 +121,7 @@ onMounted(() => {
       <canvas
         ref="canvas"
         class="block h-36 w-full cursor-crosshair touch-none rounded-md bg-white"
+        :class="{ 'ring-1 ring-line': tone === 'light' }"
         aria-label="Area per disegnare la firma"
         @pointerdown="onDown"
         @pointermove="onMove"
@@ -120,34 +140,33 @@ onMounted(() => {
       </p>
     </div>
     <div class="flex items-center gap-1.5 text-xs">
-      <span class="text-white/60">Inchiostro</span>
+      <span :class="styles.muted">Inchiostro</span>
       <button
         v-for="(color, name) in inks"
         :key="name"
         class="size-5 cursor-pointer rounded-full border-2"
-        :class="ink === name ? 'border-white' : 'border-transparent'"
+        :class="ink === name ? styles.chosen : 'border-transparent'"
         :style="{ background: color }"
         :aria-label="`Inchiostro ${name.toLowerCase()}`"
         :aria-pressed="ink === name"
         @click="ink = name"
       />
-      <button
-        class="ml-auto cursor-pointer px-2 py-1 text-white/75 hover:text-white"
-        @click="clear"
-      >
+      <button class="ml-auto cursor-pointer px-2 py-1" :class="styles.quiet" @click="clear">
         Cancella
       </button>
     </div>
     <div class="flex gap-1.5">
       <button
-        class="flex-1 cursor-pointer rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-black disabled:cursor-default disabled:opacity-40"
+        class="flex-1 cursor-pointer rounded-md px-3 py-1.5 text-sm font-semibold disabled:cursor-default disabled:opacity-40"
+        :class="styles.primary"
         :disabled="empty"
         @click="save"
       >
         Usa questa firma
       </button>
       <button
-        class="cursor-pointer rounded-md px-3 py-1.5 text-sm text-white/80 hover:bg-white/10"
+        class="cursor-pointer rounded-md px-3 py-1.5 text-sm"
+        :class="styles.secondary"
         @click="emit('cancel')"
       >
         Annulla
