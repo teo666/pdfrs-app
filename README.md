@@ -1,73 +1,55 @@
 # pdfrs-app
 
-This template should help get you started developing with Vue 3 in Vite.
+Editor PDF che gira interamente nel browser: i file non lasciano mai il computer. È scritto in Vue 3 e usa il motore Rust/WebAssembly [pdfrs](../pdfrs).
 
-## Recommended IDE Setup
+Cosa fa oggi:
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- apre più PDF e JPEG, scelti dal pulsante oppure trascinati in qualsiasi punto della finestra;
+- mostra le miniature delle pagine, generate solo quando entrano nello schermo e in parallelo su un pool di Web Worker;
+- ruota, elimina e ripristina le pagine, e le riordina trascinandole;
+- annulla e ripete ogni modifica (⌘Z / ⇧⌘Z, oppure Ctrl+Z / Ctrl+Y), anche dopo averle applicate;
+- applica le modifiche al documento e scarica il PDF risultante.
 
-## Recommended Browser Setup
+## Come è fatta
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+L'app non chiama mai il wasm direttamente. Tutto passa da **`pdfrs-editor`**, un pacchetto TypeScript che sta nel repo pdfrs (`packages/pdfrs-editor`) e non dipende da nessun framework. Contiene:
 
-## Type Support for `.vue` Imports in TS
+- il modello `PdfEditor` / `PdfDocument`, con modifiche in sospeso, undo/redo e cache delle anteprime;
+- il client verso il Web Worker in cui gira il wasm;
+- il pool di worker per le anteprime.
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+Il modulo wasm viene compilato una volta sola e condiviso da tutti i worker.
 
-## Customize configuration
+In questo repo:
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+| Percorso | Ruolo |
+| --- | --- |
+| `src/stores/editor.ts` | Store Pinia: tiene una copia reattiva dello stato del modello (che non è reattivo) e raggruppa per frame le richieste di miniature |
+| `src/views/EditorView.vue` | Layout, scorciatoie da tastiera, drop dei file sulla finestra |
+| `src/components/` | `PageGrid` (griglia e riordino con drag & drop), `PageCard`, `DocumentList`, `DocumentToolbar`, `EmptyState` |
+| `src/lib/` | Funzioni pure: riconoscimento dei file dai primi byte, calcolo dell'indice di destinazione del drop |
 
-## Project Setup
+## Sviluppo
 
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
+Si usa **pnpm**. Il repo pdfrs deve trovarsi nella stessa cartella di questo (`../pdfrs`): `pdfrs-editor` è collegato con `link:`, e a sua volta usa il pacchetto wasm da `../pdfrs/pkg-npm`.
 
 ```sh
-npm run build
+# una tantum, e ogni volta che cambia il codice Rust: build del wasm in ../pdfrs/pkg-npm
+(cd ../pdfrs && ./scripts/build-npm-package.sh)
+(cd ../pdfrs/packages/pdfrs-editor && pnpm install)
+
+pnpm install
+pnpm dev          # http://localhost:5173
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+I pacchetti collegati vengono serviti come sorgente e non passano dal pre-bundling di Vite. Per questo, dopo una nuova build del wasm basta ricaricare la pagina: non serve né `pnpm install` né svuotare la cache.
 
 ```sh
-npm run test:unit
+pnpm test:unit    # Vitest: store (con un finto pdfrs-editor), helper
+pnpm test:e2e     # Playwright sul wasm vero, con un dev server dedicato sulla porta 5174
+pnpm type-check
+pnpm lint
+pnpm build
 ```
 
-### Run End-to-End Tests with [Playwright](https://playwright.dev)
-
-```sh
-# Install browsers for the first run
-npx playwright install
-
-# When testing on CI, must build the project first
-npm run build
-
-# Runs the end-to-end tests
-npm run test:e2e
-# Runs the tests only on Chromium
-npm run test:e2e -- --project=chromium
-# Runs the tests of a specific file
-npm run test:e2e -- tests/example.spec.ts
-# Runs the tests in debug mode
-npm run test:e2e -- --debug
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+La prima volta, Playwright ha bisogno del browser: `pnpm exec playwright install chromium`.
