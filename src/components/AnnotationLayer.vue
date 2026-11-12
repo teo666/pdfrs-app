@@ -165,7 +165,7 @@ function startDrag(
       }"
       role="button"
       tabindex="0"
-      :aria-label="`Firma sulla pagina${selectedId === annotation.id ? ' (selezionata)' : ''}`"
+      :aria-label="`${annotation.kind === 'image' ? 'Immagine' : 'Firma'} sulla pagina${selectedId === annotation.id ? ' (selezionata)' : ''}`"
       :aria-pressed="selectedId === annotation.id"
       data-annotation
       @pointerdown="startDrag($event, annotation, 'move')"
@@ -181,7 +181,7 @@ function startDrag(
       <template v-if="selectedId === annotation.id">
         <button
           class="absolute -top-3 -right-3 grid size-6 cursor-pointer place-items-center rounded-full bg-danger text-white shadow-lift"
-          aria-label="Rimuovi la firma"
+          aria-label="Rimuovi dalla pagina"
           title="Rimuovi (Canc)"
           @pointerdown.stop
           @click.stop="emit('remove', annotation.id)"
@@ -192,7 +192,7 @@ function startDrag(
         <div
           class="absolute -top-7 left-1/2 flex -translate-x-1/2 cursor-grab flex-col items-center active:cursor-grabbing"
           role="slider"
-          aria-label="Ruota la firma"
+          aria-label="Ruota"
           :aria-valuenow="boxOf(annotation).rotation"
           aria-valuemin="-179"
           aria-valuemax="180"
@@ -213,7 +213,7 @@ function startDrag(
         <div
           class="absolute -right-2 -bottom-2 size-4 cursor-nwse-resize rounded-sm border-2 border-white bg-accent shadow-lift"
           role="slider"
-          aria-label="Ridimensiona la firma"
+          aria-label="Ridimensiona"
           :aria-valuenow="Math.round(boxOf(annotation).width * 100)"
           aria-valuemin="3"
           aria-valuemax="100"

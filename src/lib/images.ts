@@ -8,6 +8,13 @@ import type { ImageAsset } from 'pdfrs-editor'
 /** Longer side, in pixels, above which an image is scaled down: a signature needs nothing like a photo's resolution, and pixels travel uncompressed to the worker. */
 export const MAX_SIGNATURE_SIZE = 1000
 
+/**
+ * Longer side for images placed on pages (logos, photos): sharp enough for
+ * print at a third of a page, while keeping the PDF reasonable - the pixels
+ * are stored losslessly.
+ */
+export const MAX_IMAGE_SIZE = 1600
+
 /** Channel value above which a pixel counts as background when removing a white background. */
 const WHITE_THRESHOLD = 225
 

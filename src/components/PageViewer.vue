@@ -35,19 +35,23 @@ const selected = computed(() =>
   pageAnnotations.value.find((a) => a.id === selectedAnnotation.value),
 )
 
-/** Default width of a newly placed signature, as a fraction of the page. */
-const PLACE_WIDTH = 0.3
+/** Default width of a newly placed signature or image, as a fraction of the page. */
+const PLACE_WIDTH = { signature: 0.3, image: 0.4 }
+/** ...but no taller than this fraction of the page (a tall photo, a portrait logo). */
+const PLACE_MAX_HEIGHT = 0.5
 
-/** Puts a library signature in the middle of the page, selected so it can be dragged right away. */
+/** Puts a library item in the middle of the page, selected so it can be dragged right away. */
 function placeSignature(signatureId: number) {
-  const signature = store.signatures.find((s) => s.id === signatureId)
+  const signature = store.library.find((s) => s.id === signatureId)
   if (!signature || !shown.value) return
   const pageAspect = shown.value.width / shown.value.height
-  const height = PLACE_WIDTH * signature.aspect * pageAspect
+  const heightPerWidth = signature.aspect * pageAspect
+  const width = Math.min(PLACE_WIDTH[signature.kind], PLACE_MAX_HEIGHT / heightPerWidth)
+  const height = width * heightPerWidth
   const id = store.placeSignature(props.pageId, signatureId, {
-    x: (1 - PLACE_WIDTH) / 2,
+    x: (1 - width) / 2,
     y: Math.max(0, (1 - height) / 2),
-    width: PLACE_WIDTH,
+    width,
   })
   selectedAnnotation.value = id
 }
@@ -412,7 +416,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
               'max-md:right-[19rem] max-md:left-4 max-md:max-w-none max-md:translate-x-0': signing,
             }"
             role="group"
-            aria-label="Firma selezionata"
+            :aria-label="selected.kind === 'image' ? 'Immagine selezionata' : 'Firma selezionata'"
           >
             <label class="flex cursor-pointer items-center gap-2 font-semibold">
               <input

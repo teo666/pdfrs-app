@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import IconButton from './IconButton.vue'
 import BookletTool from './BookletTool.vue'
+import ImageTool from './ImageTool.vue'
 import MergeTool from './MergeTool.vue'
 import NupTool from './NupTool.vue'
 import SignTool from './SignTool.vue'
@@ -12,6 +13,7 @@ const store = useEditorStore()
 
 const titles = {
   sign: 'Firma',
+  image: 'Immagine',
   merge: 'Unisci documenti',
   nup: 'Più pagine per foglio',
   booklet: 'Libretto',
@@ -31,6 +33,7 @@ const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
     </header>
     <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
       <SignTool v-if="store.activeTool === 'sign'" />
+      <ImageTool v-else-if="store.activeTool === 'image'" />
       <MergeTool v-else-if="store.activeTool === 'merge'" />
       <NupTool v-else-if="store.activeTool === 'nup'" />
       <BookletTool v-else-if="store.activeTool === 'booklet'" />

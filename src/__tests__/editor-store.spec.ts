@@ -692,4 +692,23 @@ describe('editor store', () => {
     expect(store.active?.pages).toHaveLength(4) // 5 pages: 2 sheets, front and back
     expect(source.pages).toHaveLength(10)
   })
+
+  it('keeps signatures and images in one library, told apart by kind', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 2)])
+    const pixels = { pixels: new Uint8Array(4 * 4 * 2), width: 4, height: 2 }
+    const signature = store.addSignature(pixels, 'blob:firma', 'Firma 1')
+    const logo = store.addImage(pixels, 'blob:logo', 'logo')
+    expect(store.signatures.map((s) => s.name)).toEqual(['Firma 1'])
+    expect(store.images.map((s) => s.name)).toEqual(['logo'])
+
+    store.placeSignature(1, logo.id, { x: 0.1, y: 0.1, width: 0.4 })
+    store.placeSignature(2, signature.id, { x: 0.5, y: 0.8, width: 0.3 })
+    expect(store.active!.annotations[1]![0]).toMatchObject({ kind: 'image', url: 'blob:logo' })
+    expect(store.active!.annotations[2]![0]).toMatchObject({ kind: 'signature' })
+
+    store.removeSignature(logo.id)
+    expect(store.images).toHaveLength(0)
+    expect(store.signatures).toHaveLength(1)
+  })
 })

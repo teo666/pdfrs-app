@@ -2,7 +2,13 @@ import { ref } from 'vue'
 import type { ImageAsset } from 'pdfrs-editor'
 
 import { pickFiles } from '@/lib/files'
-import { assetToUrl, hasTransparency, imageFileToAsset, removeWhiteBackground } from '@/lib/images'
+import {
+  assetToUrl,
+  hasTransparency,
+  imageFileToAsset,
+  MAX_IMAGE_SIZE,
+  removeWhiteBackground,
+} from '@/lib/images'
 import { useEditorStore, type Signature } from '@/stores/editor'
 
 /**
@@ -23,20 +29,27 @@ export function useSignatureImport() {
     )
   }
 
-  /** Asks for an image file; null if none was picked or it couldn't be read. */
-  async function fromFile(): Promise<Signature | null> {
-    const [file] = await pickFiles('image/png,image/jpeg,image/webp')
+  /**
+   * Asks for an image file; null if none was picked or it couldn't be read.
+   * As a signature, an image without transparency (a JPEG, a photo of a
+   * signature on paper) gets its white background removed - it would paint
+   * a white box over the text. As an image, it's kept as it is.
+   */
+  async function fromFile(kind: 'signature' | 'image' = 'signature'): Promise<Signature | null> {
+    const [file] = await pickFiles('image/png,image/jpeg,image/webp,image/gif')
     if (!file) return null
     try {
-      let image = await imageFileToAsset(file)
+      let image = await imageFileToAsset(file, kind === 'image' ? MAX_IMAGE_SIZE : undefined)
       message.value = null
-      // Without transparency (a JPEG, a photo of a signature on paper) the
-      // image would paint a white box over the text: keep only the ink.
-      if (!hasTransparency(image)) {
+      if (kind === 'signature' && !hasTransparency(image)) {
         image = removeWhiteBackground(image)
         message.value = 'Lo sfondo bianco dell’immagine è stato reso trasparente.'
       }
-      return store.addSignature(image, await assetToUrl(image), file.name.replace(/\.[^.]+$/, ''))
+      const url = await assetToUrl(image)
+      const name = file.name.replace(/\.[^.]+$/, '')
+      return kind === 'image'
+        ? store.addImage(image, url, name)
+        : store.addSignature(image, url, name)
     } catch (err) {
       message.value = `Immagine non leggibile: ${err instanceof Error ? err.message : String(err)}`
       return null

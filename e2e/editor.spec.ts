@@ -450,7 +450,7 @@ test('draws a signature, places and moves it on a page, then writes it into the 
   expect(after.y).toBeGreaterThan(before.y + 40)
 
   // Turn it with the knob above it: a quarter turn clockwise snaps to 90°.
-  const knob = viewer.getByRole('slider', { name: 'Ruota la firma' })
+  const knob = viewer.getByRole('slider', { name: 'Ruota' })
   const frame = (await stamp.boundingBox())!
   const centre = { x: frame.x + frame.width / 2, y: frame.y + frame.height / 2 }
   const start = (await knob.boundingBox())!
@@ -685,4 +685,36 @@ test('N-up and booklet tools make new documents from the selection or the whole 
   await expect(page.getByRole('heading', { name: 'ten_pages (libretto).pdf' })).toBeVisible()
   await expectAllThumbnails(page, 6)
   await expect(page.locator('aside li')).toHaveCount(3)
+})
+
+test('image tool: upload a picture and place it on the selected page', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+  await cards(page).nth(1).getByRole('checkbox', { name: /Seleziona/ }).click()
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagine' }).click()
+  const panel = page.getByRole('complementary', { name: 'Immagine' })
+  const chooserPromise = page.waitForEvent('filechooser')
+  await panel.getByRole('button', { name: 'Carica un’immagine' }).click()
+  await (await chooserPromise).setFiles(fixture('photo.jpg'))
+
+  // Placed on the selected page, selected, kept as it is (not a signature).
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  await expect(viewer.locator('header')).toContainText('Pagina 2 di 4')
+  const placed = viewer.getByRole('button', { name: 'Immagine sulla pagina (selezionata)' })
+  await expect(placed).toBeVisible()
+  await expect(viewer.getByRole('group', { name: 'Immagine selezionata' })).toBeVisible()
+  await expect(panel).not.toContainText('sfondo bianco')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+
+  await expect(panel).toContainText('1 immagine su 1 pagina')
+  await expect(panel.getByRole('button', { name: 'Metti «photo» sulla pagina 2' })).toBeVisible()
+  await expect(cards(page).nth(1).locator('[data-stamp]')).toHaveCount(1)
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica' }).click()
+  const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
+  expect(pdf).toMatch(/\/Subtype\s*\/Image/)
 })

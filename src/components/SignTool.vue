@@ -25,6 +25,8 @@ const placed = computed(() => {
   const doc = store.active
   if (!doc) return { count: 0, pages: 0 }
   const lists = Object.values(doc.annotations)
+    .map((list) => list.filter((a) => a.kind === 'signature'))
+    .filter((list) => list.length > 0)
   return { count: lists.flat().length, pages: lists.length }
 })
 

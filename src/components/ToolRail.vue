@@ -11,6 +11,12 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
     label: 'Firma',
     hint: 'Firma: disegna o carica una firma e mettila sulle pagine',
   },
+  {
+    id: 'image',
+    icon: 'image',
+    label: 'Immagine',
+    hint: 'Immagine: un logo, un timbro o una foto sopra le pagine',
+  },
   { id: 'merge', icon: 'merge-arrows', label: 'Unisci', hint: 'Unisci più documenti in uno' },
   {
     id: 'nup',

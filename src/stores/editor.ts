@@ -27,16 +27,20 @@ export const PREVIEW_SCALE = 0.4
 export type ViewerZoom = 'actual' | 'fit'
 
 /** The tools of the right-hand panel. */
-export type ToolId = 'sign' | 'merge' | 'nup' | 'booklet'
+export type ToolId = 'sign' | 'image' | 'merge' | 'nup' | 'booklet'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
   | { kind: 'nup'; options: NUpOptions }
   | { kind: 'booklet'; options: BookletOptions }
 
-/** A signature (or any stamp image) in the session's library, ready to be placed on pages. */
+/**
+ * An image in the session's library, ready to be placed on pages: a
+ * signature, or any other image (a logo, a stamp, a photo).
+ */
 export interface Signature {
   id: number
+  kind: 'signature' | 'image'
   name: string
   /** PNG object URL, for showing it. */
   url: string
@@ -49,6 +53,7 @@ export interface Signature {
 export interface AnnotationView extends PageAnnotation {
   url: string
   aspect: number
+  kind: Signature['kind']
 }
 
 /** The box of a placed signature: fractions of the page (see PageAnnotation). */
@@ -140,8 +145,10 @@ export const useEditorStore = defineStore('editor', () => {
 
   const active = computed(() => documents.value.find((d) => d.id === activeId.value) ?? null)
 
-  /** The session's signatures. Not persisted anywhere: they're personal data. */
-  const signatures = shallowRef<Signature[]>([])
+  /** The session's signatures and images. Not persisted anywhere: they're personal data. */
+  const library = shallowRef<Signature[]>([])
+  const signatures = computed(() => library.value.filter((item) => item.kind === 'signature'))
+  const images = computed(() => library.value.filter((item) => item.kind === 'image'))
   let nextSignatureId = 1
 
   /** Pages are being dragged out of the grid (the sidebar shows where they can go). */
@@ -230,7 +237,12 @@ export const useEditorStore = defineStore('editor', () => {
     const byPage = new Map<PageId, AnnotationView[]>()
     for (const annotation of inner.doc.annotations()) {
       const signature = inner.signatureByAsset.get(annotation.asset)
-      const view = { ...annotation, url: signature?.url ?? '', aspect: signature?.aspect ?? 1 }
+      const view = {
+        ...annotation,
+        url: signature?.url ?? '',
+        aspect: signature?.aspect ?? 1,
+        kind: signature?.kind ?? 'signature',
+      }
       byPage.set(annotation.page, [...(byPage.get(annotation.page) ?? []), view])
     }
     const current = state.annotations
@@ -370,21 +382,27 @@ export const useEditorStore = defineStore('editor', () => {
 
   // --- Signatures ------------------------------------------------------------
 
-  function addSignature(image: ImageAsset, url: string, name: string): Signature {
-    const signature = markRaw({
+  function addToLibrary(kind: Signature['kind'], image: ImageAsset, url: string, name: string) {
+    const item: Signature = markRaw({
       id: nextSignatureId++,
+      kind,
       name,
       url,
       aspect: image.height / image.width,
       image,
     })
-    signatures.value = [...signatures.value, signature]
-    return signature
+    library.value = [...library.value, item]
+    return item
   }
 
-  /** Takes a signature out of the library; ones already placed on pages stay. */
+  const addSignature = (image: ImageAsset, url: string, name: string) =>
+    addToLibrary('signature', image, url, name)
+  const addImage = (image: ImageAsset, url: string, name: string) =>
+    addToLibrary('image', image, url, name)
+
+  /** Takes a signature or image out of the library; copies already placed on pages stay. */
   function removeSignature(id: number) {
-    signatures.value = signatures.value.filter((signature) => signature.id !== id)
+    library.value = library.value.filter((item) => item.id !== id)
   }
 
   /** Places a library signature on a page of the active document; returns the new annotation's id. */
@@ -393,7 +411,7 @@ export const useEditorStore = defineStore('editor', () => {
     signatureId: number,
     box: Omit<AnnotationBox, 'rotation'> & { rotation?: number },
   ): AnnotationId | null {
-    const signature = signatures.value.find((s) => s.id === signatureId)
+    const signature = library.value.find((s) => s.id === signatureId)
     const state = active.value
     const inner = state ? internals.get(state.id) : undefined
     if (!signature || !inner) return null
@@ -401,7 +419,7 @@ export const useEditorStore = defineStore('editor', () => {
     edit((doc) => {
       let asset = inner.assetBySignature.get(signature.id)
       if (asset === undefined) {
-        asset = doc.addAsset(signature.image)
+        asset = doc.addAsset(signature.image, signature.kind === 'image' ? 'immagine' : 'firma')
         inner.assetBySignature.set(signature.id, asset)
         inner.signatureByAsset.set(asset, signature)
       }
@@ -764,8 +782,11 @@ export const useEditorStore = defineStore('editor', () => {
     error,
     notice,
     dismissNotice,
+    library,
     signatures,
+    images,
     addSignature,
+    addImage,
     removeSignature,
     placeSignature,
     updateAnnotation,
