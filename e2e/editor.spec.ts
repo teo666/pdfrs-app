@@ -894,3 +894,29 @@ test('stretches a placed image from its side handles, and puts its proportions b
   expect(Math.abs(restored.height / restored.width - natural.height / natural.width)).toBeLessThan(0.02)
   await expect(viewer.getByRole('button', { name: 'Proporzioni originali' })).toBeHidden()
 })
+
+test('the header slider sets the thumbnail size, with sharper renders for big cards', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'ten_pages.pdf')
+  await expectAllThumbnails(page, 10)
+  const slider = page.getByRole('slider', { name: 'Dimensione delle anteprime' })
+  const cardWidth = async () => Math.round((await cards(page).first().boundingBox())!.width)
+  const renderWidth = () =>
+    cards(page).first().locator('img').first().evaluate((img) => (img as HTMLImageElement).naturalWidth)
+
+  const before = { card: await cardWidth(), render: await renderWidth() }
+  await slider.fill('340')
+  await expect.poll(cardWidth).toBeGreaterThan(before.card + 100)
+  await expect.poll(renderWidth).toBeGreaterThan(before.render * 1.5) // re-rendered sharper
+
+  // Switching back and forth while renders are on their way: every card
+  // still ends up with its thumbnail.
+  for (const value of ['120', '300', '150', '360', '170']) await slider.fill(value)
+  await expectAllThumbnails(page, 10)
+
+  // Remembered for the next visit.
+  await page.reload()
+  await expect(slider).toHaveValue('170')
+})

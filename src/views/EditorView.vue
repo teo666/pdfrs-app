@@ -13,7 +13,7 @@ import ToolPanel from '@/components/ToolPanel.vue'
 import ToolRail from '@/components/ToolRail.vue'
 import { useFileDrop } from '@/composables/useFileDrop'
 import { pickFiles } from '@/lib/files'
-import { useEditorStore } from '@/stores/editor'
+import { THUMB_SIZE, useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
 const { dragging } = useFileDrop((files) => store.openFiles(files))
@@ -72,7 +72,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
         <span class="text-[19px] font-medium tracking-tight">pdf<b class="text-accent">rs</b></span>
         <span class="text-[13px] text-fg-muted max-md:hidden">Editor PDF nel browser</span>
       </div>
-      <AppButton icon="plus" @click="openPicker">Apri file</AppButton>
+      <div class="flex items-center gap-4">
+        <!-- Card size: smaller to see more pages at once, bigger to read them. -->
+        <label
+          class="flex items-center gap-2 text-xs text-fg-muted"
+          title="Dimensione delle anteprime"
+        >
+          <AppIcon name="layout-grid" :size="14" />
+          <input
+            v-model.number="store.thumbSize"
+            type="range"
+            :min="THUMB_SIZE.min"
+            :max="THUMB_SIZE.max"
+            step="10"
+            class="w-28 cursor-pointer accent-accent max-md:w-20"
+            aria-label="Dimensione delle anteprime"
+          />
+          <AppIcon name="image" :size="18" />
+        </label>
+        <AppButton icon="plus" @click="openPicker">Apri file</AppButton>
+      </div>
     </header>
 
     <DocumentList

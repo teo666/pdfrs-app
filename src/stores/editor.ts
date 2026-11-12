@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, markRaw, ref, shallowRef, toRaw } from 'vue'
+import { computed, markRaw, ref, shallowRef, toRaw, watch } from 'vue'
 import {
   PdfEditor,
   type AnnotationId,
@@ -21,8 +21,33 @@ import {
 
 import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
 
-/** Thumbnail render scale: ~240px wide for an A4 page, sharp enough on a 2x screen at card size. */
-export const PREVIEW_SCALE = 0.4
+/** Card width range of the thumbnail-size slider, in CSS pixels. */
+export const THUMB_SIZE = { min: 120, max: 360, default: 170 }
+
+/**
+ * Render scale of the thumbnails for a card width: bigger cards need sharper
+ * pictures. In steps, so dragging the slider re-renders only when it crosses
+ * one (and the model caches every scale: going back is instant). 0.4 makes
+ * an A4 page ~240px wide.
+ */
+export function previewScaleFor(cardWidth: number): number {
+  if (cardWidth <= 200) return 0.4
+  if (cardWidth <= 280) return 0.6
+  return 0.8
+}
+
+const THUMB_SIZE_KEY = 'pdfrs.thumbSize'
+
+/** The last slider position, if this browser kept it (storage may be unavailable). */
+function savedThumbSize(): number {
+  try {
+    const saved = Number(localStorage.getItem(THUMB_SIZE_KEY))
+    if (saved >= THUMB_SIZE.min && saved <= THUMB_SIZE.max) return saved
+  } catch {
+    /* no storage: the default */
+  }
+  return THUMB_SIZE.default
+}
 
 export type ViewerZoom = 'actual' | 'fit'
 
@@ -163,6 +188,25 @@ export const useEditorStore = defineStore('editor', () => {
   /** Documents picked for a merge, in the order they were picked: that's the merge order. */
   const mergePicks = ref<DocumentId[]>([])
 
+  /** Card width chosen with the header's slider, in CSS pixels. */
+  const thumbSize = ref(savedThumbSize())
+  const previewScale = computed(() => previewScaleFor(thumbSize.value))
+  watch(thumbSize, (size) => {
+    try {
+      localStorage.setItem(THUMB_SIZE_KEY, String(size))
+    } catch {
+      /* not kept: fine */
+    }
+  })
+  // A new scale: the thumbnails on show are thrown away, and the cards on
+  // screen ask again (renders at the old scale stay cached in the model).
+  watch(previewScale, () => {
+    for (const state of documents.value) {
+      const inner = internals.get(state.id)
+      if (inner) dropPreviews(state, inner)
+    }
+  })
+
   /** The tool open in the right-hand panel, if any. */
   const activeTool = ref<ToolId | null>(null)
 
@@ -230,13 +274,25 @@ export const useEditorStore = defineStore('editor', () => {
     syncAnnotations(state, inner)
     if (doc.getBytes() !== inner.baseline) {
       inner.baseline = doc.getBytes()
-      inner.requested.clear()
-      inner.inFlight.clear()
-      state.previews = {}
+      dropPreviews(state, inner)
       // Page ids are renumbered by a commit: the old selection means nothing.
       state.selection.clear()
       inner.anchor = null
     }
+  }
+
+  /**
+   * Throws away the thumbnails on show (new baseline, or new scale). The
+   * cards on screen notice their picture is gone and ask again - except
+   * those whose picture was still on its way: theirs was missing before and
+   * after, so they'd never ask. Those are asked for here.
+   */
+  function dropPreviews(state: DocumentState, inner: DocumentInternals) {
+    const waiting = [...inner.requested, ...inner.inFlight]
+    inner.requested.clear()
+    inner.inFlight.clear()
+    state.previews = {}
+    for (const page of waiting) requestPreview(state.id, page)
   }
 
   function syncAnnotations(state: DocumentState, inner: DocumentInternals) {
@@ -785,24 +841,26 @@ export const useEditorStore = defineStore('editor', () => {
     }
 
     const baseline = inner.baseline
+    const scale = previewScale.value
+    // A commit or undo may replace the baseline while a batch renders, or
+    // the slider change the scale: its pictures are then out of date.
+    const current = () => inner.baseline === baseline && previewScale.value === scale
     await Promise.all(
       batches.map(async (range) => {
         const pages = order.slice(range.start - 1, range.end)
         pages.forEach((page) => inner.inFlight.add(page))
         try {
-          await inner.doc.getPreviews(PREVIEW_SCALE, {
+          await inner.doc.getPreviews(scale, {
             range,
             onPreview: (preview) => {
-              // A commit or undo may have replaced the baseline while this
-              // batch was rendering: its pictures would be of the old pages.
-              if (inner.baseline !== baseline || !internals.has(id)) return
+              if (!current() || !internals.has(id)) return
               state.previews[preview.id] = urlFor(inner, preview.png)
             },
           })
         } catch (err) {
-          if (inner.baseline === baseline) report(err)
+          if (current()) report(err)
         } finally {
-          if (inner.baseline === baseline) pages.forEach((page) => inner.inFlight.delete(page))
+          if (current()) pages.forEach((page) => inner.inFlight.delete(page))
         }
       }),
     )
@@ -865,6 +923,8 @@ export const useEditorStore = defineStore('editor', () => {
     mergePicks,
     activeTool,
     toggleTool,
+    thumbSize,
+    previewScale,
     moveMergePick,
     pendingSignature,
     placeSignatureFromPanel,

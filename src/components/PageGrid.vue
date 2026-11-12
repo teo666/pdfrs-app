@@ -178,7 +178,8 @@ async function animateReorder(lo: number, hi: number, apply: () => void) {
 <template>
   <div
     ref="grid"
-    class="relative grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-[18px] px-6 pt-5 pb-10 @max-md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] @max-md:gap-3 @max-md:px-4"
+    class="relative grid grid-cols-[repeat(auto-fill,minmax(min(var(--card-min),100%),1fr))] gap-[18px] px-6 pt-5 pb-10 @max-md:gap-3 @max-md:px-4"
+    :style="{ '--card-min': `${store.thumbSize}px` }"
     @dragleave.self="onGridLeave"
   >
     <!--

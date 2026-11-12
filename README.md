@@ -5,7 +5,7 @@ Editor PDF che gira interamente nel browser: i file non lasciano mai il computer
 Cosa fa oggi:
 
 - apre più PDF e JPEG, scelti dal pulsante oppure trascinati in qualsiasi punto della finestra;
-- mostra le miniature delle pagine, generate solo quando entrano nello schermo e in parallelo su un pool di Web Worker;
+- mostra le miniature delle pagine, generate solo quando entrano nello schermo e in parallelo su un pool di Web Worker; la loro dimensione si sceglie con lo slider nell'header (ricordata dal browser), e le card grandi ricevono miniature più nitide;
 - ruota, elimina e ripristina le pagine, e le riordina trascinandole, in modo fluido anche su documenti con migliaia di pagine;
 - seleziona le pagine con un clic sulla miniatura (⇧+clic per un intervallo, Spazio da tastiera, ⌘/Ctrl+A per tutte; Esc deseleziona) per ruotarle, eliminarle (anche con Canc) o trascinarle insieme come un blocco, e per **estrarle in un nuovo documento** così come appaiono;
 - rinomina un documento al volo: la penna accanto al nome nella barra laterale o nel titolo (oppure doppio clic sul nome); Invio salva, Esc annulla, e il PDF si scarica con il nuovo nome;

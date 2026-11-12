@@ -5,7 +5,7 @@ import type { AnnotationId, PageId } from 'pdfrs-editor'
 import AnnotationLayer from './AnnotationLayer.vue'
 import AppIcon from './AppIcon.vue'
 import SignaturePanel from './SignaturePanel.vue'
-import { PREVIEW_SCALE, useEditorStore, type DocumentState, type ViewerZoom } from '@/stores/editor'
+import { useEditorStore, type DocumentState, type ViewerZoom } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState; pageId: PageId }>()
 const store = useEditorStore()
@@ -145,10 +145,11 @@ async function show(id: PageId) {
   // once and something to look at while the full render runs.
   const thumbnail = props.doc.previews[id]
   if (thumbnail) {
-    decodedSize(thumbnail, PREVIEW_SCALE)
+    const thumbnailScale = store.previewScale
+    decodedSize(thumbnail, thumbnailScale)
       .then((size) => {
         if (isCurrent() && !shown.value) {
-          shown.value = { url: thumbnail, ...size, scale: PREVIEW_SCALE, placeholder: true }
+          shown.value = { url: thumbnail, ...size, scale: thumbnailScale, placeholder: true }
         }
       })
       .catch(() => {})
