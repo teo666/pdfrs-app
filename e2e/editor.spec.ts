@@ -43,6 +43,19 @@ async function fitsInWindow(page: Page, element: Locator) {
   return box.y >= 0 && box.y + box.height <= viewport.height && box.width < 595
 }
 
+/** Draws a squiggle on the signature pad with the real mouse and uses it (the pad opens by itself while the library is empty). */
+async function drawSignature(page: Page, viewer: Locator) {
+  const pad = viewer.getByLabel('Area per disegnare la firma')
+  const box = (await pad.boundingBox())!
+  await page.mouse.move(box.x + 30, box.y + 90)
+  await page.mouse.down()
+  for (let i = 1; i <= 30; i++) {
+    await page.mouse.move(box.x + 30 + i * 6, box.y + 90 - Math.sin(i / 3) * 30)
+  }
+  await page.mouse.up()
+  await viewer.getByRole('button', { name: 'Usa questa firma' }).click()
+}
+
 /** Counts page objects in a PDF saved without object streams, as lopdf writes them. */
 function countPdfPages(bytes: Buffer) {
   return bytes.toString('latin1').match(/\/Type\s*\/Page(?!s)/g)?.length ?? 0
@@ -415,16 +428,7 @@ test('draws a signature, places and moves it on a page, then writes it into the 
   await expect(viewer.locator('img[data-full="true"]')).toBeVisible()
   await viewer.getByRole('button', { name: 'Firma', exact: true }).click()
 
-  // Draw with the real mouse on the pad (opened right away: the library is empty).
-  const pad = viewer.getByLabel('Area per disegnare la firma')
-  const box = (await pad.boundingBox())!
-  await page.mouse.move(box.x + 30, box.y + 90)
-  await page.mouse.down()
-  for (let i = 1; i <= 30; i++) {
-    await page.mouse.move(box.x + 30 + i * 6, box.y + 90 - Math.sin(i / 3) * 30)
-  }
-  await page.mouse.up()
-  await viewer.getByRole('button', { name: 'Usa questa firma' }).click()
+  await drawSignature(page, viewer)
 
   // Placed in the middle of the page and selected.
   const stamp = viewer.locator('[data-annotation]')
@@ -443,6 +447,21 @@ test('draws a signature, places and moves it on a page, then writes it into the 
   const after = (await stamp.boundingBox())!
   expect(after.x).toBeLessThan(before.x - 60)
   expect(after.y).toBeGreaterThan(before.y + 40)
+
+  // Turn it with the knob above it: a quarter turn clockwise snaps to 90°.
+  const knob = viewer.getByRole('slider', { name: 'Ruota la firma' })
+  const frame = (await stamp.boundingBox())!
+  const centre = { x: frame.x + frame.width / 2, y: frame.y + frame.height / 2 }
+  const start = (await knob.boundingBox())!
+  await page.mouse.move(start.x + start.width / 2, start.y + 6)
+  await page.mouse.down()
+  for (let i = 1; i <= 10; i++) {
+    const angle = (i / 10) * (Math.PI / 2) - 0.04 // ends at 88°: snapped to 90°
+    await page.mouse.move(centre.x + Math.sin(angle) * 90, centre.y - Math.cos(angle) * 90)
+  }
+  await page.mouse.up()
+  await expect(knob).toHaveAttribute('aria-valuenow', '90')
+  await expect(cards(page).nth(0).locator('[data-stamp]')).toHaveCSS('transform', /matrix\(0, 1, -1, 0/)
 
   // Esc first deselects, then closes; the card shows the pending signature.
   await page.keyboard.press('Escape')
@@ -463,4 +482,51 @@ test('draws a signature, places and moves it on a page, then writes it into the 
   const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
   expect(pdf).toMatch(/\/Subtype\s*\/Image/)
   expect(pdf).toMatch(/\/SMask/) // transparent around the ink
+})
+
+test('puts a signature on every page and moves just one copy on its own', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+  await cards(page).nth(0).getByRole('button', { name: /a grandezza reale/ }).click()
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  await expect(viewer.locator('img[data-full="true"]')).toBeVisible()
+  await viewer.getByRole('button', { name: 'Firma', exact: true }).click()
+  await drawSignature(page, viewer)
+
+  const bar = viewer.getByRole('group', { name: 'Firma selezionata' })
+  const onAll = bar.getByRole('checkbox', { name: /Uguale su tutte le pagine/ })
+  await onAll.check()
+  await expect(bar).toContainText('(4)')
+  const stampLeft = (index: number) =>
+    cards(page).nth(index).locator('[data-stamp]').evaluate((el) => (el as HTMLElement).style.left)
+  for (const index of [0, 1, 2, 3]) {
+    await expect(cards(page).nth(index).locator('[data-stamp]')).toHaveCount(1)
+  }
+  const together = await stampLeft(2)
+
+  // On page 2 the signature would cover something: unlink just that copy and move it.
+  await page.keyboard.press('ArrowRight')
+  await expect(viewer.locator('header')).toContainText('Pagina 2 di 4')
+  const stamp = viewer.locator('[data-annotation]')
+  await stamp.click()
+  await onAll.uncheck()
+  await expect(bar).toContainText('Modificata solo su questa pagina')
+  const box = (await stamp.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 - 100, box.y + box.height / 2, { steps: 8 })
+  await page.mouse.up()
+
+  await expect.poll(() => stampLeft(1)).not.toBe(together) // page 2 moved...
+  expect(await stampLeft(2)).toBe(together) // ...page 3 didn't
+  expect(await stampLeft(0)).toBe(together)
+
+  // Removing a linked copy takes the linked ones away, not page 2's.
+  await page.keyboard.press('ArrowLeft')
+  await stamp.click()
+  await expect(bar.getByRole('button', { name: 'Rimuovi da 3 pagine' })).toBeVisible()
+  await bar.getByRole('button', { name: 'Rimuovi da 3 pagine' }).click()
+  await expect(page.locator('main [data-stamp]')).toHaveCount(1)
+  await expect(cards(page).nth(1).locator('[data-stamp]')).toHaveCount(1)
 })

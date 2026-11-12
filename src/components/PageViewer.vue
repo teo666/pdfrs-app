@@ -31,6 +31,9 @@ const sideways = computed(() => rotation.value % 180 !== 0)
 const signing = ref(false)
 const selectedAnnotation = ref<AnnotationId | null>(null)
 const pageAnnotations = computed(() => props.doc.annotations[props.pageId] ?? [])
+const selected = computed(() =>
+  pageAnnotations.value.find((a) => a.id === selectedAnnotation.value),
+)
 
 /** Default width of a newly placed signature, as a fraction of the page. */
 const PLACE_WIDTH = 0.3
@@ -184,7 +187,10 @@ watch(neededScale, (scale) => {
 // --- Keyboard & lifecycle -----------------------------------------------
 
 function onKeyDown(event: KeyboardEvent) {
-  if ((event.target as HTMLElement | null)?.closest('input, textarea')) return
+  // Typing fields keep their keys; a checkbox (the "all pages" one) doesn't
+  // need the arrows, which keep turning pages.
+  if ((event.target as HTMLElement | null)?.closest('textarea, input:not([type="checkbox"])'))
+    return
   // Undo/redo work in here too: signatures are edited in the viewer.
   if (event.metaKey || event.ctrlKey) {
     const key = event.key.toLowerCase()
@@ -322,63 +328,112 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
 
       <div class="relative flex min-h-0 flex-1">
         <!-- Clicking the dark area around the page closes the viewer. -->
-        <div
-          ref="scroller"
-          class="relative min-w-0 flex-1 overflow-auto"
-          @click.self="store.closeViewer()"
-        >
+        <div class="relative flex min-w-0 flex-1">
           <div
-            class="flex min-h-full w-max min-w-full items-center justify-center p-10"
+            ref="scroller"
+            class="relative min-w-0 flex-1 overflow-auto"
             @click.self="store.closeViewer()"
           >
-            <!--
+            <div
+              class="flex min-h-full w-max min-w-full items-center justify-center p-10"
+              @click.self="store.closeViewer()"
+            >
+              <!--
             A rotated element keeps its unrotated layout box, so the box is
             sized by hand (sides swapped a quarter turn) and the page - image
             and signatures together - is centred and turned inside it.
           -->
-            <div
-              v-if="shown && box"
-              class="relative shrink-0"
-              :style="{ width: `${box.width * zoom}px`, height: `${box.height * zoom}px` }"
-            >
               <div
-                class="absolute top-1/2 left-1/2"
-                :style="{
-                  width: `${shown.width * zoom}px`,
-                  height: `${shown.height * zoom}px`,
-                  transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-                }"
+                v-if="shown && box"
+                class="relative shrink-0"
+                :style="{ width: `${box.width * zoom}px`, height: `${box.height * zoom}px` }"
               >
-                <img
-                  :src="shown.url"
-                  :alt="`Pagina ${index + 1}`"
-                  class="block size-full max-w-none bg-white shadow-2xl transition-[filter] duration-200"
-                  :class="{
-                    'blur-[2px]': shown.placeholder,
-                    'opacity-50': page?.markedForDeletion,
+                <div
+                  class="absolute top-1/2 left-1/2"
+                  :style="{
+                    width: `${shown.width * zoom}px`,
+                    height: `${shown.height * zoom}px`,
+                    transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
                   }"
-                  :data-full="!shown.placeholder"
-                  draggable="false"
-                />
-                <AnnotationLayer
-                  :annotations="pageAnnotations"
-                  :rotation="rotation"
-                  :page-width="shown.width * zoom"
-                  :page-height="shown.height * zoom"
-                  :selected-id="selectedAnnotation"
-                  @select="selectedAnnotation = $event"
-                  @change="(id, change) => store.updateAnnotation(id, change)"
-                  @remove="(id) => (store.removeAnnotation(id), (selectedAnnotation = null))"
-                />
+                >
+                  <img
+                    :src="shown.url"
+                    :alt="`Pagina ${index + 1}`"
+                    class="block size-full max-w-none bg-white shadow-2xl transition-[filter] duration-200"
+                    :class="{
+                      'blur-[2px]': shown.placeholder,
+                      'opacity-50': page?.markedForDeletion,
+                    }"
+                    :data-full="!shown.placeholder"
+                    draggable="false"
+                  />
+                  <AnnotationLayer
+                    :annotations="pageAnnotations"
+                    :rotation="rotation"
+                    :page-width="shown.width * zoom"
+                    :page-height="shown.height * zoom"
+                    :selected-id="selectedAnnotation"
+                    @select="selectedAnnotation = $event"
+                    @change="(id, change) => store.updateAnnotation(id, change)"
+                    @remove="(id) => (store.removeAnnotation(id), (selectedAnnotation = null))"
+                  />
+                </div>
               </div>
+              <p v-else-if="error" class="text-white/80">{{ error }}</p>
+              <div
+                v-else
+                class="size-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
+                role="status"
+                aria-label="Caricamento"
+              />
             </div>
-            <p v-else-if="error" class="text-white/80">{{ error }}</p>
-            <div
-              v-else
-              class="size-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
-              role="status"
-              aria-label="Caricamento"
-            />
+          </div>
+
+          <!-- What applies to the selected signature: this page, or all of them. -->
+          <div
+            v-if="selected"
+            class="absolute bottom-4 left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-card bg-black/80 px-4 py-2.5 text-sm shadow-lift backdrop-blur"
+            :class="{
+              // On narrow screens the signature panel floats over the right
+              // side: the bar takes the space left of it.
+              'max-md:right-[19rem] max-md:left-4 max-md:max-w-none max-md:translate-x-0': signing,
+            }"
+            role="group"
+            aria-label="Firma selezionata"
+          >
+            <label class="flex cursor-pointer items-center gap-2 font-semibold">
+              <input
+                type="checkbox"
+                class="size-4 cursor-pointer accent-accent"
+                :checked="selected.linked"
+                @change="
+                  store.setOnAllPages(selected.id, ($event.target as HTMLInputElement).checked)
+                "
+              />
+              Uguale su tutte le pagine
+              <span v-if="selected.linked" class="font-normal text-white/60">
+                ({{ store.linkedCopies(selected.group) }})
+              </span>
+            </label>
+            <span class="text-xs text-white/60">
+              {{
+                selected.linked
+                  ? 'Spostandola, ridimensionandola o ruotandola cambia su tutte le pagine collegate.'
+                  : selected.group !== null
+                    ? 'Modificata solo su questa pagina: rimetti la spunta per riallinearla alle altre.'
+                    : 'Solo su questa pagina.'
+              }}
+            </span>
+            <button
+              class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-white/10"
+              @click="removeSelectedAnnotation"
+            >
+              {{
+                selected.linked
+                  ? `Rimuovi da ${store.linkedCopies(selected.group)} pagine`
+                  : 'Rimuovi'
+              }}
+            </button>
           </div>
         </div>
 

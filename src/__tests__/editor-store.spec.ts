@@ -107,6 +107,8 @@ vi.mock('pdfrs-editor', () => {
       x: number
       y: number
       width: number
+      group: number | null
+      linked: boolean
     }[] = []
     nextAnnotation = 1
     addAsset(asset: unknown) {
@@ -120,8 +122,26 @@ vi.mock('pdfrs-editor', () => {
     addAnnotation(a: { page: number; asset: number; x: number; y: number; width: number }) {
       this.save()
       const id = this.nextAnnotation++
-      this.annotationList = [...this.annotationList, { ...a, id }]
+      this.annotationList = [...this.annotationList, { ...a, id, group: null, linked: false }]
       return id
+    }
+    applyAnnotationToAllPages(id: number) {
+      this.save()
+      const source = this.annotationList.find((a) => a.id === id)!
+      const linked = { ...source, group: 1, linked: true }
+      const copies = this.pageList
+        .filter((p) => p.id !== source.page)
+        .map((p) => ({ ...linked, id: this.nextAnnotation++, page: p.id }))
+      this.annotationList = [
+        ...this.annotationList.map((a) => (a.id === id ? linked : a)),
+        ...copies,
+      ]
+    }
+    detachAnnotation(id: number) {
+      this.save()
+      this.annotationList = this.annotationList.map((a) =>
+        a.id === id ? { ...a, linked: false } : a,
+      )
     }
     updateAnnotation(id: number, patch: object) {
       this.save()
@@ -566,5 +586,27 @@ describe('editor store', () => {
     store.removeSignature(signature.id)
     expect(store.signatures).toHaveLength(0)
     expect(doc.annotations[2]).toHaveLength(2)
+  })
+
+  it('puts a signature on all pages and unlinks one copy', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 3)])
+    const doc = store.active!
+    const signature = store.addSignature(
+      { pixels: new Uint8Array(4 * 4 * 2), width: 4, height: 2 },
+      'blob:firma',
+      'Firma 1',
+    )
+    const id = store.placeSignature(1, signature.id, { x: 0.1, y: 0.2, width: 0.3 })!
+    expect(store.linkedCopies(null)).toBe(0)
+
+    store.setOnAllPages(id, true)
+    expect(Object.keys(doc.annotations)).toEqual(['1', '2', '3'])
+    expect(store.linkedCopies(1)).toBe(3)
+
+    const copy = doc.annotations[2]![0]!
+    store.setOnAllPages(copy.id, false)
+    expect(doc.annotations[2]![0]!.linked).toBe(false)
+    expect(store.linkedCopies(1)).toBe(2)
   })
 })

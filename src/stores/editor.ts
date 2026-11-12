@@ -38,7 +38,7 @@ export interface AnnotationView extends PageAnnotation {
 }
 
 /** The box of a placed signature: fractions of the page (see PageAnnotation). */
-export type AnnotationBox = Pick<PageAnnotation, 'x' | 'y' | 'width'>
+export type AnnotationBox = Pick<PageAnnotation, 'x' | 'y' | 'width' | 'rotation'>
 
 /** Visible pages further apart than this get separate render batches instead of one range covering everything in between. */
 const MAX_BATCH_GAP = 4
@@ -351,7 +351,7 @@ export const useEditorStore = defineStore('editor', () => {
   function placeSignature(
     page: PageId,
     signatureId: number,
-    box: AnnotationBox,
+    box: Omit<AnnotationBox, 'rotation'> & { rotation?: number },
   ): AnnotationId | null {
     const signature = signatures.value.find((s) => s.id === signatureId)
     const state = active.value
@@ -373,6 +373,23 @@ export const useEditorStore = defineStore('editor', () => {
   const updateAnnotation = (id: AnnotationId, box: Partial<AnnotationBox>) =>
     edit((doc) => doc.updateAnnotation(id, box))
   const removeAnnotation = (id: AnnotationId) => edit((doc) => doc.removeAnnotation(id))
+
+  /**
+   * "Uguale su tutte le pagine": on, the signature is copied to every page
+   * and the copies are edited together; off on one page, that copy is
+   * edited on its own there while the others stay linked.
+   */
+  function setOnAllPages(id: AnnotationId, on: boolean) {
+    edit((doc) => (on ? doc.applyAnnotationToAllPages(id) : doc.detachAnnotation(id)))
+  }
+
+  /** How many linked copies a group has in the active document. */
+  function linkedCopies(group: number | null): number {
+    if (group === null || !active.value) return 0
+    return Object.values(active.value.annotations)
+      .flat()
+      .filter((a) => a.group === group && a.linked).length
+  }
 
   // --- Between documents ----------------------------------------------------
 
@@ -650,6 +667,8 @@ export const useEditorStore = defineStore('editor', () => {
     placeSignature,
     updateAnnotation,
     removeAnnotation,
+    setOnAllPages,
+    linkedCopies,
     draggingPages,
     mergePicks,
     toggleMergePick,

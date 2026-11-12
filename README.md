@@ -11,7 +11,7 @@ Cosa fa oggi:
 - sposta le pagine in un altro documento trascinandole sul suo nome nella barra laterale (con ⌥/Alt le copia);
 - inserisce le pagine di un PDF o JPEG nel documento aperto, dopo la selezione o in fondo;
 - unisce più documenti, così come appaiono, nell'ordine in cui li scegli con le caselle numerate della barra laterale;
-- mette una **firma** sulle pagine dalla modale di anteprima: la disegni con mouse o dito, oppure carichi un'immagine (lo sfondo bianco diventa trasparente); la sposti e la ridimensioni, si vede anche sulle miniature e finisce nel PDF quando applichi o scarichi. Le firme restano solo nella scheda del browser;
+- mette una **firma** sulle pagine dalla modale di anteprima: la disegni con mouse o dito, oppure carichi un'immagine (lo sfondo bianco diventa trasparente); la sposti, la ridimensioni e la ruoti (maniglia sopra il box: si aggancia agli angoli retti, ⇧ a passi di 15°), con «Uguale su tutte le pagine» la metti ovunque e le copie si modificano insieme (togliendo la spunta su una pagina, quella copia si modifica da sola), si vede anche sulle miniature e finisce nel PDF quando applichi o scarichi. Le firme restano solo nella scheda del browser;
 - con un clic su una miniatura apre la pagina in una modale, al 100% (tasto 1) o adattata alla finestra (tasto 0): le frecce (oppure Pag↑/Pag↓, Home/Fine) scorrono le pagine nell'ordine corrente, Esc chiude;
 - annulla e ripete ogni modifica (⌘Z / ⇧⌘Z, oppure Ctrl+Z / Ctrl+Y), anche dopo averle applicate;
 - applica le modifiche al documento e scarica il PDF risultante.
