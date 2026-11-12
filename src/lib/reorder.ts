@@ -1,3 +1,6 @@
+/** The drag data type of pages dragged out of the grid: their ids, comma-separated. */
+export const PAGE_DRAG_TYPE = 'application/x-pdfrs-page'
+
 export type DropSide = 'before' | 'after'
 
 /**

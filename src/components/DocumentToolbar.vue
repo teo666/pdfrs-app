@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import AppButton from './AppButton.vue'
 import IconButton from './IconButton.vue'
+import { pickFiles } from '@/lib/files'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState }>()
@@ -10,6 +11,11 @@ const store = useEditorStore()
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 const mod = isMac ? '⌘' : 'Ctrl+'
+
+async function insert() {
+  const files = await pickFiles()
+  if (files.length > 0) await store.insertFiles(files)
+}
 
 const selected = computed(() => props.doc.selection.size)
 const allSelected = computed(() => selected.value === props.doc.pages.length)
@@ -60,6 +66,18 @@ const summary = computed(() => {
     </div>
 
     <div class="flex items-center gap-1.5">
+      <AppButton
+        icon="plus"
+        :title="
+          doc.selection.size
+            ? 'Aggiungi le pagine di un PDF o JPEG dopo l’ultima pagina selezionata'
+            : 'Aggiungi le pagine di un PDF o JPEG in fondo al documento'
+        "
+        :disabled="doc.busy"
+        @click="insert"
+      >
+        Inserisci pagine
+      </AppButton>
       <AppButton
         icon="check"
         title="Applica rotazioni, eliminazioni e riordino al documento"

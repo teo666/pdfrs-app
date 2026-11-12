@@ -4,7 +4,7 @@ import type { PageId } from 'pdfrs-editor'
 
 import DropIndicator, { type DropIndicatorState } from './DropIndicator.vue'
 import PageCard from './PageCard.vue'
-import { blockDropIndex, type DropSide } from '@/lib/reorder'
+import { blockDropIndex, PAGE_DRAG_TYPE, type DropSide } from '@/lib/reorder'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState }>()
@@ -36,10 +36,13 @@ function onDragStart(event: DragEvent, id: PageId) {
   const block = selection.has(id) && selection.size > 1
   const ids = block ? props.doc.pages.filter((p) => selection.has(p.id)).map((p) => p.id) : [id]
   dragged = { ids, el }
-  event.dataTransfer.effectAllowed = 'move'
-  // Some browsers won't start a drag without data; this type also keeps the
-  // window-level file drop overlay from reacting (it only looks at "Files").
-  event.dataTransfer.setData('application/x-pdfrs-page', ids.join(','))
+  // Copy is allowed too: dropped on another document with Alt held.
+  event.dataTransfer.effectAllowed = 'copyMove'
+  // The ids travel with the drag for the sidebar's documents to read. This
+  // type also keeps the window-level file drop overlay from reacting (it
+  // only looks at "Files").
+  event.dataTransfer.setData(PAGE_DRAG_TYPE, ids.join(','))
+  store.draggingPages = true
   if (block) {
     grid.value?.setAttribute('data-drag', 'selection') // dims every selected card, see PageCard
     setCountDragImage(event.dataTransfer, ids.length)
@@ -124,6 +127,7 @@ function onGridLeave() {
 }
 
 function onDragEnd() {
+  store.draggingPages = false
   dragged?.el.classList.remove(DRAGGED_CLASS)
   grid.value?.removeAttribute('data-drag')
   dragged = null

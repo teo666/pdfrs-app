@@ -7,6 +7,7 @@ import {
   type PageInfo,
   type PdfDocument,
 } from 'pdfrs-editor'
+import { image_to_pdf } from 'pdfrs-editor/operations'
 
 import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
 
@@ -86,6 +87,12 @@ export const useEditorStore = defineStore('editor', () => {
   let noticeTimer: ReturnType<typeof setTimeout> | undefined
 
   const active = computed(() => documents.value.find((d) => d.id === activeId.value) ?? null)
+
+  /** Pages are being dragged out of the grid (the sidebar shows where they can go). */
+  const draggingPages = ref(false)
+
+  /** Documents picked for a merge, in the order they were picked: that's the merge order. */
+  const mergePicks = ref<DocumentId[]>([])
 
   /** The page open in the full-size viewer, always one of the active document's. */
   const viewerPageId = ref<PageId | null>(null)
@@ -210,6 +217,7 @@ export const useEditorStore = defineStore('editor', () => {
     internals.delete(id)
     editor.removeDocument(id)
     documents.value.splice(index, 1)
+    mergePicks.value = mergePicks.value.filter((pick) => pick !== id)
     if (activeId.value === id) {
       viewerPageId.value = null
       const next = documents.value[Math.min(index, documents.value.length - 1)]
@@ -263,6 +271,95 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   const commit = () => runBusy((doc) => doc.commit())
+
+  // --- Between documents ----------------------------------------------------
+
+  function toggleMergePick(id: DocumentId) {
+    mergePicks.value = mergePicks.value.includes(id)
+      ? mergePicks.value.filter((pick) => pick !== id)
+      : [...mergePicks.value, id]
+  }
+
+  function clearMergePicks() {
+    mergePicks.value = []
+  }
+
+  /** Merges the picked documents, in pick order and as they look now, into a new one, and opens it. */
+  async function mergePicked() {
+    const ids = mergePicks.value.filter((id) => stateOf(id))
+    if (ids.length < 2) return
+    const states = ids.map((id) => stateOf(id)!)
+    if (states.some((state) => state.busy)) return
+    states.forEach((state) => (state.busy = true))
+    loading.value += 1
+    try {
+      const mergedId = await editor.mergeDocuments(ids, { applyPending: true })
+      register(mergedId, `Unione di ${ids.length} documenti.pdf`)
+      mergePicks.value = []
+      select(mergedId)
+      notify(`Uniti ${ids.length} documenti: gli originali restano aperti`)
+    } catch (err) {
+      report(err)
+    } finally {
+      loading.value -= 1
+      states.forEach((state) => (state.busy = false))
+    }
+  }
+
+  /**
+   * Adds the pages of PDF/JPEG files to the active document: after the last
+   * selected page if there's a selection, otherwise at the end.
+   */
+  const insertFiles = (files: File[]) =>
+    runBusy(async (doc, state) => {
+      const selected = selectedPages()
+      let at =
+        selected.length > 0
+          ? state.pages.findIndex((p) => p.id === selected[selected.length - 1]) + 1
+          : state.pages.length
+      let added = 0
+      for (const file of files) {
+        const bytes = await readFile(file)
+        const kind = detectKind(bytes)
+        if (!kind) throw new Error(`${file.name}: non è un PDF né un'immagine JPEG`)
+        const pdf = kind === 'pdf' ? bytes : await image_to_pdf(bytes)
+        const ids = await doc.insertPages(pdf, at)
+        at += ids.length
+        added += ids.length
+      }
+      if (added > 0) notify(added === 1 ? 'Inserita 1 pagina' : `Inserite ${added} pagine`)
+    })
+
+  /**
+   * Moves (or, with `copy`, copies) pages of the active document to the end
+   * of another one. Moving marks them for deletion here - undoable like any
+   * edit - and the other document gets them as one undoable step.
+   */
+  async function transferPages(pages: PageId[], targetId: DocumentId, copy = false) {
+    const source = active.value
+    const target = stateOf(targetId)
+    if (!source || !target || source.id === targetId || pages.length === 0) return
+    if (source.busy || target.busy) return
+    source.busy = target.busy = true
+    try {
+      await editor.transferPages(source.id, pages, targetId, { move: !copy })
+      if (!copy) clearSelection()
+      const what =
+        pages.length === 1
+          ? `${copy ? 'Copiata' : 'Spostata'} 1 pagina`
+          : `${copy ? 'Copiate' : 'Spostate'} ${pages.length} pagine`
+      notify(`${what} in «${target.name}»`, {
+        label: 'Apri',
+        run: () => select(targetId),
+      })
+    } catch (err) {
+      report(err)
+    } finally {
+      source.busy = target.busy = false
+      sync(source.id)
+      sync(targetId)
+    }
+  }
 
   // --- Selection ----------------------------------------------------------
 
@@ -445,6 +542,13 @@ export const useEditorStore = defineStore('editor', () => {
     error,
     notice,
     dismissNotice,
+    draggingPages,
+    mergePicks,
+    toggleMergePick,
+    clearMergePicks,
+    mergePicked,
+    insertFiles,
+    transferPages,
     openFiles,
     select,
     close,

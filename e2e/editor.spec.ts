@@ -361,3 +361,44 @@ test('selects pages, acts on them together, drags them as a block and extracts t
   await page.keyboard.press('ControlOrMeta+a')
   await expect(bar).toContainText('10 pagine selezionate')
 })
+
+test('moves pages to another document, inserts a file and merges documents', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'ten_pages.pdf', 'four_pages.pdf')
+  await expectAllThumbnails(page, 10)
+  const docs = page.locator('aside li')
+  const doc = (name: string) => docs.filter({ hasText: name })
+
+  // Select pages 2-3 and drag them onto the other document in the sidebar.
+  const thumb = (index: number) =>
+    cards(page).nth(index).getByRole('button', { name: /a grandezza reale/ })
+  await thumb(1).click({ modifiers: ['ControlOrMeta'] })
+  await thumb(2).click({ modifiers: ['Shift'] })
+  await cards(page).nth(1).dragTo(doc('four_pages.pdf'))
+  const notice = page.getByRole('status').filter({ hasText: 'four_pages.pdf' })
+  await expect(notice).toContainText('Spostate 2 pagine')
+  await expect(page.getByText('Da eliminare', { exact: true })).toHaveCount(2)
+
+  await notice.getByRole('button', { name: 'Apri' }).click()
+  await expect(page.getByRole('heading', { name: 'four_pages.pdf' })).toBeVisible()
+  await expectAllThumbnails(page, 6)
+
+  // Insert a whole file at the end.
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Inserisci pagine' }).click()
+  await (await chooserPromise).setFiles(fixture('two_pages.pdf'))
+  await expectAllThumbnails(page, 8)
+  await page.keyboard.press('ControlOrMeta+z') // one undo step removes the inserted file
+  await expectAllThumbnails(page, 6)
+  await page.keyboard.press('ControlOrMeta+Shift+z')
+  await expectAllThumbnails(page, 8)
+
+  // Merge: four_pages first (8 pages), then ten_pages as it looks (8 left).
+  await doc('four_pages.pdf').getByRole('checkbox').click()
+  await doc('ten_pages.pdf').getByRole('checkbox').click()
+  await expect(doc('ten_pages.pdf').getByRole('checkbox')).toHaveText('2')
+  await page.getByRole('button', { name: 'Unisci 2 documenti' }).click()
+  await expect(page.getByRole('heading', { name: 'Unione di 2 documenti.pdf' })).toBeVisible()
+  await expect(cards(page)).toHaveCount(16)
+  await expect(docs).toHaveCount(3)
+})

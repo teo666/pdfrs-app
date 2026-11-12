@@ -91,6 +91,19 @@ vi.mock('pdfrs-editor', () => {
       const rest = this.pageList.filter((p) => !moving.has(p.id))
       this.pageList = [...rest.slice(0, toIndex), ...block, ...rest.slice(toIndex)]
     }
+    async insertPages(bytes: Uint8Array, at?: number) {
+      this.save()
+      const added = bytes[10] ?? bytes[0] ?? 1
+      const first = Math.max(0, ...this.pageList.map((p) => p.id)) + 1
+      const pages = Array.from({ length: added }, (_, i) => ({
+        id: first + i,
+        pendingRotation: 0,
+        markedForDeletion: false,
+      }))
+      this.pageList.splice(at ?? this.pageList.length, 0, ...pages)
+      this.bytes = new Uint8Array([this.pageList.length])
+      return pages.map((p) => p.id)
+    }
     undo() {
       const prev = this.undoStack.pop()
       if (!prev) return false
@@ -149,6 +162,22 @@ vi.mock('pdfrs-editor', () => {
       if (!doc) throw new Error(`nessun documento con id ${id}`)
       return doc
     }
+    async mergeDocuments(ids: number[]) {
+      const shown = ids.map((id) =>
+        this.getDocument(id)
+          .pages()
+          .filter((p) => !p.markedForDeletion),
+      )
+      const newId = this.nextId++
+      const total = shown.reduce((sum, pages) => sum + pages.length, 0)
+      this.docs.set(newId, new FakeDocument(new Uint8Array([total]), total))
+      return newId
+    }
+    async transferPages(from: number, pages: number[], to: number, options: { move?: boolean }) {
+      const inserted = await this.getDocument(to).insertPages(new Uint8Array([pages.length]))
+      if (options.move) this.getDocument(from).deletePages(pages)
+      return inserted
+    }
     async extractPages(id: number, pages: number[]) {
       this.getDocument(id)
       const newId = this.nextId++
@@ -162,6 +191,11 @@ vi.mock('pdfrs-editor', () => {
 
   return { PdfEditor }
 })
+
+vi.mock('pdfrs-editor/operations', () => ({
+  // A JPEG becomes a one-page PDF.
+  image_to_pdf: async () => new Uint8Array([1]),
+}))
 
 import { useEditorStore } from '@/stores/editor'
 
@@ -391,5 +425,62 @@ describe('editor store', () => {
     expect(store.notice?.message).toBe('3 pagine in «relazione (estratto).pdf»')
     store.notice?.action?.run() // ...until "Apri"
     expect(store.active?.name).toBe('relazione (estratto).pdf')
+  })
+
+  it('merges the picked documents in pick order, as they look now, and opens the result', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 3), pdfFile('b.pdf', 2), pdfFile('c.pdf', 4)])
+    const [a, b, c] = store.documents.map((d) => d.id)
+    store.toggleDelete(1) // a: one page marked for deletion
+
+    store.toggleMergePick(c!)
+    store.toggleMergePick(a!)
+    store.toggleMergePick(b!)
+    store.toggleMergePick(b!) // unpicked again
+    expect(store.mergePicks).toEqual([c, a])
+
+    await store.mergePicked()
+
+    const merged = store.active!
+    expect(merged.name).toBe('Unione di 2 documenti.pdf')
+    expect(merged.pages).toHaveLength(4 + 2) // a without its deleted page
+    expect(store.mergePicks).toEqual([])
+    expect(store.documents).toHaveLength(4)
+  })
+
+  it('moves or copies pages to another document', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 4), pdfFile('b.pdf', 2)])
+    const [, b] = store.documents
+    store.selectPage(2, 'only')
+    store.selectPage(3, 'range')
+
+    await store.transferPages([2, 3], b!.id)
+    expect(b!.pages).toHaveLength(4)
+    expect(store.active!.pages.filter((p) => p.markedForDeletion).map((p) => p.id)).toEqual([2, 3])
+    expect(store.active!.selection.size).toBe(0)
+    expect(store.notice?.message).toBe('Spostate 2 pagine in «b.pdf»')
+
+    await store.transferPages([1], b!.id, true)
+    expect(b!.pages).toHaveLength(5)
+    expect(store.active!.pages[0]?.markedForDeletion).toBe(false)
+    expect(store.notice?.message).toBe('Copiata 1 pagina in «b.pdf»')
+    store.notice?.action?.run()
+    expect(store.active).toStrictEqual(b)
+  })
+
+  it('inserts file pages after the selection, or at the end', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 3)])
+    const doc = store.active!
+
+    await store.insertFiles([pdfFile('due.pdf', 2)])
+    expect(doc.pages.map((p) => p.id)).toEqual([1, 2, 3, 4, 5])
+
+    store.selectPage(1, 'only')
+    const jpeg = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'foto.jpg')
+    await store.insertFiles([jpeg])
+    expect(doc.pages.map((p) => p.id)).toEqual([1, 6, 2, 3, 4, 5])
+    expect(store.notice?.message).toBe('Inserita 1 pagina')
   })
 })
