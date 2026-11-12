@@ -27,6 +27,9 @@ const dropTarget = ref<DocumentId | null>(null)
 /** The document whose name is being edited in place. */
 const renaming = ref<DocumentId | null>(null)
 
+/** A locked document takes no pages: there's nothing to add them to until it's unlocked. */
+const isLocked = (id: DocumentId) => store.documents.some((d) => d.id === id && d.locked)
+
 const carriesPages = (event: DragEvent) =>
   event.dataTransfer?.types.includes(PAGE_DRAG_TYPE) ?? false
 
@@ -34,7 +37,7 @@ const carriesPages = (event: DragEvent) =>
 const wantsCopy = (event: DragEvent) => event.altKey || event.ctrlKey
 
 function onDragOver(event: DragEvent, id: DocumentId) {
-  if (!carriesPages(event) || id === store.activeId) return
+  if (!carriesPages(event) || id === store.activeId || isLocked(id)) return
   event.preventDefault()
   if (event.dataTransfer) event.dataTransfer.dropEffect = wantsCopy(event) ? 'copy' : 'move'
   dropTarget.value = id
@@ -85,7 +88,7 @@ function onDrop(event: DragEvent, id: DocumentId) {
           v-if="renaming === doc.id"
           class="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 pl-2"
         >
-          <AppIcon name="file" />
+          <AppIcon :name="doc.locked ? 'lock' : 'file'" />
           <InlineRename
             class="flex-1"
             :value="doc.name"
@@ -101,15 +104,27 @@ function onDrop(event: DragEvent, id: DocumentId) {
             @click="store.select(doc.id)"
             @dblclick="renaming = doc.id"
           >
-            <AppIcon name="file" />
-            <span class="flex-1 truncate" :title="doc.name">{{ doc.name }}</span>
+            <span
+              v-if="doc.locked"
+              role="img"
+              aria-label="Protetto da password"
+              class="text-warning"
+            >
+              <AppIcon name="lock" />
+            </span>
+            <AppIcon v-else name="file" />
+            <span
+              class="flex-1 truncate"
+              :title="doc.locked ? `${doc.name} (protetto da password)` : doc.name"
+              >{{ doc.name }}</span
+            >
             <span class="flex items-center gap-1.5 text-xs text-fg-muted">
               <span
                 v-if="doc.hasPendingChanges"
                 class="size-1.75 rounded-full bg-warning"
                 title="Modifiche non applicate"
               />
-              {{ doc.pages.length }}
+              <template v-if="!doc.locked">{{ doc.pages.length }}</template>
             </span>
           </button>
           <IconButton

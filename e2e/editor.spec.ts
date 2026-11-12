@@ -1057,3 +1057,56 @@ test('colour pickers: any colour for text, and for the signature ink (even after
   })
   expect(inked).toEqual([0x7a, 0x1f, 0xa2])
 })
+
+test('protects a copy with a password, opens a protected PDF and unlocks it', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'ten_pages.pdf')
+  await expectAllThumbnails(page, 10)
+  const sidebar = page.getByRole('complementary').filter({ hasText: 'Documenti' })
+
+  // Typed twice: a typo is caught before it locks the copy for good.
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Proteggi' }).click()
+  const panel = page.getByRole('complementary', { name: 'Proteggi con password' })
+  const create = panel.getByRole('button', { name: 'Crea copia protetta' })
+  await panel.getByLabel('Password', { exact: true }).fill('segreta')
+  await panel.getByLabel('Ripeti la password').fill('segretx')
+  await expect(panel.getByRole('alert')).toHaveText('Le due password non coincidono.')
+  await expect(create).toBeDisabled()
+  await panel.getByLabel('Ripeti la password').fill('segreta')
+  await create.click()
+
+  // The copy: listed with a lock, no pages, downloadable as it is - encrypted.
+  const locked = page.getByRole('region', { name: 'ten_pages (protetto).pdf, protetto da password' })
+  await expect(locked).toBeVisible()
+  await expect(sidebar.getByRole('img', { name: 'Protetto da password' })).toHaveCount(1)
+  const downloadPromise = page.waitForEvent('download')
+  await locked.getByRole('button', { name: 'Scarica protetto' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toBe('ten_pages (protetto).pdf')
+  const encrypted = await readFile(await download.path())
+  expect(encrypted.toString('latin1')).toMatch(/\/Encrypt\s/)
+
+  // Opened from disk, a protected PDF comes in locked too.
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Apri file' }).first().click()
+  await (await chooserPromise).setFiles({
+    name: 'riservato.pdf',
+    mimeType: 'application/pdf',
+    buffer: encrypted,
+  })
+  // Listed with its lock, in the name the list reads out.
+  await sidebar.getByRole('button', { name: 'Protetto da password riservato.pdf' }).click()
+  const opened = page.getByRole('region', { name: 'riservato.pdf, protetto da password' })
+  const field = opened.getByLabel('Password del documento')
+  await expect(field).toBeFocused()
+
+  await field.fill('sbagliata')
+  await field.press('Enter')
+  await expect(opened.getByRole('alert')).toHaveText('Password errata: riprova.')
+
+  await field.fill('segreta')
+  await opened.getByRole('button', { name: 'Sblocca' }).click()
+  await expect(page.getByRole('heading', { name: 'riservato (sbloccato).pdf' })).toBeVisible()
+  await expectAllThumbnails(page, 10)
+  await expect(sidebar.getByRole('img', { name: 'Protetto da password' })).toHaveCount(2)
+})

@@ -6,6 +6,7 @@ import BookletTool from './BookletTool.vue'
 import ImageTool from './ImageTool.vue'
 import MergeTool from './MergeTool.vue'
 import NupTool from './NupTool.vue'
+import ProtectTool from './ProtectTool.vue'
 import SignTool from './SignTool.vue'
 import SplitTool from './SplitTool.vue'
 import TextTool from './TextTool.vue'
@@ -21,6 +22,7 @@ const titles = {
   split: 'Dividi documento',
   nup: 'Più pagine per foglio',
   booklet: 'Libretto',
+  protect: 'Proteggi con password',
 } as const
 const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
 </script>
@@ -36,13 +38,21 @@ const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
       <IconButton icon="close" label="Chiudi il pannello" @click="store.activeTool = null" />
     </header>
     <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-      <SignTool v-if="store.activeTool === 'sign'" />
+      <!-- A locked document has no pages to work on; merging lists the others. -->
+      <p
+        v-if="store.active?.locked && store.activeTool !== 'merge'"
+        class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted"
+      >
+        «{{ store.active.name }}» è protetto da password: sbloccalo per usare questo strumento.
+      </p>
+      <SignTool v-else-if="store.activeTool === 'sign'" />
       <ImageTool v-else-if="store.activeTool === 'image'" />
       <TextTool v-else-if="store.activeTool === 'text'" />
       <MergeTool v-else-if="store.activeTool === 'merge'" />
       <SplitTool v-else-if="store.activeTool === 'split'" />
       <NupTool v-else-if="store.activeTool === 'nup'" />
       <BookletTool v-else-if="store.activeTool === 'booklet'" />
+      <ProtectTool v-else-if="store.activeTool === 'protect'" />
     </div>
   </aside>
 </template>

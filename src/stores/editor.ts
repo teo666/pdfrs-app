@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, markRaw, ref, shallowRef, toRaw, watch } from 'vue'
 import {
   PdfEditor,
+  WrongPasswordError,
   layoutText,
   type AnnotationId,
   type TextContent,
@@ -16,6 +17,7 @@ import {
 import {
   booklet_pdf,
   image_to_pdf,
+  is_password_protected,
   nup_pdf,
   type BookletOptions,
   type NUpOptions,
@@ -54,7 +56,7 @@ function savedThumbSize(): number {
 export type ViewerZoom = 'actual' | 'fit'
 
 /** The tools of the right-hand panel. */
-export type ToolId = 'sign' | 'image' | 'text' | 'merge' | 'split' | 'nup' | 'booklet'
+export type ToolId = 'sign' | 'image' | 'text' | 'merge' | 'split' | 'nup' | 'booklet' | 'protect'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -129,6 +131,11 @@ export interface DocumentState {
    * like `annotations`.
    */
   splitParts: Record<PageId, number>
+  /**
+   * Protected by a password: no pages to show or edit until a copy is
+   * unlocked with it (`unlock`); can still be downloaded as it is.
+   */
+  locked: boolean
 }
 
 /** How a click extends the selection: only this page, toggle it, or everything from the last clicked page to it. */
@@ -368,6 +375,7 @@ export const useEditorStore = defineStore('editor', () => {
       selection: new Set(),
       annotations: {},
       splitParts: {},
+      locked: doc.isLocked(),
     })
     sync(id)
   }
@@ -555,7 +563,7 @@ export const useEditorStore = defineStore('editor', () => {
     activeTool.value = activeTool.value === tool ? null : tool
     // Merging starts from every open document, in the sidebar's order.
     if (activeTool.value === 'merge' && mergePicks.value.length === 0) {
-      mergePicks.value = documents.value.map((d) => d.id)
+      mergePicks.value = documents.value.filter((d) => !d.locked).map((d) => d.id)
     }
   }
 
@@ -612,6 +620,8 @@ export const useEditorStore = defineStore('editor', () => {
     edit((doc) => doc.updateAnnotation(id, { ...box, text: { ...content } }))
 
   function toggleMergePick(id: DocumentId) {
+    // A locked document has no pages to give: unlock it first.
+    if (stateOf(id)?.locked) return
     mergePicks.value = mergePicks.value.includes(id)
       ? mergePicks.value.filter((pick) => pick !== id)
       : [...mergePicks.value, id]
@@ -660,6 +670,11 @@ export const useEditorStore = defineStore('editor', () => {
         const bytes = await readFile(file)
         const kind = detectKind(bytes)
         if (!kind) throw new Error(`${file.name}: non è un PDF né un'immagine JPEG`)
+        if (kind === 'pdf' && (await is_password_protected(bytes))) {
+          throw new Error(
+            `${file.name} è protetto da password: aprilo e sbloccalo, poi inserisci la copia sbloccata`,
+          )
+        }
         const pdf = kind === 'pdf' ? bytes : await image_to_pdf(bytes)
         const ids = await doc.insertPages(pdf, at)
         at += ids.length
@@ -677,6 +692,7 @@ export const useEditorStore = defineStore('editor', () => {
     const source = active.value
     const target = stateOf(targetId)
     if (!source || !target || source.id === targetId || pages.length === 0) return
+    if (target.locked) return
     if (source.busy || target.busy) return
     source.busy = target.busy = true
     try {
@@ -858,6 +874,58 @@ export const useEditorStore = defineStore('editor', () => {
       const count = pages.length === 1 ? '1 pagina' : `${pages.length} pagine`
       notify(`${count} in «${name}»`, { label: 'Apri', run: () => select(id) })
     })
+
+  // --- Passwords ---------------------------------------------------------------
+  //
+  // Protecting or unlocking makes a new document, listed beside the one it
+  // comes from: the protected copy with a lock, the unlocked one as any
+  // other. Passwords go straight to the engine; nothing keeps them.
+
+  /** The name without its extension, or the " (protetto)" a protected copy got. */
+  const baseName = (name: string) =>
+    name.replace(/\.(pdf|jpe?g)$/i, '').replace(/ \(protetto\)$/, '')
+
+  /**
+   * A copy of the active document, as it looks now, that needs `password`
+   * to be opened (AES-256). Opened, locked; the original stays as it is.
+   */
+  const protect = (password: string) =>
+    runBusy(async (_doc, state) => {
+      const id = await editor.protectDocument(state.id, password)
+      const name = `${baseName(state.name)} (protetto).pdf`
+      register(id, name)
+      activeTool.value = null
+      select(id)
+      notify(`Creato «${name}», protetto da password: l’originale resta com’era`, {
+        label: 'Torna all’originale',
+        run: () => select(state.id),
+      })
+    })
+
+  /**
+   * A readable copy of the active, locked document, opened. False when the
+   * password is wrong (the caller says so), true otherwise - errors other
+   * than that are reported as usual.
+   */
+  async function unlock(password: string): Promise<boolean> {
+    let wrong = false
+    await runBusy(async (_doc, state) => {
+      try {
+        const id = await editor.unlockDocument(state.id, password)
+        const name = `${baseName(state.name)} (sbloccato).pdf`
+        register(id, name)
+        select(id)
+        notify(`Creato «${name}», senza password`, {
+          label: 'Torna al protetto',
+          run: () => select(state.id),
+        })
+      } catch (err) {
+        if (err instanceof WrongPasswordError) wrong = true
+        else throw err
+      }
+    })
+    return !wrong
+  }
 
   const download = () =>
     runBusy(async (doc, state) => {
@@ -1111,6 +1179,8 @@ export const useEditorStore = defineStore('editor', () => {
     mergePicked,
     insertFiles,
     transferPages,
+    protect,
+    unlock,
     openFiles,
     select,
     rename,

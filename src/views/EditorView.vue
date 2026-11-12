@@ -7,6 +7,7 @@ import DocumentList from '@/components/DocumentList.vue'
 import DocumentToolbar from '@/components/DocumentToolbar.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import IconButton from '@/components/IconButton.vue'
+import LockedDocument from '@/components/LockedDocument.vue'
 import PageGrid from '@/components/PageGrid.vue'
 import PageViewer from '@/components/PageViewer.vue'
 import ToolPanel from '@/components/ToolPanel.vue'
@@ -100,7 +101,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
     />
 
     <main class="@container min-w-0 overflow-y-auto [grid-area:workspace]">
-      <template v-if="store.active">
+      <LockedDocument v-if="store.active?.locked" :doc="store.active" />
+      <template v-else-if="store.active">
         <DocumentToolbar :doc="store.active" />
         <PageGrid :key="store.active.id" :doc="store.active" />
       </template>

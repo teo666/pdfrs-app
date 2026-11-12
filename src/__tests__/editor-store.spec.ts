@@ -15,6 +15,8 @@ vi.mock('pdfrs-editor', () => {
     undoStack: { bytes: Uint8Array; pages: Page[]; annotations: unknown }[] = []
     redoStack: { bytes: Uint8Array; pages: Page[]; annotations: unknown }[] = []
     pngs = new Map<string, Uint8Array>()
+    /** Set on a password-protected document: the password, and the pages it hides. */
+    lock: { password: string; pages: number } | null = null
 
     constructor(bytes: Uint8Array, count: number) {
       this.bytes = bytes
@@ -39,6 +41,9 @@ vi.mock('pdfrs-editor', () => {
     }
     pages() {
       return structuredClone(this.pageList)
+    }
+    isLocked() {
+      return this.lock !== null
     }
     getBytes() {
       return this.bytes
@@ -232,8 +237,28 @@ vi.mock('pdfrs-editor', () => {
     nextId = 1
     async addDocument(bytes: Uint8Array) {
       const id = this.nextId++
-      this.docs.set(id, new FakeDocument(bytes, bytes[10] ?? 3))
+      // Byte 11 set: protected with the password "segreta" (see lockedPdfFile()).
+      const locked = bytes[11] === 1
+      const doc = new FakeDocument(bytes, locked ? 0 : (bytes[10] ?? 3))
+      if (locked) doc.lock = { password: 'segreta', pages: bytes[10] ?? 3 }
+      this.docs.set(id, doc)
       return id
+    }
+    async protectDocument(id: number, password: string) {
+      const source = this.getDocument(id)
+      const pages = source.pageList.filter((p) => !p.markedForDeletion).length
+      const newId = this.nextId++
+      const doc = new FakeDocument(new Uint8Array([200]), 0)
+      doc.lock = { password, pages }
+      this.docs.set(newId, doc)
+      return newId
+    }
+    async unlockDocument(id: number, password: string) {
+      const lock = this.getDocument(id).lock
+      if (!lock || lock.password !== password) throw new WrongPasswordError()
+      const newId = this.nextId++
+      this.docs.set(newId, new FakeDocument(new Uint8Array([201]), lock.pages))
+      return newId
     }
     async addImage() {
       const id = this.nextId++
@@ -295,12 +320,15 @@ vi.mock('pdfrs-editor', () => {
     }
   }
 
-  return { PdfEditor, layoutText }
+  class WrongPasswordError extends Error {}
+
+  return { PdfEditor, WrongPasswordError, layoutText }
 })
 
 vi.mock('pdfrs-editor/operations', () => ({
   // A JPEG becomes a one-page PDF.
   image_to_pdf: async () => new Uint8Array([1]),
+  is_password_protected: async (bytes: Uint8Array) => bytes[11] === 1,
   // Imposition: the fake document's page count lives in byte 10, see pdfFile().
   nup_pdf: async (bytes: Uint8Array, options: { layout: number }) => {
     const out = new Uint8Array(16)
@@ -314,7 +342,7 @@ vi.mock('pdfrs-editor/operations', () => ({
   },
 }))
 
-import { useEditorStore } from '@/stores/editor'
+import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 /** A file the store will take for a PDF; byte 10 tells the fake how many pages it has. */
 function pdfFile(name: string, pages: number) {
@@ -328,6 +356,15 @@ function pdfFile(name: string, pages: number) {
 async function flushPreviews() {
   await new Promise((resolve) => setTimeout(resolve, 0))
   await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+/** Like pdfFile(), protected with the password "segreta". */
+function lockedPdfFile(name: string, pages: number) {
+  const bytes = new Uint8Array(16)
+  bytes.set(new TextEncoder().encode('%PDF-1.7\n'))
+  bytes[10] = pages
+  bytes[11] = 1
+  return new File([bytes], name, { type: 'application/pdf' })
 }
 
 let urlCount = 0
@@ -871,5 +908,62 @@ describe('editor store', () => {
     // Gone for good once no open document shows them.
     store.close(merged.id)
     expect(revoked.sort()).toEqual([...fromA].sort())
+  })
+
+  it('protects a copy of a document, listed locked beside the original', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('contratto.pdf', 4)])
+    const original = store.active!
+    store.toggleDelete(2)
+
+    await store.protect('segreta')
+
+    const copy = store.active!
+    expect(copy.name).toBe('contratto (protetto).pdf')
+    expect(copy.locked).toBe(true)
+    expect(copy.pages).toEqual([])
+    expect(store.documents.map((d) => d.name)).toEqual([
+      'contratto.pdf',
+      'contratto (protetto).pdf',
+    ])
+    expect(original.locked).toBe(false)
+    expect(original.hasPendingChanges).toBe(true)
+    expect(store.notice?.message).toContain('protetto da password')
+
+    // Unlocking it gives back the document as it was protected.
+    expect(await store.unlock('sbagliata')).toBe(false)
+    expect(store.documents).toHaveLength(2)
+    expect(await store.unlock('segreta')).toBe(true)
+    expect(store.active?.name).toBe('contratto (sbloccato).pdf')
+    expect(store.active?.locked).toBe(false)
+    expect(store.active?.pages).toHaveLength(3)
+  })
+
+  it('opens a protected PDF locked, and keeps pages and merges away from it', async () => {
+    const store = useEditorStore()
+    await store.openFiles([lockedPdfFile('segreto.pdf', 5), pdfFile('a.pdf', 3)])
+    const [locked, a] = store.documents as [DocumentState, DocumentState]
+    expect(locked.locked).toBe(true)
+    expect(store.renderProgress(locked.id)).toEqual({ done: 0, total: 0 })
+
+    // Not offered for a merge, and pages can't be moved into it.
+    store.toggleTool('merge')
+    expect(store.mergePicks).toEqual([a.id])
+    store.toggleMergePick(locked.id)
+    expect(store.mergePicks).toEqual([a.id])
+    store.toggleTool('merge')
+    store.select(a.id)
+    await store.transferPages([1], locked.id)
+    expect(a.pages.some((p) => p.markedForDeletion)).toBe(false)
+
+    // Nor can a protected file's pages be inserted.
+    await store.insertFiles([lockedPdfFile('altro.pdf', 2)])
+    expect(store.error).toContain('protetto da password')
+    expect(a.pages).toHaveLength(3)
+
+    store.select(locked.id)
+    expect(await store.unlock('segreta')).toBe(true)
+    expect(store.active?.name).toBe('segreto (sbloccato).pdf')
+    expect(store.active?.pages).toHaveLength(5)
   })
 })

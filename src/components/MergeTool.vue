@@ -17,7 +17,9 @@ const picked = computed(() =>
     .filter((d): d is DocumentState => d !== undefined),
 )
 /** Open documents left out of the merge. */
-const others = computed(() => store.documents.filter((d) => !store.mergePicks.includes(d.id)))
+const others = computed(() =>
+  store.documents.filter((d) => !d.locked && !store.mergePicks.includes(d.id)),
+)
 
 const pageCount = (doc: DocumentState) => doc.pages.filter((p) => !p.markedForDeletion).length
 const total = computed(() => picked.value.reduce((sum, doc) => sum + pageCount(doc), 0))

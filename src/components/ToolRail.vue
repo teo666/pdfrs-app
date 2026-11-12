@@ -37,6 +37,12 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
     label: 'Libretto',
     hint: 'Libretto da stampare fronte e retro e piegare a metà',
   },
+  {
+    id: 'protect',
+    icon: 'lock',
+    label: 'Proteggi',
+    hint: 'Proteggi con password: una copia che si apre solo con la password',
+  },
 ]
 </script>
 
