@@ -4,6 +4,7 @@ import type { PageId, PageInfo } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
+import TextStamp from './TextStamp.vue'
 import { useVisibility } from '@/composables/useVisibility'
 import { partColor } from '@/lib/split'
 import type { AnnotationView } from '@/stores/editor'
@@ -117,22 +118,39 @@ const label = computed(() =>
           class="block max-h-[calc(100cqw-20px)] max-w-[calc(100cqw-20px)] bg-white shadow-[0_0_0_1px_var(--color-line),0_2px_6px_#0000001a]"
           draggable="false"
         />
-        <img
-          v-for="stamp in stamps"
-          :key="stamp.id"
-          :src="stamp.url"
-          alt=""
-          class="pointer-events-none absolute"
-          :style="{
-            left: `${stamp.x * 100}%`,
-            top: `${stamp.y * 100}%`,
-            width: `${stamp.width * 100}%`,
-            height: stamp.height === null ? undefined : `${stamp.height * 100}%`,
-            transform: stamp.rotation ? `rotate(${stamp.rotation}deg)` : undefined,
-          }"
-          draggable="false"
-          data-stamp
-        />
+        <template v-for="stamp in stamps" :key="stamp.id">
+          <!-- Text: its box takes the laid out text's proportions (or the stretched height). -->
+          <div
+            v-if="stamp.text"
+            class="pointer-events-none absolute"
+            :style="{
+              left: `${stamp.x * 100}%`,
+              top: `${stamp.y * 100}%`,
+              width: `${stamp.width * 100}%`,
+              height: stamp.height === null ? undefined : `${stamp.height * 100}%`,
+              aspectRatio: stamp.height === null ? `1 / ${stamp.aspect}` : undefined,
+              transform: stamp.rotation ? `rotate(${stamp.rotation}deg)` : undefined,
+            }"
+            data-stamp
+          >
+            <TextStamp :content="stamp.text" />
+          </div>
+          <img
+            v-else
+            :src="stamp.url"
+            alt=""
+            class="pointer-events-none absolute"
+            :style="{
+              left: `${stamp.x * 100}%`,
+              top: `${stamp.y * 100}%`,
+              width: `${stamp.width * 100}%`,
+              height: stamp.height === null ? undefined : `${stamp.height * 100}%`,
+              transform: stamp.rotation ? `rotate(${stamp.rotation}deg)` : undefined,
+            }"
+            draggable="false"
+            data-stamp
+          />
+        </template>
       </div>
       <div
         v-else

@@ -119,6 +119,15 @@ vi.mock('pdfrs-editor', () => {
     annotations() {
       return structuredClone(this.annotationList)
     }
+    addTextAnnotation(a: { page: number; text: object; x: number; y: number; width: number }) {
+      this.save()
+      const id = this.nextAnnotation++
+      this.annotationList = [
+        ...this.annotationList,
+        { ...a, asset: 0, id, group: null, linked: false } as (typeof this.annotationList)[number],
+      ]
+      return id
+    }
     addAnnotation(a: { page: number; asset: number; x: number; y: number; width: number }) {
       this.save()
       const id = this.nextAnnotation++
@@ -262,7 +271,18 @@ vi.mock('pdfrs-editor', () => {
     }
   }
 
-  return { PdfEditor }
+  // The text layout, simplified: half an em per character, 1.2 em per line.
+  const layoutText = (text: string) => {
+    const lines = text.split('\n')
+    return {
+      lines,
+      lineWidths: lines.map((line: string) => line.length * 0.5),
+      width: Math.max(...lines.map((line: string) => line.length * 0.5)) + 0.2,
+      height: lines.length * 1.2,
+    }
+  }
+
+  return { PdfEditor, layoutText }
 })
 
 vi.mock('pdfrs-editor/operations', () => ({
@@ -663,8 +683,8 @@ describe('editor store', () => {
     )
     store.placeSignatureFromPanel(signature.id)
     expect(store.viewerPageId).toBe(1)
-    expect(store.takePendingSignature()).toBe(signature.id)
-    expect(store.takePendingSignature()).toBeNull()
+    expect(store.takePendingPlacement()).toEqual({ kind: 'library', id: signature.id })
+    expect(store.takePendingPlacement()).toBeNull()
 
     store.closeViewer()
     store.selectPage(3, 'only')
@@ -732,5 +752,29 @@ describe('editor store', () => {
     expect(store.active?.name).toBe('atti (parte 1 di 2).pdf')
     store.notice?.action?.run()
     expect(store.active).toStrictEqual(source)
+  })
+
+  it('places text as a text annotation, with its proportions from the layout', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 2)])
+    const content = {
+      text: 'Ciao\nmondo',
+      font: 'helvetica' as const,
+      bold: false,
+      italic: false,
+      color: '#1c2026',
+      align: 'left' as const,
+    }
+    store.selectPage(2, 'only')
+    store.placeTextFromPanel(content, 14)
+    expect(store.viewerPageId).toBe(2)
+    expect(store.takePendingPlacement()).toEqual({ kind: 'text', content, sizePt: 14 })
+
+    store.placeText(2, content, { x: 0.1, y: 0.1, width: 0.3 })
+    const view = store.active!.annotations[2]![0]!
+    expect(view.kind).toBe('text')
+    expect(view.url).toBe('')
+    // Two lines of 5 and 5 characters: 2.7 em wide, 2.4 em tall.
+    expect(view.aspect).toBeCloseTo(2.4 / 2.7)
   })
 })

@@ -11,8 +11,9 @@ Cosa fa oggi:
 - rinomina un documento al volo: la penna accanto al nome nella barra laterale o nel titolo (oppure doppio clic sul nome); Invio salva, Esc annulla, e il PDF si scarica con il nuovo nome;
 - sposta le pagine in un altro documento trascinandole sul suo nome nella barra laterale (con ⌥/Alt le copia);
 - inserisce le pagine di un PDF o JPEG nel documento aperto, dopo la selezione o in fondo;
-- ha una colonna di **strumenti** sulla destra che apre un pannello: **Firma**, **Immagine**, **Unisci**, **Dividi**, **N per foglio** e **Libretto**. Ogni strumento dice su cosa agisce (le pagine selezionate, o tutto il documento così come appare);
+- ha una colonna di **strumenti** sulla destra che apre un pannello: **Firma**, **Immagine**, **Testo**, **Unisci**, **Dividi**, **N per foglio** e **Libretto**. Ogni strumento dice su cosa agisce (le pagine selezionate, o tutto il documento così come appare);
 - mette **immagini** sopra le pagine (logo, timbro, foto: PNG, JPEG, WebP, GIF, trasparenza conservata) dal pannello Immagine, con gli stessi comandi della firma (sposta, ridimensiona, ruota, uguale su tutte le pagine), più le maniglie sui lati per allargarle o allungarle fuori dalle proporzioni originali (e il pulsante per rimetterle);
+- scrive **testo vero** sopra le pagine dal pannello Testo (Helvetica, Times o Courier, grassetto, corsivo, colore, allineamento, più righe): nel PDF è testo selezionabile e ricercabile, nei font standard del PDF (niente font incorporati; caratteri dell'Europa occidentale). Si posiziona come le immagini e si modifica con un doppio clic;
 - divide un documento in più parti, ognuna un nuovo documento: ogni N pagine, per intervalli scritti a mano (es. «1-3, 4-8») o partendo dalle pagine selezionate, con l'elenco delle parti prima di confermare;
 - impagina più pagine per foglio (2, 4, 6, 8, 9, 16; formato, orientamento, ordine, bordi, margini) o crea un libretto da stampare fronte e retro e piegare (rilegatura a sinistra o a destra, stampa in due passaggi per stampanti senza fronte/retro): il risultato è un nuovo documento, l'originale non cambia;
 - unisce più documenti, così come appaiono, dal pannello Unisci: li ordini trascinandoli (o con le frecce) e togli quelli che non servono;
@@ -37,7 +38,8 @@ In questo repo:
 | --- | --- |
 | `src/stores/editor.ts` | Store Pinia: tiene una copia reattiva dello stato del modello (che non è reattivo) e raggruppa per frame le richieste di miniature |
 | `src/views/EditorView.vue` | Layout, scorciatoie da tastiera, drop dei file sulla finestra |
-| `src/components/ToolRail.vue`, `ToolPanel.vue` | Colonna di icone a destra e pannello degli strumenti (`SignTool`, `ImageTool`, `MergeTool`, `SplitTool`, `NupTool`, `BookletTool`) |
+| `src/components/ToolRail.vue`, `ToolPanel.vue` | Colonna di icone a destra e pannello degli strumenti (`SignTool`, `ImageTool`, `TextTool`, `MergeTool`, `SplitTool`, `NupTool`, `BookletTool`) |
+| `src/components/TextStamp.vue` | Il testo disegnato in SVG con il layout del motore (stesse metriche), così l'anteprima corrisponde al PDF |
 | `src/lib/split.ts` | Le parti di una divisione: ogni N pagine, intervalli scritti a mano, inizio dalle pagine selezionate |
 | `src/lib/imposition.ts` | Le stesse regole di impaginazione del motore, per disegnare lo schema del foglio prima di crearlo |
 | `src/components/` | `PageGrid` (griglia e riordino con drag & drop; vedi il commento in testa per i vincoli di prestazioni), `PageCard`, `PageViewer` (modale al 100% su `<dialog>` nativo), `DocumentList`, `DocumentToolbar`, `EmptyState` |

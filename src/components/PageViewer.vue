@@ -5,6 +5,8 @@ import type { AnnotationId, PageId } from 'pdfrs-editor'
 import AnnotationLayer from './AnnotationLayer.vue'
 import AppIcon from './AppIcon.vue'
 import SignaturePanel from './SignaturePanel.vue'
+import TextEditor from './TextEditor.vue'
+import { layoutText, type TextContent } from 'pdfrs-editor'
 import { useEditorStore, type DocumentState, type ViewerZoom } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState; pageId: PageId }>()
@@ -189,18 +191,64 @@ watch(neededScale, (scale) => {
   render(props.pageId, scale, () => token === request).catch(() => {})
 })
 
-// A signature chosen in the Firma tool waits for the page to show (its size
-// is needed to centre it), then is placed and selected, ready to drag.
+// A signature, image or text chosen in a tool waits for the page to show
+// (its size is needed to centre it), then is placed and selected.
 watch(
   shown,
   (value) => {
-    if (value && store.pendingSignature !== null) {
-      const signatureId = store.takePendingSignature()
-      if (signatureId !== null) placeSignature(signatureId)
-    }
+    if (!value || store.pendingPlacement === null) return
+    const placement = store.takePendingPlacement()
+    if (placement?.kind === 'library') placeSignature(placement.id)
+    else if (placement?.kind === 'text') placeText(placement.content, placement.sizePt)
   },
   { immediate: true },
 )
+
+/** Puts text in the middle of the page at `sizePt` points, selected. */
+function placeText(content: TextContent, sizePt: number) {
+  if (!shown.value) return
+  const layout = layoutText(content.text, content)
+  // shown.width/height are the page's size in points: 1 em = sizePt points.
+  const width = Math.min(0.9, (layout.width * sizePt) / shown.value.width)
+  const height = (width * shown.value.width * (layout.height / layout.width)) / shown.value.height
+  selectedAnnotation.value = store.placeText(props.pageId, content, {
+    x: (1 - width) / 2,
+    y: Math.max(0, (1 - height) / 2),
+    width,
+  })
+}
+
+// --- Editing a text already placed ----------------------------------------
+
+const editingText = ref(false)
+const textDraft = ref<TextContent | null>(null)
+
+function startEditingText() {
+  if (selected.value?.text) {
+    textDraft.value = { ...selected.value.text }
+    editingText.value = true
+  }
+}
+
+/**
+ * Applies the edited text. The font size stays what it is on the page: the
+ * box grows or shrinks with the text instead (and a stretched box keeps its
+ * stretch).
+ */
+function applyTextEdit() {
+  const annotation = selected.value
+  const draft = textDraft.value
+  if (!annotation?.text || !draft || !draft.text.trim() || !shown.value) return
+  const before = layoutText(annotation.text.text, annotation.text)
+  const after = layoutText(draft.text, draft)
+  const width = Math.min(1, (annotation.width * after.width) / before.width)
+  const height =
+    annotation.height === null ? null : (annotation.height * after.height) / before.height
+  store.updateText(annotation.id, draft, { width, height })
+  editingText.value = false
+}
+
+watch(selectedAnnotation, () => (editingText.value = false))
 
 // --- Keyboard & lifecycle -----------------------------------------------
 
@@ -247,7 +295,8 @@ function onKeyDown(event: KeyboardEvent) {
 // reflects it. With a signature selected, Esc first just deselects it.
 function onCancel(event: Event) {
   event.preventDefault()
-  if (selectedAnnotation.value !== null) selectedAnnotation.value = null
+  if (editingText.value) editingText.value = false
+  else if (selectedAnnotation.value !== null) selectedAnnotation.value = null
   else store.closeViewer()
 }
 
@@ -394,6 +443,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                     @select="selectedAnnotation = $event"
                     @change="(id, change) => store.updateAnnotation(id, change)"
                     @remove="(id) => (store.removeAnnotation(id), (selectedAnnotation = null))"
+                    @edit="(id) => ((selectedAnnotation = id), startEditingText())"
                   />
                 </div>
               </div>
@@ -417,7 +467,13 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
               'max-md:right-[19rem] max-md:left-4 max-md:max-w-none max-md:translate-x-0': signing,
             }"
             role="group"
-            :aria-label="selected.kind === 'image' ? 'Immagine selezionata' : 'Firma selezionata'"
+            :aria-label="
+              selected.kind === 'image'
+                ? 'Immagine selezionata'
+                : selected.kind === 'text'
+                  ? 'Testo selezionato'
+                  : 'Firma selezionata'
+            "
           >
             <label class="flex cursor-pointer items-center gap-2 font-semibold">
               <input
@@ -436,12 +492,20 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             <span class="text-xs text-white/60">
               {{
                 selected.linked
-                  ? 'Spostandola, ridimensionandola o ruotandola cambia su tutte le pagine collegate.'
+                  ? 'Ogni modifica vale per tutte le pagine collegate.'
                   : selected.group !== null
-                    ? 'Modificata solo su questa pagina: rimetti la spunta per riallinearla alle altre.'
+                    ? 'Modificata solo su questa pagina: rimetti la spunta per riallinearla alle altre copie.'
                     : 'Solo su questa pagina.'
               }}
             </span>
+            <button
+              v-if="selected.kind === 'text'"
+              class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10"
+              title="Cambia il testo, il carattere o il colore (anche con un doppio clic sul testo)"
+              @click="startEditingText"
+            >
+              Modifica testo
+            </button>
             <button
               v-if="selected.height !== null"
               class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10"
@@ -464,6 +528,30 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
         </div>
 
         <SignaturePanel v-if="signing" @place="placeSignature" @close="signing = false" />
+
+        <!-- Editing the selected text, over the right side of the page area. -->
+        <aside
+          v-if="editingText && textDraft"
+          class="absolute top-3 right-3 z-20 flex max-h-[calc(100%-1.5rem)] w-80 flex-col gap-3 overflow-y-auto rounded-card bg-surface p-4 text-fg shadow-lift"
+          aria-label="Modifica testo"
+        >
+          <TextEditor v-model="textDraft" />
+          <div class="flex gap-1.5">
+            <button
+              class="flex-1 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:cursor-default disabled:opacity-45"
+              :disabled="!textDraft.text.trim()"
+              @click="applyTextEdit"
+            >
+              Applica
+            </button>
+            <button
+              class="cursor-pointer rounded-md px-3 py-1.5 text-sm text-fg-muted hover:bg-surface-muted"
+              @click="editingText = false"
+            >
+              Annulla
+            </button>
+          </div>
+        </aside>
       </div>
     </div>
 

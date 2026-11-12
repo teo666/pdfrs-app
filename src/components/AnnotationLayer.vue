@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { AnnotationId } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
+import TextStamp from './TextStamp.vue'
 import { resizeBox, unrotate } from '@/lib/box'
 import type { AnnotationBox, AnnotationView } from '@/stores/editor'
 
@@ -21,6 +22,8 @@ const emit = defineEmits<{
   /** A move or resize finished: one model update, so one undo step. */
   change: [id: AnnotationId, box: AnnotationBox]
   remove: [id: AnnotationId]
+  /** Double-click on a text: edit it. */
+  edit: [id: AnnotationId]
 }>()
 
 /** While turning, angles this close to a right angle snap onto it. */
@@ -174,13 +177,16 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
       }"
       role="button"
       tabindex="0"
-      :aria-label="`${annotation.kind === 'image' ? 'Immagine' : 'Firma'} sulla pagina${selectedId === annotation.id ? ' (selezionata)' : ''}`"
+      :aria-label="`${annotation.kind === 'image' ? 'Immagine' : annotation.kind === 'text' ? 'Testo' : 'Firma'} sulla pagina${selectedId === annotation.id ? (annotation.kind === 'text' ? ' (selezionato)' : ' (selezionata)') : ''}`"
       :aria-pressed="selectedId === annotation.id"
       data-annotation
       @pointerdown="startDrag($event, annotation, 'move')"
+      @dblclick="annotation.text && emit('edit', annotation.id)"
       @focus="emit('select', annotation.id)"
     >
+      <TextStamp v-if="annotation.text" :content="annotation.text" class="pointer-events-none" />
       <img
+        v-else
         :src="annotation.url"
         alt=""
         class="pointer-events-none block size-full"

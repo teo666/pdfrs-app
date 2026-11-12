@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { inflateSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 
 import { expect, test, type Locator, type Page } from '@playwright/test'
@@ -54,6 +55,27 @@ async function drawSignature(page: Page, viewer: Locator) {
   }
   await page.mouse.up()
   await viewer.getByRole('button', { name: 'Usa questa firma' }).click()
+}
+
+/** The PDF's streams, decompressed where they're Flate-encoded (as text, latin1). */
+function inflatedStreams(pdf: Buffer): string[] {
+  const streams: string[] = []
+  const raw = pdf.toString('latin1')
+  const pattern = /stream\r?\n/g
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(raw))) {
+    const start = match.index + match[0].length
+    const end = raw.indexOf('endstream', start)
+    if (end === -1) break
+    const body = pdf.subarray(start, end)
+    try {
+      streams.push(inflateSync(body).toString('latin1'))
+    } catch {
+      streams.push(body.toString('latin1'))
+    }
+    pattern.lastIndex = end
+  }
+  return streams
 }
 
 /** Counts page objects in a PDF saved without object streams, as lopdf writes them. */
@@ -919,4 +941,54 @@ test('the header slider sets the thumbnail size, with sharper renders for big ca
   // Remembered for the next visit.
   await page.reload()
   await expect(slider).toHaveValue('170')
+})
+
+test('text tool: real text placed, edited with a double-click, written into the PDF as text', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Testo' }).click()
+  const panel = page.getByRole('complementary', { name: 'Testo' })
+  await panel.getByRole('textbox', { name: 'Testo' }).fill('Approvato\nMario Rossi')
+  await panel.getByRole('button', { name: 'Grassetto' }).click()
+  await panel.getByRole('radio', { name: 'Times' }).click()
+  await expect(panel.getByRole('figure', { name: 'Anteprima del testo' })).toContainText('Approvato')
+
+  // Characters the standard fonts lack are flagged.
+  await panel.getByRole('textbox', { name: 'Testo' }).fill('Approvato ✓\nMario Rossi')
+  await expect(panel.getByRole('status')).toContainText('«?»')
+  await panel.getByRole('textbox', { name: 'Testo' }).fill('Approvato\nMario Rossi')
+  await expect(panel.getByRole('status')).toBeHidden()
+
+  await panel.getByRole('button', { name: 'Metti su pagina 1' }).click()
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  const placed = viewer.getByRole('button', { name: 'Testo sulla pagina (selezionato)' })
+  await expect(placed).toBeVisible()
+  await expect(placed).toContainText('Mario Rossi')
+  const width = (await placed.boundingBox())!.width
+
+  // Double-click: edit; the box grows with the text, the size stays.
+  await placed.dblclick()
+  const editor = viewer.getByRole('complementary', { name: 'Modifica testo' })
+  await editor.getByRole('textbox', { name: 'Testo' }).fill('Approvato e firmato\nMario Rossi')
+  await editor.getByRole('button', { name: 'Applica' }).click()
+  await expect(editor).toBeHidden()
+  await expect(placed).toContainText('firmato')
+  expect((await placed.boundingBox())!.width).toBeGreaterThan(width * 1.3)
+
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(cards(page).nth(0).locator('[data-stamp]')).toContainText('firmato')
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica' }).click()
+  const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
+  expect(pdf).toMatch(/\/BaseFont\s*\/Times-Bold/) // a standard font...
+  expect(pdf).not.toMatch(/FontFile/) // ...not embedded
+  // The text itself, as text: shown (Tj) in a content stream, once inflated.
+  const hex = Buffer.from('Approvato e firmato', 'latin1').toString('hex')
+  const contents = inflatedStreams(await readFile(await (await downloadPromise).path()))
+  expect(contents.some((stream) => stream.toLowerCase().includes(hex) && stream.includes('Tj'))).toBe(true)
 })

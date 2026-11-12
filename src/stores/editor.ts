@@ -2,7 +2,9 @@ import { defineStore } from 'pinia'
 import { computed, markRaw, ref, shallowRef, toRaw, watch } from 'vue'
 import {
   PdfEditor,
+  layoutText,
   type AnnotationId,
+  type TextContent,
   type AssetId,
   type DocumentId,
   type ImageAsset,
@@ -52,7 +54,7 @@ function savedThumbSize(): number {
 export type ViewerZoom = 'actual' | 'fit'
 
 /** The tools of the right-hand panel. */
-export type ToolId = 'sign' | 'image' | 'merge' | 'split' | 'nup' | 'booklet'
+export type ToolId = 'sign' | 'image' | 'text' | 'merge' | 'split' | 'nup' | 'booklet'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -76,10 +78,17 @@ export interface Signature {
 
 /** A pending annotation as the UI draws it: the model's data plus the image to show. */
 export interface AnnotationView extends PageAnnotation {
+  /** The image to show; empty for text, which is drawn from `text`. */
   url: string
+  /** Height / width at its natural proportions: the image's, or the laid out text's. */
   aspect: number
-  kind: Signature['kind']
+  kind: Signature['kind'] | 'text'
 }
+
+/** Something waiting to be placed on the page the viewer is opening. */
+export type PendingPlacement =
+  | { kind: 'library'; id: number }
+  | { kind: 'text'; content: TextContent; sizePt: number }
 
 /** The box of a placed signature: fractions of the page (see PageAnnotation). */
 export type AnnotationBox = Pick<PageAnnotation, 'x' | 'y' | 'width' | 'rotation' | 'height'>
@@ -214,7 +223,7 @@ export const useEditorStore = defineStore('editor', () => {
    * A signature waiting to be placed: set by the Firma tool, which opens
    * the viewer on the page; the viewer places it as soon as the page shows.
    */
-  const pendingSignature = ref<number | null>(null)
+  const pendingPlacement = ref<PendingPlacement | null>(null)
 
   /** The page open in the full-size viewer, always one of the active document's. */
   const viewerPageId = ref<PageId | null>(null)
@@ -298,12 +307,19 @@ export const useEditorStore = defineStore('editor', () => {
   function syncAnnotations(state: DocumentState, inner: DocumentInternals) {
     const byPage = new Map<PageId, AnnotationView[]>()
     for (const annotation of inner.doc.annotations()) {
-      const signature = inner.signatureByAsset.get(annotation.asset)
-      const view = {
-        ...annotation,
-        url: signature?.url ?? '',
-        aspect: signature?.aspect ?? 1,
-        kind: signature?.kind ?? 'signature',
+      let view: AnnotationView
+      if (annotation.text) {
+        const layout = layoutText(annotation.text.text, annotation.text)
+        view = { ...annotation, url: '', aspect: layout.height / layout.width, kind: 'text' }
+      } else {
+        const signature =
+          annotation.asset === null ? undefined : inner.signatureByAsset.get(annotation.asset)
+        view = {
+          ...annotation,
+          url: signature?.url ?? '',
+          aspect: signature?.aspect ?? 1,
+          kind: signature?.kind ?? 'signature',
+        }
       }
       byPage.set(annotation.page, [...(byPage.get(annotation.page) ?? []), view])
     }
@@ -539,15 +555,41 @@ export const useEditorStore = defineStore('editor', () => {
     const state = active.value
     if (!state || state.pages.length === 0) return
     const target = state.pages.find((p) => state.selection.has(p.id)) ?? state.pages[0]!
-    pendingSignature.value = signatureId
+    pendingPlacement.value = { kind: 'library', id: signatureId }
     viewerPageId.value = target.id
   }
 
-  function takePendingSignature(): number | null {
-    const id = pendingSignature.value
-    pendingSignature.value = null
+  /** Like placeSignatureFromPanel, for text: `sizePt` is the font size it should come out at. */
+  function placeTextFromPanel(content: TextContent, sizePt: number) {
+    const state = active.value
+    if (!state || state.pages.length === 0) return
+    const target = state.pages.find((p) => state.selection.has(p.id)) ?? state.pages[0]!
+    pendingPlacement.value = { kind: 'text', content: { ...content }, sizePt }
+    viewerPageId.value = target.id
+  }
+
+  function takePendingPlacement(): PendingPlacement | null {
+    const placement = pendingPlacement.value
+    pendingPlacement.value = null
+    return placement
+  }
+
+  /** Places text on a page of the active document; returns the new annotation's id. */
+  function placeText(
+    page: PageId,
+    content: TextContent,
+    box: Pick<AnnotationBox, 'x' | 'y' | 'width'>,
+  ): AnnotationId | null {
+    let id: AnnotationId | null = null
+    edit((doc) => {
+      id = doc.addTextAnnotation({ page, text: content, ...box })
+    })
     return id
   }
+
+  /** Changes a text annotation's text or style (and its box, so the font size can stay the same). */
+  const updateText = (id: AnnotationId, content: TextContent, box: Partial<AnnotationBox> = {}) =>
+    edit((doc) => doc.updateAnnotation(id, { ...box, text: { ...content } }))
 
   function toggleMergePick(id: DocumentId) {
     mergePicks.value = mergePicks.value.includes(id)
@@ -926,9 +968,12 @@ export const useEditorStore = defineStore('editor', () => {
     thumbSize,
     previewScale,
     moveMergePick,
-    pendingSignature,
+    pendingPlacement,
     placeSignatureFromPanel,
-    takePendingSignature,
+    placeTextFromPanel,
+    takePendingPlacement,
+    placeText,
+    updateText,
     toggleMergePick,
     clearMergePicks,
     mergePicked,
