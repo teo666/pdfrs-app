@@ -65,8 +65,8 @@ async function upload() {
               :aria-label="`Metti «${signature.name}» sulla pagina ${target}`"
               @click="store.placeSignatureFromPanel(signature.id)"
             >
-              <span class="grid h-16 place-items-center rounded-md bg-white">
-                <img :src="signature.url" alt="" class="max-h-full max-w-full" />
+              <span class="block h-16 overflow-hidden rounded-md bg-white">
+                <img :src="signature.url" alt="" class="size-full object-contain p-1" />
               </span>
               <span class="text-xs text-fg-muted">Metti su pagina {{ target }}</span>
             </button>

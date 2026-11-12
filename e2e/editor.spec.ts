@@ -756,3 +756,45 @@ test('split tool: from the selection, every N pages, or typed ranges', async ({ 
   await expect(page.locator('aside li')).toHaveCount(4)
   await expect(page.locator('aside li').nth(3)).toContainText('2') // pages 9-10
 })
+
+test('image library tiles keep a large portrait photo inside, without widening the panel', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagine' }).click()
+  const panel = page.getByRole('complementary', { name: 'Immagine' })
+
+  // A 1200 x 1600 "photo", much bigger than its tile, with a long name.
+  const png = await page.evaluate(async () => {
+    const canvas = new OffscreenCanvas(1200, 1600)
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#1f8f5a'
+    context.fillRect(0, 0, 1200, 1600)
+    const blob = await canvas.convertToBlob({ type: 'image/png' })
+    return Array.from(new Uint8Array(await blob.arrayBuffer()))
+  })
+  const chooserPromise = page.waitForEvent('filechooser')
+  await panel.getByRole('button', { name: 'Carica un’immagine' }).click()
+  await (await chooserPromise).setFiles({
+    name: 'photo_2026-11-09_scheda_elettronica_con_un_nome_lungo.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(png),
+  })
+  await page.getByRole('dialog', { name: 'Anteprima pagina' }).waitFor()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+
+  const tile = panel.locator('li').first()
+  const picture = (await tile.locator('img').boundingBox())!
+  const frame = (await tile.locator('img').locator('..').boundingBox())!
+  expect(picture.y).toBeGreaterThanOrEqual(frame.y - 0.5)
+  expect(picture.y + picture.height).toBeLessThanOrEqual(frame.y + frame.height + 0.5)
+  expect(picture.x + picture.width).toBeLessThanOrEqual(frame.x + frame.width + 0.5)
+
+  const overflow = await panel.evaluate((el) => {
+    const body = el.querySelector<HTMLElement>('.overflow-y-auto')!
+    return body.scrollWidth - body.clientWidth
+  })
+  expect(overflow).toBe(0)
+})

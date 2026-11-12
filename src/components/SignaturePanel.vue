@@ -50,11 +50,11 @@ async function upload() {
       <ul class="flex flex-col gap-2">
         <li v-for="signature in store.signatures" :key="signature.id" class="group relative">
           <button
-            class="grid h-20 w-full cursor-pointer place-items-center rounded-md bg-white p-2 ring-accent hover:ring-2"
+            class="block h-20 w-full cursor-pointer overflow-hidden rounded-md bg-white p-2 ring-accent hover:ring-2"
             :aria-label="`Metti «${signature.name}» sulla pagina`"
             @click="emit('place', signature.id)"
           >
-            <img :src="signature.url" alt="" class="max-h-full max-w-full" />
+            <img :src="signature.url" alt="" class="size-full object-contain" />
           </button>
           <button
             class="absolute top-1 right-1 grid size-6 cursor-pointer place-items-center rounded bg-black/50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"

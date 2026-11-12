@@ -48,7 +48,8 @@ async function upload() {
     <section v-if="store.images.length" class="flex flex-col gap-2">
       <h3 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">Le tue immagini</h3>
       <ul class="grid grid-cols-2 gap-2">
-        <li v-for="image in store.images" :key="image.id" class="group relative">
+        <!-- min-w-0: a cell never grows to a picture's own width (a photo is wider than the panel). -->
+        <li v-for="image in store.images" :key="image.id" class="group relative min-w-0">
           <button
             class="flex w-full cursor-pointer flex-col items-stretch gap-1.5 rounded-card border border-line p-2 text-left hover:border-accent"
             :aria-label="`Metti «${image.name}» sulla pagina ${target}`"
@@ -56,9 +57,9 @@ async function upload() {
           >
             <!-- A checkerboard behind the picture shows where it's transparent. -->
             <span
-              class="grid h-20 place-items-center rounded-md bg-[conic-gradient(#e5e7eb_25%,#fff_0_50%,#e5e7eb_0_75%,#fff_0)] bg-size-[12px_12px]"
+              class="block h-20 overflow-hidden rounded-md bg-[conic-gradient(#e5e7eb_25%,#fff_0_50%,#e5e7eb_0_75%,#fff_0)] bg-size-[12px_12px]"
             >
-              <img :src="image.url" alt="" class="max-h-full max-w-full" />
+              <img :src="image.url" alt="" class="size-full object-contain p-1" />
             </span>
             <span class="truncate text-xs" :title="image.name">{{ image.name }}</span>
             <span class="text-xs text-fg-muted">Metti su pagina {{ target }}</span>
