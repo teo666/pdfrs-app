@@ -5,6 +5,7 @@ import type { PageId, PageInfo } from 'pdfrs-editor'
 import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
 import { useVisibility } from '@/composables/useVisibility'
+import { partColor } from '@/lib/split'
 import type { AnnotationView } from '@/stores/editor'
 
 const props = defineProps<{
@@ -21,6 +22,8 @@ const props = defineProps<{
   selection: Set<PageId>
   /** Pending signatures by page, read here for the same reason as `previews`. */
   annotations: Record<PageId, AnnotationView[]>
+  /** While the Dividi tool is open, the part each page goes into (0: left out). */
+  splitParts: Record<PageId, number>
   disabled?: boolean
 }>()
 
@@ -42,6 +45,13 @@ const visible = useVisibility(root)
 const previewUrl = computed(() => props.previews[props.page.id])
 const selected = computed(() => props.selection.has(props.page.id))
 const stamps = computed(() => props.annotations[props.page.id] ?? [])
+/** undefined: not splitting; 0: left out of every part; n: part n. */
+const part = computed(() => props.splitParts[props.page.id])
+const tint = computed(() =>
+  part.value
+    ? { backgroundColor: `color-mix(in srgb, ${partColor(part.value)} 16%, var(--color-surface))` }
+    : undefined,
+)
 
 // Asks when the card scrolls in, and again if its thumbnail is thrown away
 // (after a commit) while it stays on screen.
@@ -66,14 +76,23 @@ const label = computed(() =>
   <article
     ref="root"
     class="group relative flex cursor-grab flex-col gap-2 rounded-card bg-surface p-2.5 shadow-card transition-[box-shadow,opacity] [contain-intrinsic-size:auto_240px] [content-visibility:auto] hover:shadow-lift"
-    :class="
+    :class="[
       selected
         ? 'ring-2 ring-accent ring-offset-2 ring-offset-canvas in-data-[drag=selection]:opacity-35'
-        : ''
-    "
+        : '',
+      part === 0 ? 'opacity-45' : '',
+    ]"
+    :style="tint"
     :aria-label="label"
     :data-page-id="page.id"
+    :data-part="part"
   >
+    <!-- Which part of a split this page goes into: a coloured bar on top. -->
+    <span
+      v-if="part"
+      class="pointer-events-none absolute inset-x-0 top-0 h-1.5 rounded-t-card"
+      :style="{ backgroundColor: partColor(part) }"
+    />
     <!--
       Square box: a page rotated a quarter turn still fits without rescaling.
       The image is absolutely positioned so its percentage limits resolve
@@ -208,6 +227,14 @@ const label = computed(() =>
     <footer class="flex min-h-5 items-center gap-1.5 text-xs text-fg-muted">
       <span class="font-semibold text-fg">{{ position }}</span>
       <span v-if="page.id !== position" title="Posizione originale">era {{ page.id }}</span>
+      <span
+        v-if="part"
+        class="rounded-full px-1.5 font-semibold text-white"
+        :style="{ backgroundColor: partColor(part) }"
+      >
+        Parte {{ part }}
+      </span>
+      <span v-else-if="part === 0" class="font-semibold">esclusa</span>
       <span
         v-if="page.pendingRotation"
         class="ml-auto rounded-full bg-accent-soft px-1.5 font-semibold text-accent"

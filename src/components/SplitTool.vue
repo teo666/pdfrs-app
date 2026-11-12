@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 
 import AppButton from './AppButton.vue'
 import SegmentedControl from './SegmentedControl.vue'
-import { leftOut, parseRanges, splitAtStarts, splitEvery, type Part } from '@/lib/split'
+import { leftOut, parseRanges, partColor, splitAtStarts, splitEvery, type Part } from '@/lib/split'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
@@ -40,6 +40,13 @@ function kept({ start, end }: Part) {
 const usable = computed(() => parts.value.filter((part) => kept(part) > 0))
 const missing = computed(() => (mode.value === 'ranges' ? leftOut(parts.value, total.value) : []))
 const hasDeletions = computed(() => store.active?.pages.some((p) => p.markedForDeletion) ?? false)
+
+// The cards show the cut as it's being set up: each page takes its part's
+// colour. Gone as soon as the tool closes.
+// Until there's a valid part (a typo, nothing selected yet) the cards stay as
+// they are, rather than all showing as left out.
+watch(usable, (value) => store.previewSplit(value.length ? value : null), { immediate: true })
+onUnmounted(() => store.previewSplit(null))
 
 /** At most this many parts are listed; the rest is summed up. */
 const LISTED = 8
@@ -122,7 +129,14 @@ const pages = (count: number) => (count === 1 ? '1 pagina' : `${count} pagine`)
           :key="index"
           class="flex justify-between gap-2 rounded-md bg-surface-muted px-2.5 py-1.5"
         >
-          <span>Parte {{ index + 1 }}: {{ describe(part) }}</span>
+          <span class="flex items-center gap-2">
+            <span
+              class="size-2.5 shrink-0 rounded-full"
+              :style="{ backgroundColor: partColor(index + 1) }"
+              aria-hidden="true"
+            />
+            Parte {{ index + 1 }}: {{ describe(part) }}
+          </span>
           <span class="text-fg-muted">{{ pages(kept(part)) }}</span>
         </li>
         <li v-if="usable.length > LISTED" class="px-2.5 text-xs text-fg-muted">

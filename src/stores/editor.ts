@@ -89,6 +89,12 @@ export interface DocumentState {
    * a card reading its own page's entry is the only one to re-render.
    */
   annotations: Record<PageId, AnnotationView[]>
+  /**
+   * While the Dividi tool is open: the part (1-based) each page would go
+   * into, 0 for a page left out. Empty otherwise. Updated entry by entry,
+   * like `annotations`.
+   */
+  splitParts: Record<PageId, number>
 }
 
 /** How a click extends the selection: only this page, toggle it, or everything from the last clicked page to it. */
@@ -279,6 +285,7 @@ export const useEditorStore = defineStore('editor', () => {
       busy: false,
       selection: new Set(),
       annotations: {},
+      splitParts: {},
     })
     sync(id)
   }
@@ -662,6 +669,33 @@ export const useEditorStore = defineStore('editor', () => {
     })
 
   /**
+   * Shows on the cards how the active document would be cut: each page gets
+   * its part's number, pages in no part (or marked for deletion) 0. `null`
+   * clears it, on every document.
+   */
+  function previewSplit(parts: { start: number; end: number }[] | null) {
+    for (const doc of documents.value) {
+      if (parts && doc.id === activeId.value) continue
+      for (const key of Object.keys(doc.splitParts)) delete doc.splitParts[Number(key)]
+    }
+    const state = active.value
+    if (!parts || !state) return
+    const next = new Map<PageId, number>(state.pages.map((p) => [p.id, 0]))
+    parts.forEach(({ start, end }, index) => {
+      for (const page of state.pages.slice(start - 1, end)) {
+        // A page in two typed ranges shows the first one.
+        if (!page.markedForDeletion && next.get(page.id) === 0) next.set(page.id, index + 1)
+      }
+    })
+    for (const key of Object.keys(state.splitParts)) {
+      if (!next.has(Number(key))) delete state.splitParts[Number(key)]
+    }
+    for (const [page, part] of next) {
+      if (state.splitParts[page] !== part) state.splitParts[page] = part
+    }
+  }
+
+  /**
    * Cuts the active document into parts, each a new document with those
    * pages as they look now (order, rotations, signatures); pages marked for
    * deletion are left out. `parts` are 1-based ranges of grid positions. The
@@ -856,6 +890,7 @@ export const useEditorStore = defineStore('editor', () => {
     extractSelected,
     impose,
     split,
+    previewSplit,
     undo,
     redo,
     commit,

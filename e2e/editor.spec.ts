@@ -740,11 +740,17 @@ test('split tool: from the selection, every N pages, or typed ranges', async ({ 
     /Parte 3: pagine 8–10\s*3 pagine/,
   ])
   await expect(panel).toContainText('Le pagine segnate da eliminare vengono lasciate fuori')
+  // The cards show the cut: each page its part, the deleted one left out.
+  const partsOnCards = () => cards(page).evaluateAll((els) => els.map((el) => el.getAttribute('data-part')))
+  await expect.poll(partsOnCards).toEqual(['1', '1', '0', '2', '2', '2', '2', '3', '3', '3'])
+  await expect(cards(page).nth(4)).toContainText('Parte 2')
+  await expect(cards(page).nth(2)).toContainText('esclusa')
 
   // Typed ranges are checked as they're written.
   await panel.getByRole('radio', { name: 'Intervalli' }).click()
   await panel.getByRole('textbox', { name: 'Intervalli di pagine' }).fill('1-2, 9-12')
   await expect(panel.getByRole('alert')).toContainText('da 1 a 10')
+  await expect.poll(partsOnCards).toEqual(Array(10).fill(null)) // nothing valid to show
   await expect(panel.getByRole('button', { name: 'Indica come dividere' })).toBeDisabled()
 
   // Every 4 pages: 3 parts, the first one without the deleted page.
@@ -752,6 +758,11 @@ test('split tool: from the selection, every N pages, or typed ranges', async ({ 
   await panel.getByRole('spinbutton', { name: 'Pagine per parte' }).fill('4')
   await panel.getByRole('button', { name: 'Dividi in 3 documenti' }).click()
   await expect(page.getByRole('heading', { name: 'ten_pages (parte 1 di 3).pdf' })).toBeVisible()
+  // Panel closed: no colours on any document.
+  await expect(page.locator('main article[data-part]')).toHaveCount(0)
+  await page.locator('aside li').filter({ hasText: /^ten_pages\.pdf/ }).locator('button[aria-current]').click()
+  await expect(page.locator('main article[data-part]')).toHaveCount(0)
+  await page.locator('aside li').nth(1).locator('button[aria-current]').click()
   await expectAllThumbnails(page, 3)
   await expect(page.locator('aside li')).toHaveCount(4)
   await expect(page.locator('aside li').nth(3)).toContainText('2') // pages 9-10

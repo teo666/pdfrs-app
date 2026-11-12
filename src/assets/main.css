@@ -41,6 +41,20 @@
   }
 }
 
+/*
+ * Parts of a split, cycled in this order so neighbours never share a colour.
+ * Plain variables rather than @theme ones: they're only used from inline
+ * styles (lib/split.ts), which Tailwind doesn't see - it would drop them.
+ */
+:root {
+  --color-part-1: #2f5bea;
+  --color-part-2: #e07a2e;
+  --color-part-3: #2e9e5b;
+  --color-part-4: #8a4fd8;
+  --color-part-5: #d6457a;
+  --color-part-6: #1597a5;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --color-canvas: #14161a;
@@ -58,6 +72,13 @@
 
     --shadow-card: 0 1px 2px #00000040, 0 4px 12px #00000040;
     --shadow-lift: 0 4px 10px #00000059, 0 12px 28px #00000066;
+
+    --color-part-1: #6f8fff;
+    --color-part-2: #f0a060;
+    --color-part-3: #5cc78a;
+    --color-part-4: #b48cf0;
+    --color-part-5: #f07aa5;
+    --color-part-6: #4cc4d0;
 
     color-scheme: dark;
   }

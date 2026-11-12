@@ -61,3 +61,11 @@ export function leftOut(parts: Part[], total: number): number[] {
 function range(start: number, end: number): number[] {
   return Array.from({ length: Math.max(0, end - start + 1) }, (_, i) => start + i)
 }
+
+/** How many part colours there are (--color-part-1 ... in main.css), used in turn. */
+export const PART_COLORS = 6
+
+/** The CSS colour of a part (1-based), cycling through the palette. */
+export function partColor(part: number): string {
+  return `var(--color-part-${((part - 1) % PART_COLORS) + 1})`
+}
