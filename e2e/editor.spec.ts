@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url'
 
 import { expect, test, type Page } from '@playwright/test'
 
+import { bigPdf } from './big-pdf'
+
 const fixture = (name: string) => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
 
 async function openFiles(page: Page, ...names: string[]) {
@@ -133,4 +135,98 @@ test('reports a file it cannot open', async ({ page }) => {
 
   await expect(page.getByRole('alert')).toContainText('note.txt')
   await expect(page.getByText('Trascina qui i tuoi PDF o JPEG')).toBeVisible()
+})
+
+test('dragging over a 900-page document touches nothing but the drop indicator', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Apri file' }).first().click()
+  const chooser = await chooserPromise
+  await chooser.setFiles({ name: 'grande.pdf', mimeType: 'application/pdf', buffer: await bigPdf(30) })
+  await expect(cards(page)).toHaveCount(900)
+  // Let the thumbnails of the cards on screen arrive first: they change
+  // those cards on their own, and would muddle the check below.
+  let thumbnails = -1
+  await expect
+    .poll(
+      async () => {
+        const before = thumbnails
+        thumbnails = await page.locator('main article img').count()
+        return thumbnails > 0 && thumbnails === before
+      },
+      { intervals: [300] },
+    )
+    .toBe(true)
+
+  // `dragover` fires continuously during a drag: each one must stay O(1).
+  // Synthetic events, because Playwright's dragTo only does a single drop.
+  const mutations = await page.evaluate(async () => {
+    const grid = document.querySelector('main article')!.parentElement!
+    const all = [...grid.querySelectorAll<HTMLElement>(':scope > article')]
+    const transfer = new DataTransfer()
+    const over = (card: HTMLElement, side: 'before' | 'after') => {
+      const rect = card.getBoundingClientRect()
+      const x = side === 'before' ? rect.left + 5 : rect.right - 5
+      card.dispatchEvent(
+        new DragEvent('dragover', {
+          dataTransfer: transfer,
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: rect.top + 10,
+        }),
+      )
+    }
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+    all[5]!.dispatchEvent(new DragEvent('dragstart', { dataTransfer: transfer, bubbles: true }))
+    await settle()
+
+    const touched = new Set<string>()
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        const el = record.target instanceof Element ? record.target : record.target.parentElement
+        const card = el?.closest('article')
+        touched.add(card ? `card ${card.dataset.pageId}` : el === grid ? 'grid' : 'indicator')
+      }
+    })
+    observer.observe(grid, { subtree: true, childList: true, attributes: true, characterData: true })
+
+    for (let i = 0; i < 20; i++) {
+      over(all[i % 3]!, i % 2 ? 'before' : 'after')
+      await settle()
+    }
+    for (let i = 0; i < 10; i++) {
+      over(all[1]!, 'before') // pointer standing still
+      await settle()
+    }
+    observer.disconnect()
+
+    all[5]!.dispatchEvent(new DragEvent('dragend', { dataTransfer: transfer, bubbles: true }))
+    return [...touched]
+  })
+  // The indicator appears inside the grid (a childList change on it) and moves.
+  expect(mutations.filter((m) => m.startsWith('card'))).toEqual([])
+
+  // Worst case for the reorder: the last page dropped in front of the first.
+  await cards(page).nth(0).scrollIntoViewIfNeeded()
+  await page.evaluate(() => {
+    const all = [...document.querySelectorAll<HTMLElement>('main article')]
+    const transfer = new DataTransfer()
+    const first = all[0]!.getBoundingClientRect()
+    const init = {
+      dataTransfer: transfer,
+      bubbles: true,
+      cancelable: true,
+      clientX: first.left + 5,
+      clientY: first.top + 10,
+    }
+    all[899]!.dispatchEvent(new DragEvent('dragstart', { dataTransfer: transfer, bubbles: true }))
+    all[0]!.dispatchEvent(new DragEvent('dragover', init))
+    all[0]!.dispatchEvent(new DragEvent('drop', init))
+  })
+  await expect.poll(async () => (await pageIds(page)).slice(0, 3)).toEqual([900, 1, 2])
+  await expect(cards(page).nth(1).locator('footer')).toContainText('2')
 })

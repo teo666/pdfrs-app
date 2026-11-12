@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, toRaw } from 'vue'
 import {
   PdfEditor,
   type DocumentId,
@@ -78,7 +78,18 @@ export const useEditorStore = defineStore('editor', () => {
     const inner = internals.get(id)
     if (!state || !inner) return
     const { doc } = inner
-    state.pages = doc.pages()
+    // Pages that didn't change keep their previous object: the cards compare
+    // props by identity, so a single move or rotation re-renders only the
+    // cards it actually affects, not all of them.
+    const previous = new Map(toRaw(state.pages).map((page) => [page.id, page]))
+    state.pages = doc.pages().map((page) => {
+      const old = previous.get(page.id)
+      return old &&
+        old.pendingRotation === page.pendingRotation &&
+        old.markedForDeletion === page.markedForDeletion
+        ? old
+        : page
+    })
     state.canUndo = doc.canUndo()
     state.canRedo = doc.canRedo()
     state.hasPendingChanges = doc.hasPendingChanges()

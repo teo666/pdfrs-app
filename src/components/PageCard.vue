@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
-import type { PageInfo } from 'pdfrs-editor'
+import { computed, useTemplateRef, watch } from 'vue'
+import type { PageId, PageInfo } from 'pdfrs-editor'
 
 import IconButton from './IconButton.vue'
-import type { DropSide } from '@/lib/reorder'
+import { useVisibility } from '@/composables/useVisibility'
 
 const props = defineProps<{
   page: PageInfo
   /** 1-based position in the current display order. */
   position: number
-  previewUrl?: string
+  /**
+   * The document's whole thumbnail table, not this page's URL: reading the
+   * entry here makes only this card depend on it, so a thumbnail arriving
+   * re-renders one card instead of the parent's entire list.
+   */
+  previews: Record<PageId, string>
   disabled?: boolean
-  dragging?: boolean
-  dropSide?: DropSide | null
 }>()
 
 const emit = defineEmits<{
@@ -23,30 +26,14 @@ const emit = defineEmits<{
 }>()
 
 const root = useTemplateRef<HTMLElement>('root')
-const visible = ref(false)
-let observer: IntersectionObserver | null = null
+const visible = useVisibility(root)
+const previewUrl = computed(() => props.previews[props.page.id])
 
-function askIfNeeded() {
-  if (visible.value && !props.previewUrl) emit('needPreview')
-}
-
-onMounted(() => {
-  observer = new IntersectionObserver(
-    ([entry]) => {
-      visible.value = entry?.isIntersecting ?? false
-      askIfNeeded()
-    },
-    // Start rendering a little before the card actually scrolls in.
-    { rootMargin: '300px 0px' },
-  )
-  if (root.value) observer.observe(root.value)
+// Asks when the card scrolls in, and again if its thumbnail is thrown away
+// (after a commit) while it stays on screen.
+watch([visible, previewUrl], () => {
+  if (visible.value && !previewUrl.value) emit('needPreview')
 })
-
-onUnmounted(() => observer?.disconnect())
-
-// After a commit the thumbnails are thrown away while the card stays on
-// screen - no intersection change will fire, so ask again from here.
-watch(() => props.previewUrl, askIfNeeded)
 
 const label = computed(() =>
   props.page.id === props.position
@@ -56,20 +43,18 @@ const label = computed(() =>
 </script>
 
 <template>
+  <!--
+    content-visibility: auto lets the browser skip layout and paint of the
+    cards that are off screen - with a thousand pages, reordering would
+    otherwise relayout all of them. The intrinsic size is only the
+    placeholder height until a card has been rendered once.
+  -->
   <article
     ref="root"
-    class="group relative flex cursor-grab flex-col gap-2 rounded-card bg-surface p-2.5 shadow-card transition hover:shadow-lift"
-    :class="{ 'opacity-35': dragging }"
+    class="group relative flex cursor-grab flex-col gap-2 rounded-card bg-surface p-2.5 shadow-card transition-[box-shadow,opacity] [contain-intrinsic-size:auto_240px] [content-visibility:auto] hover:shadow-lift"
     :aria-label="label"
     :data-page-id="page.id"
   >
-    <!-- Where the dragged page will land: a bar in the gap on this card's side. -->
-    <span
-      v-if="dropSide"
-      class="absolute inset-y-1.5 w-[3px] rounded-sm bg-accent"
-      :class="dropSide === 'before' ? '-left-[9px]' : '-right-[9px]'"
-    />
-
     <!--
       Square box: a page rotated a quarter turn still fits without rescaling.
       The image is absolutely positioned so its percentage limits resolve
