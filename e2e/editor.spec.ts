@@ -809,3 +809,52 @@ test('image library tiles keep a large portrait photo inside, without widening t
   })
   expect(overflow).toBe(0)
 })
+
+test('stretches a placed image from its side handles, and puts its proportions back', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagine' }).click()
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page
+    .getByRole('complementary', { name: 'Immagine' })
+    .getByRole('button', { name: 'Carica un’immagine' })
+    .click()
+  await (await chooserPromise).setFiles(fixture('photo.jpg'))
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  await viewer.getByRole('button', { name: 'Adatta' }).click()
+  const placed = viewer.locator('[data-annotation]')
+  await expect(placed).toHaveAttribute('aria-pressed', 'true')
+
+  const drag = async (handle: Locator, dx: number, dy: number) => {
+    const box = (await handle.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 6 })
+    await page.mouse.up()
+  }
+  const size = async () => {
+    const box = (await placed.boundingBox())!
+    return { width: Math.round(box.width), height: Math.round(box.height) }
+  }
+
+  const natural = await size()
+  await drag(viewer.getByRole('slider', { name: 'Allunga o accorcia' }), 0, 40)
+  const taller = await size()
+  expect(taller.width).toBe(natural.width)
+  expect(taller.height).toBeGreaterThan(natural.height + 30)
+
+  await drag(viewer.getByRole('slider', { name: 'Allarga o stringi' }), -50, 0)
+  const narrower = await size()
+  expect(narrower.height).toBe(taller.height)
+  expect(narrower.width).toBeLessThan(taller.width - 40)
+
+  // Back to the image's own proportions: the height follows the width again.
+  await viewer.getByRole('button', { name: 'Proporzioni originali' }).click()
+  const restored = await size()
+  expect(restored.width).toBe(narrower.width)
+  expect(Math.abs(restored.height / restored.width - natural.height / natural.width)).toBeLessThan(0.02)
+  await expect(viewer.getByRole('button', { name: 'Proporzioni originali' })).toBeHidden()
+})

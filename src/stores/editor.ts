@@ -57,7 +57,7 @@ export interface AnnotationView extends PageAnnotation {
 }
 
 /** The box of a placed signature: fractions of the page (see PageAnnotation). */
-export type AnnotationBox = Pick<PageAnnotation, 'x' | 'y' | 'width' | 'rotation'>
+export type AnnotationBox = Pick<PageAnnotation, 'x' | 'y' | 'width' | 'rotation' | 'height'>
 
 /** Visible pages further apart than this get separate render batches instead of one range covering everything in between. */
 const MAX_BATCH_GAP = 4
@@ -416,7 +416,7 @@ export const useEditorStore = defineStore('editor', () => {
   function placeSignature(
     page: PageId,
     signatureId: number,
-    box: Omit<AnnotationBox, 'rotation'> & { rotation?: number },
+    box: Pick<AnnotationBox, 'x' | 'y' | 'width'> & { rotation?: number; height?: number | null },
   ): AnnotationId | null {
     const signature = library.value.find((s) => s.id === signatureId)
     const state = active.value

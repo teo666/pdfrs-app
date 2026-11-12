@@ -12,7 +12,7 @@ Cosa fa oggi:
 - sposta le pagine in un altro documento trascinandole sul suo nome nella barra laterale (con ⌥/Alt le copia);
 - inserisce le pagine di un PDF o JPEG nel documento aperto, dopo la selezione o in fondo;
 - ha una colonna di **strumenti** sulla destra che apre un pannello: **Firma**, **Immagine**, **Unisci**, **Dividi**, **N per foglio** e **Libretto**. Ogni strumento dice su cosa agisce (le pagine selezionate, o tutto il documento così come appare);
-- mette **immagini** sopra le pagine (logo, timbro, foto: PNG, JPEG, WebP, GIF, trasparenza conservata) dal pannello Immagine, con gli stessi comandi della firma: sposta, ridimensiona, ruota, uguale su tutte le pagine;
+- mette **immagini** sopra le pagine (logo, timbro, foto: PNG, JPEG, WebP, GIF, trasparenza conservata) dal pannello Immagine, con gli stessi comandi della firma (sposta, ridimensiona, ruota, uguale su tutte le pagine), più le maniglie sui lati per allargarle o allungarle fuori dalle proporzioni originali (e il pulsante per rimetterle);
 - divide un documento in più parti, ognuna un nuovo documento: ogni N pagine, per intervalli scritti a mano (es. «1-3, 4-8») o partendo dalle pagine selezionate, con l'elenco delle parti prima di confermare;
 - impagina più pagine per foglio (2, 4, 6, 8, 9, 16; formato, orientamento, ordine, bordi, margini) o crea un libretto da stampare fronte e retro e piegare (rilegatura a sinistra o a destra, stampa in due passaggi per stampanti senza fronte/retro): il risultato è un nuovo documento, l'originale non cambia;
 - unisce più documenti, così come appaiono, dal pannello Unisci: li ordini trascinandoli (o con le frecce) e togli quelli che non servono;

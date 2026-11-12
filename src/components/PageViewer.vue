@@ -442,6 +442,14 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
               }}
             </span>
             <button
+              v-if="selected.height !== null"
+              class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10"
+              title="Annulla l’allungamento: l’altezza torna a seguire la larghezza"
+              @click="store.updateAnnotation(selected.id, { height: null })"
+            >
+              Proporzioni originali
+            </button>
+            <button
               class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-white/10"
               @click="removeSelectedAnnotation"
             >

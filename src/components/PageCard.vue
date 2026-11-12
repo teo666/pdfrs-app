@@ -127,6 +127,7 @@ const label = computed(() =>
             left: `${stamp.x * 100}%`,
             top: `${stamp.y * 100}%`,
             width: `${stamp.width * 100}%`,
+            height: stamp.height === null ? undefined : `${stamp.height * 100}%`,
             transform: stamp.rotation ? `rotate(${stamp.rotation}deg)` : undefined,
           }"
           draggable="false"
