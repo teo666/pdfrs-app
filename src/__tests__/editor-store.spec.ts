@@ -264,4 +264,31 @@ describe('editor store', () => {
     store.close(b!)
     expect(store.active).toBeNull()
   })
+
+  it('walks the viewer through the display order and closes it when the document goes away', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 3), pdfFile('b.pdf', 2)])
+    store.move(3, 0) // display order: 3, 1, 2
+
+    store.openViewer(3)
+    expect(store.viewerPageId).toBe(3)
+    store.stepViewer(1)
+    expect(store.viewerPageId).toBe(1)
+    store.stepViewer(Infinity)
+    expect(store.viewerPageId).toBe(2)
+    store.stepViewer(1) // already last: stays
+    expect(store.viewerPageId).toBe(2)
+    store.stepViewer(-Infinity)
+    expect(store.viewerPageId).toBe(3)
+
+    store.openViewer(42) // not a page of this document
+    expect(store.viewerPageId).toBe(3)
+
+    store.select(store.documents[1]!.id)
+    expect(store.viewerPageId).toBeNull()
+
+    store.openViewer(1)
+    store.close(store.activeId!)
+    expect(store.viewerPageId).toBeNull()
+  })
 })

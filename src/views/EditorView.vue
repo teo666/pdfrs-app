@@ -8,6 +8,7 @@ import DocumentToolbar from '@/components/DocumentToolbar.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import IconButton from '@/components/IconButton.vue'
 import PageGrid from '@/components/PageGrid.vue'
+import PageViewer from '@/components/PageViewer.vue'
 import { useFileDrop } from '@/composables/useFileDrop'
 import { pickFiles } from '@/lib/files'
 import { useEditorStore } from '@/stores/editor'
@@ -21,6 +22,8 @@ async function openPicker() {
 }
 
 function onKeyDown(event: KeyboardEvent) {
+  // The viewer has its own keys, and editing from behind it would be invisible.
+  if (store.viewerPageId !== null) return
   const target = event.target as HTMLElement | null
   if (target?.closest('input, textarea, [contenteditable]')) return
   if (!(event.metaKey || event.ctrlKey)) return
@@ -67,6 +70,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       </template>
       <EmptyState v-else @open="openPicker" />
     </main>
+
+    <PageViewer
+      v-if="store.active && store.viewerPageId !== null"
+      :doc="store.active"
+      :page-id="store.viewerPageId"
+    />
 
     <Transition
       enter-from-class="opacity-0"

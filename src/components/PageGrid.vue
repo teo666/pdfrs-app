@@ -160,6 +160,7 @@ async function animateReorder(fromIndex: number, toIndex: number, apply: () => v
       @rotate="store.rotate(page.id, $event)"
       @toggle-delete="store.toggleDelete(page.id)"
       @need-preview="store.requestPreview(doc.id, page.id)"
+      @open="store.openViewer(page.id)"
     />
     <DropIndicator :state="indicator" />
   </div>

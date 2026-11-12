@@ -230,3 +230,41 @@ test('dragging over a 900-page document touches nothing but the drop indicator',
   await expect.poll(async () => (await pageIds(page)).slice(0, 3)).toEqual([900, 1, 2])
   await expect(cards(page).nth(1).locator('footer')).toContainText('2')
 })
+
+test('opens a page full size and walks through the pages in their current order', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+
+  // Reorder first (page 4 in front), so the arrows must follow the new order.
+  await cards(page).nth(3).dragTo(cards(page).nth(0), { targetPosition: { x: 10, y: 60 } })
+  await expect.poll(() => pageIds(page)).toEqual([4, 1, 2, 3])
+
+  await cards(page).nth(0).getByRole('button', { name: /a grandezza reale/ }).click()
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  await expect(viewer).toBeVisible()
+  await expect(viewer.locator('header')).toContainText('Pagina 1 di 4')
+  await expect(viewer.locator('header')).toContainText('era 4')
+  // 100%: one PDF point per CSS pixel (the fixture is A4, 595 x 842 pt).
+  const image = viewer.locator('img[data-full="true"]')
+  await expect(image).toHaveCSS('width', '595px')
+  await expect(image).toHaveCSS('height', '842px')
+
+  await page.keyboard.press('ArrowRight')
+  await expect(viewer.locator('header')).toContainText('Pagina 2 di 4')
+  await expect(viewer.locator('header')).toContainText('era 1')
+  await page.keyboard.press('End')
+  await expect(viewer.locator('header')).toContainText('Pagina 4 di 4')
+  await page.keyboard.press('ArrowRight') // already the last one: stays
+  await expect(viewer.locator('header')).toContainText('Pagina 4 di 4')
+  await page.keyboard.press('ArrowLeft')
+  await expect(viewer.locator('header')).toContainText('Pagina 3 di 4')
+
+  await page.keyboard.press('Escape')
+  await expect(viewer).toBeHidden()
+  // Editing shortcuts are back once the viewer is closed.
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect.poll(() => pageIds(page)).toEqual([1, 2, 3, 4])
+})

@@ -6,7 +6,8 @@ Cosa fa oggi:
 
 - apre più PDF e JPEG, scelti dal pulsante oppure trascinati in qualsiasi punto della finestra;
 - mostra le miniature delle pagine, generate solo quando entrano nello schermo e in parallelo su un pool di Web Worker;
-- ruota, elimina e ripristina le pagine, e le riordina trascinandole;
+- ruota, elimina e ripristina le pagine, e le riordina trascinandole, in modo fluido anche su documenti con migliaia di pagine;
+- con un clic su una miniatura apre la pagina al 100% in una modale: le frecce (oppure Pag↑/Pag↓, Home/Fine) scorrono le pagine nell'ordine corrente, Esc chiude;
 - annulla e ripete ogni modifica (⌘Z / ⇧⌘Z, oppure Ctrl+Z / Ctrl+Y), anche dopo averle applicate;
 - applica le modifiche al documento e scarica il PDF risultante.
 
@@ -26,7 +27,7 @@ In questo repo:
 | --- | --- |
 | `src/stores/editor.ts` | Store Pinia: tiene una copia reattiva dello stato del modello (che non è reattivo) e raggruppa per frame le richieste di miniature |
 | `src/views/EditorView.vue` | Layout, scorciatoie da tastiera, drop dei file sulla finestra |
-| `src/components/` | `PageGrid` (griglia e riordino con drag & drop), `PageCard`, `DocumentList`, `DocumentToolbar`, `EmptyState` |
+| `src/components/` | `PageGrid` (griglia e riordino con drag & drop; vedi il commento in testa per i vincoli di prestazioni), `PageCard`, `PageViewer` (modale al 100% su `<dialog>` nativo), `DocumentList`, `DocumentToolbar`, `EmptyState` |
 | `src/assets/main.css` | Token di design per Tailwind (`@theme`): colori, ombre, raggi. Il tema scuro ridefinisce solo le variabili, quindi i componenti non usano `dark:` |
 | `src/components/AppButton.vue`, `IconButton.vue` | Pulsanti riusabili: lo stile ripetuto sta in un componente, non in classi `@apply` |
 | `src/lib/` | Funzioni pure: riconoscimento dei file dai primi byte, calcolo dell'indice di destinazione del drop |

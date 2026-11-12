@@ -65,6 +65,20 @@ export const useEditorStore = defineStore('editor', () => {
 
   const active = computed(() => documents.value.find((d) => d.id === activeId.value) ?? null)
 
+  /** The page open in the full-size viewer, always one of the active document's. */
+  const viewerPageId = ref<PageId | null>(null)
+
+  /** One object URL per PNG buffer, remembered so the document can revoke it when closed. */
+  function urlFor(inner: DocumentInternals, png: Uint8Array): string {
+    let url = urlByPng.get(png)
+    if (!url) {
+      url = URL.createObjectURL(new Blob([png as Uint8Array<ArrayBuffer>], { type: 'image/png' }))
+      urlByPng.set(png, url)
+    }
+    inner.urls.add(url)
+    return url
+  }
+
   function stateOf(id: DocumentId): DocumentState | undefined {
     return documents.value.find((d) => d.id === id)
   }
@@ -139,7 +153,9 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function select(id: DocumentId) {
-    if (stateOf(id)) activeId.value = id
+    if (!stateOf(id) || id === activeId.value) return
+    activeId.value = id
+    viewerPageId.value = null
   }
 
   function close(id: DocumentId) {
@@ -150,6 +166,7 @@ export const useEditorStore = defineStore('editor', () => {
     editor.removeDocument(id)
     documents.value.splice(index, 1)
     if (activeId.value === id) {
+      viewerPageId.value = null
       const next = documents.value[Math.min(index, documents.value.length - 1)]
       activeId.value = next?.id ?? null
     }
@@ -254,15 +271,7 @@ export const useEditorStore = defineStore('editor', () => {
               // A commit or undo may have replaced the baseline while this
               // batch was rendering: its pictures would be of the old pages.
               if (inner.baseline !== baseline || !internals.has(id)) return
-              let url = urlByPng.get(preview.png)
-              if (!url) {
-                url = URL.createObjectURL(
-                  new Blob([preview.png as Uint8Array<ArrayBuffer>], { type: 'image/png' }),
-                )
-                urlByPng.set(preview.png, url)
-              }
-              inner.urls.add(url)
-              state.previews[preview.id] = url
+              state.previews[preview.id] = urlFor(inner, preview.png)
             },
           })
         } catch (err) {
@@ -272,6 +281,36 @@ export const useEditorStore = defineStore('editor', () => {
         }
       }),
     )
+  }
+
+  function openViewer(page: PageId) {
+    if (active.value?.pages.some((p) => p.id === page)) viewerPageId.value = page
+  }
+
+  function closeViewer() {
+    viewerPageId.value = null
+  }
+
+  /** Moves the viewer by `delta` pages in the current display order; stays put at either end. */
+  function stepViewer(delta: number) {
+    const pages = active.value?.pages
+    if (!pages || viewerPageId.value === null) return
+    const index = pages.findIndex((p) => p.id === viewerPageId.value)
+    const next = pages[Math.max(0, Math.min(pages.length - 1, index + delta))]
+    if (next) viewerPageId.value = next.id
+  }
+
+  /**
+   * Renders one page of the active document at `scale` and returns an
+   * object URL for it. The model caches renders by (page, scale), so going
+   * back to a page already seen in the viewer is instant.
+   */
+  async function renderPage(page: PageId, scale: number): Promise<string> {
+    const state = active.value
+    const inner = state ? internals.get(state.id) : undefined
+    if (!inner) throw new Error('nessun documento attivo')
+    const preview = await inner.doc.getPreview(page, scale)
+    return urlFor(inner, preview.png)
   }
 
   function dismissError() {
@@ -295,6 +334,11 @@ export const useEditorStore = defineStore('editor', () => {
     commit,
     download,
     requestPreview,
+    viewerPageId,
+    openViewer,
+    closeViewer,
+    stepViewer,
+    renderPage,
     dismissError,
   }
 })

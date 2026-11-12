@@ -13,6 +13,8 @@ const paths = {
   close: ['M18 6 6 18', 'M6 6l12 12'],
   file: ['M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z', 'M14 3v6h6'],
   upload: ['M12 15V3', 'm7 8 5-5 5 5', 'M5 21h14'],
+  'chevron-left': ['m15 18-6-6 6-6'],
+  'chevron-right': ['m9 18 6-6-6-6'],
   alert: [
     'M12 9v4',
     'M12 17h.01',

@@ -23,6 +23,8 @@ const emit = defineEmits<{
   toggleDelete: []
   /** The card is on screen and has no thumbnail yet. */
   needPreview: []
+  /** Show this page full size. */
+  open: []
 }>()
 
 const root = useTemplateRef<HTMLElement>('root')
@@ -83,6 +85,21 @@ const label = computed(() =>
       >
         Da eliminare
       </div>
+
+      <!-- The whole thumbnail opens the full-size viewer; the action bar sits above it. -->
+      <!--
+        A div, not a <button>: Firefox won't start a drag from a button, and
+        the thumbnail is where people grab the card to reorder it.
+      -->
+      <div
+        class="absolute inset-0 cursor-zoom-in rounded-md"
+        role="button"
+        tabindex="0"
+        :aria-label="`Apri ${label.toLowerCase()} a grandezza reale`"
+        @click="emit('open')"
+        @keydown.enter.prevent="emit('open')"
+        @keydown.space.prevent="emit('open')"
+      />
 
       <div
         class="absolute right-1.5 bottom-1.5 flex gap-0.5 rounded-md bg-surface p-0.5 shadow-card transition"
