@@ -40,9 +40,9 @@ async function unlock() {
 </script>
 
 <template>
-  <div class="grid h-full place-content-center p-6">
+  <div class="flex h-full items-center justify-center p-6">
     <section
-      class="flex w-[min(420px,100%)] flex-col items-center gap-3 rounded-2xl border border-line bg-surface px-6 py-8 text-center"
+      class="flex w-full max-w-105 flex-col items-center gap-3 rounded-2xl border border-line bg-surface px-6 py-8 text-center"
       :aria-label="`${doc.name}, protetto da password`"
     >
       <span class="grid size-14 place-items-center rounded-full bg-accent-soft text-accent">
