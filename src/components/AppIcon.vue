@@ -13,17 +13,23 @@ const paths = {
   close: ['M18 6 6 18', 'M6 6l12 12'],
   file: ['M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z', 'M14 3v6h6'],
   upload: ['M12 15V3', 'm7 8 5-5 5 5', 'M5 21h14'],
-  alert: ['M12 9v4', 'M12 17h.01', 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'],
+  alert: [
+    'M12 9v4',
+    'M12 17h.01',
+    'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  ],
 } as const
 
 export type IconName = keyof typeof paths
 
-defineProps<{ name: IconName }>()
+const { size = 18 } = defineProps<{ name: IconName; size?: number }>()
 </script>
 
 <template>
   <svg
-    class="icon"
+    class="shrink-0"
+    :width="size"
+    :height="size"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"

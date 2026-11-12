@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { PdfEditor, type DocumentId, type PageId, type PageInfo, type PdfDocument } from 'pdfrs-editor'
+import {
+  PdfEditor,
+  type DocumentId,
+  type PageId,
+  type PageInfo,
+  type PdfDocument,
+} from 'pdfrs-editor'
 
 import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
 

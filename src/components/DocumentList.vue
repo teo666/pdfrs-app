@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppIcon from './AppIcon.vue'
+import IconButton from './IconButton.vue'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
@@ -7,145 +8,47 @@ const emit = defineEmits<{ open: [] }>()
 </script>
 
 <template>
-  <aside class="sidebar">
-    <div class="head">
-      <h2>Documenti</h2>
-      <button class="icon-btn" title="Apri file" @click="emit('open')">
-        <AppIcon name="plus" />
-        <span class="sr-only">Apri file</span>
-      </button>
+  <aside class="flex flex-col gap-1 overflow-y-auto border-r border-line bg-surface px-2.5 py-3.5">
+    <div class="flex items-center justify-between px-1.5 pb-1.5">
+      <h2 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">Documenti</h2>
+      <IconButton icon="plus" label="Apri file" @click="emit('open')" />
     </div>
 
-    <ul v-if="store.documents.length" class="list">
+    <ul v-if="store.documents.length" class="flex flex-col gap-0.5">
       <li
         v-for="doc in store.documents"
         :key="doc.id"
-        :class="{ active: doc.id === store.activeId }"
+        class="group flex items-center rounded-md"
+        :class="doc.id === store.activeId ? 'bg-accent-soft text-accent' : 'hover:bg-surface-muted'"
       >
-        <button class="item" :aria-current="doc.id === store.activeId" @click="store.select(doc.id)">
+        <button
+          class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-2 pr-1 pl-2 text-left"
+          :aria-current="doc.id === store.activeId"
+          @click="store.select(doc.id)"
+        >
           <AppIcon name="file" />
-          <span class="name" :title="doc.name">{{ doc.name }}</span>
-          <span class="meta">
-            <span v-if="doc.hasPendingChanges" class="dot" title="Modifiche non applicate" />
+          <span class="flex-1 truncate" :title="doc.name">{{ doc.name }}</span>
+          <span class="flex items-center gap-1.5 text-xs text-fg-muted">
+            <span
+              v-if="doc.hasPendingChanges"
+              class="size-[7px] rounded-full bg-warning"
+              title="Modifiche non applicate"
+            />
             {{ doc.pages.length }}
           </span>
         </button>
-        <button class="icon-btn close" :title="`Chiudi ${doc.name}`" @click="store.close(doc.id)">
-          <AppIcon name="close" />
-          <span class="sr-only">Chiudi {{ doc.name }}</span>
-        </button>
+        <IconButton
+          icon="close"
+          :label="`Chiudi ${doc.name}`"
+          size="sm"
+          class="mr-1 focus-visible:opacity-100"
+          :class="doc.id === store.activeId ? '' : 'opacity-0 group-hover:opacity-100'"
+          @click="store.close(doc.id)"
+        />
       </li>
     </ul>
-    <p v-else class="empty">Nessun documento aperto.</p>
+    <p v-else class="mx-2 my-1 text-[13px] text-fg-muted">Nessun documento aperto.</p>
 
-    <p v-if="store.loading" class="loading">Apertura in corso…</p>
+    <p v-if="store.loading" class="mx-2 my-1 text-[13px] text-fg-muted">Apertura in corso…</p>
   </aside>
 </template>
-
-<style scoped>
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px 10px;
-  overflow-y: auto;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 6px 6px;
-}
-
-h2 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  border-radius: var(--radius-sm);
-}
-
-li:hover {
-  background: var(--surface-2);
-}
-
-li.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.item {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 8px 4px 8px 8px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  text-align: left;
-}
-
-.name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--warning);
-}
-
-.close {
-  width: 26px;
-  height: 26px;
-  margin-right: 4px;
-  opacity: 0;
-}
-
-li:hover .close,
-li.active .close,
-.close:focus-visible {
-  opacity: 1;
-}
-
-.empty,
-.loading {
-  margin: 4px 8px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-</style>

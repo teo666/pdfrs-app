@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 
+import AppButton from '@/components/AppButton.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import DocumentList from '@/components/DocumentList.vue'
 import DocumentToolbar from '@/components/DocumentToolbar.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import IconButton from '@/components/IconButton.vue'
 import PageGrid from '@/components/PageGrid.vue'
 import { useFileDrop } from '@/composables/useFileDrop'
 import { pickFiles } from '@/lib/files'
@@ -40,21 +42,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 </script>
 
 <template>
-  <div class="layout">
-    <header class="topbar">
-      <div class="brand">
-        <span class="logo">pdf<b>rs</b></span>
-        <span class="tagline">Editor PDF nel browser</span>
+  <div
+    class="grid h-full grid-cols-[260px_1fr] grid-rows-[56px_1fr] [grid-template-areas:'topbar_topbar'_'sidebar_workspace'] max-md:grid-cols-1 max-md:grid-rows-[56px_auto_1fr] max-md:[grid-template-areas:'topbar'_'sidebar'_'workspace']"
+  >
+    <header
+      class="flex items-center justify-between border-b border-line bg-surface pr-4 pl-5 [grid-area:topbar]"
+    >
+      <div class="flex items-baseline gap-3">
+        <span class="text-[19px] font-medium tracking-tight">pdf<b class="text-accent">rs</b></span>
+        <span class="text-[13px] text-fg-muted max-md:hidden">Editor PDF nel browser</span>
       </div>
-      <button class="btn" @click="openPicker">
-        <AppIcon name="plus" />
-        Apri file
-      </button>
+      <AppButton icon="plus" @click="openPicker">Apri file</AppButton>
     </header>
 
-    <DocumentList class="sidebar" @open="openPicker" />
+    <DocumentList
+      class="[grid-area:sidebar] max-md:max-h-[150px] max-md:border-r-0 max-md:border-b"
+      @open="openPicker"
+    />
 
-    <main class="workspace">
+    <main class="@container min-w-0 overflow-y-auto [grid-area:workspace]">
       <template v-if="store.active">
         <DocumentToolbar :doc="store.active" />
         <PageGrid :key="store.active.id" :doc="store.active" />
@@ -62,171 +68,40 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       <EmptyState v-else @open="openPicker" />
     </main>
 
-    <Transition name="fade">
-      <div v-if="dragging" class="drop-overlay">
-        <div class="drop-card">
-          <AppIcon name="upload" class="big" />
+    <Transition
+      enter-from-class="opacity-0"
+      leave-to-class="opacity-0"
+      enter-active-class="transition-opacity duration-150"
+      leave-active-class="transition-opacity duration-150"
+    >
+      <div
+        v-if="dragging"
+        class="pointer-events-none fixed inset-0 z-40 grid place-items-center bg-accent/12 backdrop-blur-[2px]"
+      >
+        <div
+          class="flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed border-accent bg-surface px-12 py-8 text-base font-semibold shadow-lift"
+        >
+          <AppIcon name="upload" :size="32" class="text-accent" />
           Rilascia per aprire
         </div>
       </div>
     </Transition>
 
-    <Transition name="toast">
-      <div v-if="store.error" class="toast" role="alert">
+    <Transition
+      enter-from-class="translate-y-2 opacity-0"
+      leave-to-class="translate-y-2 opacity-0"
+      enter-active-class="transition duration-150"
+      leave-active-class="transition duration-150"
+    >
+      <div
+        v-if="store.error"
+        class="fixed inset-x-0 bottom-5 z-50 mx-auto flex w-fit max-w-[min(560px,calc(100%-32px))] items-center gap-2.5 rounded-card border border-danger bg-surface py-2 pr-2 pl-3.5 text-danger shadow-lift"
+        role="alert"
+      >
         <AppIcon name="alert" />
-        <span>{{ store.error }}</span>
-        <button class="icon-btn" title="Chiudi" @click="store.dismissError()">
-          <AppIcon name="close" />
-        </button>
+        <span class="text-fg">{{ store.error }}</span>
+        <IconButton icon="close" label="Chiudi" @click="store.dismissError()" />
       </div>
     </Transition>
   </div>
 </template>
-
-<style scoped>
-.layout {
-  display: grid;
-  grid-template-areas:
-    'topbar topbar'
-    'sidebar workspace';
-  grid-template-rows: var(--topbar-height) 1fr;
-  grid-template-columns: var(--sidebar-width) 1fr;
-  height: 100%;
-}
-
-.topbar {
-  grid-area: topbar;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px 0 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.brand {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.logo {
-  font-size: 19px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-
-.logo b {
-  color: var(--accent);
-}
-
-.tagline {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.sidebar {
-  grid-area: sidebar;
-}
-
-.workspace {
-  grid-area: workspace;
-  min-width: 0;
-  overflow-y: auto;
-}
-
-.drop-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  backdrop-filter: blur(2px);
-  pointer-events: none;
-}
-
-.drop-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 32px 48px;
-  border: 2px dashed var(--accent);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--shadow-lift);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.big {
-  width: 32px;
-  height: 32px;
-  color: var(--accent);
-}
-
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  z-index: 11;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: min(560px, calc(100% - 32px));
-  padding: 8px 8px 8px 14px;
-  border: 1px solid var(--danger);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow-lift);
-  color: var(--danger);
-  transform: translateX(-50%);
-}
-
-.toast span {
-  color: var(--text);
-}
-
-.fade-enter-active,
-.fade-leave-active,
-.toast-enter-active,
-.toast-leave-active {
-  transition:
-    opacity 0.15s,
-    transform 0.15s;
-}
-
-.fade-enter-from,
-.fade-leave-to,
-.toast-enter-from,
-.toast-leave-to {
-  opacity: 0;
-}
-
-.toast-enter-from,
-.toast-leave-to {
-  transform: translate(-50%, 8px);
-}
-
-@media (max-width: 720px) {
-  .layout {
-    grid-template-areas:
-      'topbar'
-      'sidebar'
-      'workspace';
-    grid-template-rows: var(--topbar-height) auto 1fr;
-    grid-template-columns: 1fr;
-  }
-
-  .tagline {
-    display: none;
-  }
-
-  .sidebar {
-    max-height: 150px;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-</style>

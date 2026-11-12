@@ -11,8 +11,7 @@ export function useFileDrop(onFiles: (files: File[]) => void) {
   // (not a boolean) tells when the pointer has really left the window.
   let depth = 0
 
-  const carriesFiles = (event: DragEvent) =>
-    event.dataTransfer?.types.includes('Files') ?? false
+  const carriesFiles = (event: DragEvent) => event.dataTransfer?.types.includes('Files') ?? false
 
   function onDragEnter(event: DragEvent) {
     if (!carriesFiles(event)) return

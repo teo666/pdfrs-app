@@ -2,6 +2,7 @@ import process from 'node:process'
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig, searchForWorkspaceRoot } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import vueDevTools from 'vite-plugin-vue-devtools'
@@ -13,7 +14,7 @@ const pdfrsRepo = fileURLToPath(new URL('../pdfrs', import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), vueJsx(), vueDevTools()],
+  plugins: [vue(), vueJsx(), vueDevTools(), tailwindcss()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

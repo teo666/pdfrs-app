@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import AppIcon from './AppIcon.vue'
+import AppButton from './AppButton.vue'
+import IconButton from './IconButton.vue'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState }>()
@@ -20,111 +21,53 @@ const summary = computed(() => {
 </script>
 
 <template>
-  <div class="toolbar">
-    <div class="title">
-      <h1 :title="doc.name">{{ doc.name }}</h1>
-      <p>
+  <div
+    class="sticky top-0 z-10 flex items-center gap-x-4 gap-y-2 border-b border-line bg-canvas/88 px-6 py-3 backdrop-blur-md @max-2xl:flex-wrap @max-md:px-4"
+  >
+    <!-- Wraps on the width of the workspace (the @container in EditorView), not of the window. -->
+    <div class="min-w-0 flex-1 @max-2xl:basis-full">
+      <h1 class="truncate text-base font-semibold" :title="doc.name">{{ doc.name }}</h1>
+      <p class="text-xs text-fg-muted">
         {{ summary }}
-        <span v-if="doc.hasPendingChanges" class="pending">· modifiche non applicate</span>
+        <span v-if="doc.hasPendingChanges" class="text-warning">· modifiche non applicate</span>
       </p>
     </div>
 
-    <div class="group">
-      <button
-        class="icon-btn"
+    <div class="flex items-center gap-1.5">
+      <IconButton
+        icon="undo"
+        label="Annulla"
         :title="`Annulla (${mod}Z)`"
         :disabled="!doc.canUndo || doc.busy"
         @click="store.undo()"
-      >
-        <AppIcon name="undo" />
-        <span class="sr-only">Annulla</span>
-      </button>
-      <button
-        class="icon-btn"
+      />
+      <IconButton
+        icon="redo"
+        label="Ripeti"
         :title="`Ripeti (${isMac ? '⇧⌘Z' : 'Ctrl+Y'})`"
         :disabled="!doc.canRedo || doc.busy"
         @click="store.redo()"
-      >
-        <AppIcon name="redo" />
-        <span class="sr-only">Ripeti</span>
-      </button>
+      />
     </div>
 
-    <div class="group">
-      <button
-        class="btn"
+    <div class="flex items-center gap-1.5">
+      <AppButton
+        icon="check"
         title="Applica rotazioni, eliminazioni e riordino al documento"
         :disabled="!doc.hasPendingChanges || doc.busy"
         @click="store.commit()"
       >
-        <AppIcon name="check" />
         Applica modifiche
-      </button>
-      <button
-        class="btn btn--primary"
+      </AppButton>
+      <AppButton
+        variant="primary"
+        icon="download"
         title="Scarica il PDF con le modifiche, anche quelle non ancora applicate"
         :disabled="doc.busy"
         @click="store.download()"
       >
-        <AppIcon name="download" />
         Scarica
-      </button>
+      </AppButton>
     </div>
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 24px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(8px);
-}
-
-.title {
-  flex: 1;
-  min-width: 0;
-}
-
-h1 {
-  margin: 0;
-  overflow: hidden;
-  font-size: 16px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.pending {
-  color: var(--warning);
-}
-
-.group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-@media (max-width: 720px) {
-  .toolbar {
-    flex-wrap: wrap;
-    padding: 10px 16px;
-  }
-
-  .title {
-    flex-basis: 100%;
-  }
-}
-</style>

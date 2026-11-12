@@ -1,6 +1,6 @@
 # pdfrs-app
 
-Editor PDF che gira interamente nel browser: i file non lasciano mai il computer. È scritto in Vue 3 e usa il motore Rust/WebAssembly [pdfrs](../pdfrs).
+Editor PDF che gira interamente nel browser: i file non lasciano mai il computer. È scritto in Vue 3 con Tailwind CSS v4 e usa il motore Rust/WebAssembly [pdfrs](../pdfrs).
 
 Cosa fa oggi:
 
@@ -27,6 +27,8 @@ In questo repo:
 | `src/stores/editor.ts` | Store Pinia: tiene una copia reattiva dello stato del modello (che non è reattivo) e raggruppa per frame le richieste di miniature |
 | `src/views/EditorView.vue` | Layout, scorciatoie da tastiera, drop dei file sulla finestra |
 | `src/components/` | `PageGrid` (griglia e riordino con drag & drop), `PageCard`, `DocumentList`, `DocumentToolbar`, `EmptyState` |
+| `src/assets/main.css` | Token di design per Tailwind (`@theme`): colori, ombre, raggi. Il tema scuro ridefinisce solo le variabili, quindi i componenti non usano `dark:` |
+| `src/components/AppButton.vue`, `IconButton.vue` | Pulsanti riusabili: lo stile ripetuto sta in un componente, non in classi `@apply` |
 | `src/lib/` | Funzioni pure: riconoscimento dei file dai primi byte, calcolo dell'indice di destinazione del drop |
 
 ## Sviluppo

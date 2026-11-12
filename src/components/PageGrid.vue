@@ -47,7 +47,12 @@ function onDragEnd() {
 </script>
 
 <template>
-  <TransitionGroup tag="div" name="reorder" class="grid" @dragleave.self="target = null">
+  <TransitionGroup
+    tag="div"
+    name="reorder"
+    class="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-[18px] px-6 pt-5 pb-10 @max-md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] @max-md:gap-3 @max-md:px-4"
+    @dragleave.self="target = null"
+  >
     <PageCard
       v-for="(page, index) in doc.pages"
       :key="page.id"
@@ -70,13 +75,7 @@ function onDragEnd() {
 </template>
 
 <style scoped>
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 18px;
-  padding: 20px 24px 40px;
-}
-
+/* FLIP animation of the cards when the order changes (TransitionGroup). */
 .reorder-move {
   transition: transform 0.25s ease;
 }

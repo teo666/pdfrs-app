@@ -115,7 +115,7 @@ test('opens several documents, including a JPEG, and switches between them', asy
   await expect(list).toHaveCount(2)
   await expectAllThumbnails(page, 10)
 
-  await list.filter({ hasText: 'photo.jpg' }).locator('button.item').click()
+  await list.filter({ hasText: 'photo.jpg' }).locator('button[aria-current]').click()
   await expect(page.getByRole('heading', { name: 'photo.jpg' })).toBeVisible()
   await expectAllThumbnails(page, 1)
 

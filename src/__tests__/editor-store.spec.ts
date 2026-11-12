@@ -86,7 +86,11 @@ vi.mock('pdfrs-editor', () => {
       this.save()
       const kept = this.pageList.filter((p) => !p.markedForDeletion)
       this.bytes = new Uint8Array([kept.length])
-      this.pageList = kept.map((_, i) => ({ id: i + 1, pendingRotation: 0, markedForDeletion: false }))
+      this.pageList = kept.map((_, i) => ({
+        id: i + 1,
+        pendingRotation: 0,
+        markedForDeletion: false,
+      }))
     }
     async exportBytes() {
       return this.bytes
