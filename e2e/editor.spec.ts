@@ -718,3 +718,41 @@ test('image tool: upload a picture and place it on the selected page', async ({ 
   const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
   expect(pdf).toMatch(/\/Subtype\s*\/Image/)
 })
+
+test('split tool: from the selection, every N pages, or typed ranges', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'ten_pages.pdf')
+  await expectAllThumbnails(page, 10)
+
+  // Page 3 marked for deletion; pages 4 and 8 start new parts.
+  await cards(page).nth(2).hover()
+  await cards(page).nth(2).getByRole('button', { name: 'Elimina pagina' }).click()
+  await cards(page).nth(3).getByRole('checkbox', { name: /Seleziona/ }).click()
+  await cards(page).nth(7).getByRole('checkbox', { name: /Seleziona/ }).click()
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Dividi' }).click()
+  const panel = page.getByRole('complementary', { name: 'Dividi documento' })
+  await panel.getByRole('radio', { name: 'Selezione' }).click()
+  const parts = panel.getByRole('region', { name: 'Parti' })
+  await expect(parts.locator('li')).toHaveText([
+    /Parte 1: pagine 1–3\s*2 pagine/,
+    /Parte 2: pagine 4–7\s*4 pagine/,
+    /Parte 3: pagine 8–10\s*3 pagine/,
+  ])
+  await expect(panel).toContainText('Le pagine segnate da eliminare vengono lasciate fuori')
+
+  // Typed ranges are checked as they're written.
+  await panel.getByRole('radio', { name: 'Intervalli' }).click()
+  await panel.getByRole('textbox', { name: 'Intervalli di pagine' }).fill('1-2, 9-12')
+  await expect(panel.getByRole('alert')).toContainText('da 1 a 10')
+  await expect(panel.getByRole('button', { name: 'Indica come dividere' })).toBeDisabled()
+
+  // Every 4 pages: 3 parts, the first one without the deleted page.
+  await panel.getByRole('radio', { name: 'Ogni N' }).click()
+  await panel.getByRole('spinbutton', { name: 'Pagine per parte' }).fill('4')
+  await panel.getByRole('button', { name: 'Dividi in 3 documenti' }).click()
+  await expect(page.getByRole('heading', { name: 'ten_pages (parte 1 di 3).pdf' })).toBeVisible()
+  await expectAllThumbnails(page, 3)
+  await expect(page.locator('aside li')).toHaveCount(4)
+  await expect(page.locator('aside li').nth(3)).toContainText('2') // pages 9-10
+})

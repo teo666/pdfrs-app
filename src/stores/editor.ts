@@ -27,7 +27,7 @@ export const PREVIEW_SCALE = 0.4
 export type ViewerZoom = 'actual' | 'fit'
 
 /** The tools of the right-hand panel. */
-export type ToolId = 'sign' | 'image' | 'merge' | 'nup' | 'booklet'
+export type ToolId = 'sign' | 'image' | 'merge' | 'split' | 'nup' | 'booklet'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -661,6 +661,40 @@ export const useEditorStore = defineStore('editor', () => {
       })
     })
 
+  /**
+   * Cuts the active document into parts, each a new document with those
+   * pages as they look now (order, rotations, signatures); pages marked for
+   * deletion are left out. `parts` are 1-based ranges of grid positions. The
+   * first part is opened; the original stays as it is.
+   */
+  const split = (parts: { start: number; end: number }[]) =>
+    runBusy(async (_doc, state) => {
+      const pageParts = parts
+        .map(({ start, end }) =>
+          state.pages
+            .slice(start - 1, end)
+            .filter((p) => !p.markedForDeletion)
+            .map((p) => p.id),
+        )
+        .filter((ids) => ids.length > 0)
+      if (pageParts.length === 0) return
+      const base = state.name.replace(/\.(pdf|jpe?g)$/i, '')
+      const ids: DocumentId[] = []
+      for (const [index, pages] of pageParts.entries()) {
+        const id = await editor.extractPages(state.id, pages)
+        register(id, `${base} (parte ${index + 1} di ${pageParts.length}).pdf`)
+        ids.push(id)
+      }
+      activeTool.value = null
+      select(ids[0]!)
+      notify(
+        ids.length === 1
+          ? 'Creato 1 documento'
+          : `Creati ${ids.length} documenti: l’originale resta com’era`,
+        { label: 'Torna all’originale', run: () => select(state.id) },
+      )
+    })
+
   /** Copies the selected pages, as they look now, into a new document. */
   const extractSelected = () =>
     runBusy(async (_doc, state) => {
@@ -821,6 +855,7 @@ export const useEditorStore = defineStore('editor', () => {
     toggleDeleteSelected,
     extractSelected,
     impose,
+    split,
     undo,
     redo,
     commit,

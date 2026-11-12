@@ -18,6 +18,7 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
     hint: 'Immagine: un logo, un timbro o una foto sopra le pagine',
   },
   { id: 'merge', icon: 'merge-arrows', label: 'Unisci', hint: 'Unisci più documenti in uno' },
+  { id: 'split', icon: 'scissors', label: 'Dividi', hint: 'Dividi il documento in più parti' },
   {
     id: 'nup',
     icon: 'layout-grid',

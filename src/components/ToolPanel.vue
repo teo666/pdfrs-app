@@ -7,6 +7,7 @@ import ImageTool from './ImageTool.vue'
 import MergeTool from './MergeTool.vue'
 import NupTool from './NupTool.vue'
 import SignTool from './SignTool.vue'
+import SplitTool from './SplitTool.vue'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
@@ -15,6 +16,7 @@ const titles = {
   sign: 'Firma',
   image: 'Immagine',
   merge: 'Unisci documenti',
+  split: 'Dividi documento',
   nup: 'Più pagine per foglio',
   booklet: 'Libretto',
 } as const
@@ -35,6 +37,7 @@ const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
       <SignTool v-if="store.activeTool === 'sign'" />
       <ImageTool v-else-if="store.activeTool === 'image'" />
       <MergeTool v-else-if="store.activeTool === 'merge'" />
+      <SplitTool v-else-if="store.activeTool === 'split'" />
       <NupTool v-else-if="store.activeTool === 'nup'" />
       <BookletTool v-else-if="store.activeTool === 'booklet'" />
     </div>

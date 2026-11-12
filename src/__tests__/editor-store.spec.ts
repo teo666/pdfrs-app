@@ -711,4 +711,26 @@ describe('editor store', () => {
     expect(store.images).toHaveLength(0)
     expect(store.signatures).toHaveLength(1)
   })
+
+  it('splits into parts by grid position, leaving out pages marked for deletion', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('atti.pdf', 6)])
+    const source = store.active!
+    store.toggleDelete(2)
+
+    await store.split([
+      { start: 1, end: 3 },
+      { start: 4, end: 6 },
+      { start: 2, end: 2 }, // only a deleted page: no part
+    ])
+
+    expect(store.documents.map((d) => [d.name, d.pages.length])).toEqual([
+      ['atti.pdf', 6],
+      ['atti (parte 1 di 2).pdf', 2],
+      ['atti (parte 2 di 2).pdf', 3],
+    ])
+    expect(store.active?.name).toBe('atti (parte 1 di 2).pdf')
+    store.notice?.action?.run()
+    expect(store.active).toStrictEqual(source)
+  })
 })
