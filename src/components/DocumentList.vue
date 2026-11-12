@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { DocumentId } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
@@ -10,6 +10,15 @@ import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
 const emit = defineEmits<{ open: [] }>()
+
+/** Each document's thumbnails rendered so far, for the bar under its name. */
+const progress = computed(
+  () => new Map(store.documents.map((doc) => [doc.id, store.renderProgress(doc.id)])),
+)
+const percent = (id: DocumentId) => {
+  const { done, total } = progress.value.get(id) ?? { done: 0, total: 0 }
+  return total ? (100 * done) / total : 100
+}
 
 // --- Pages dragged from the grid onto another document ------------------
 
@@ -61,7 +70,7 @@ function onDrop(event: DragEvent, id: DocumentId) {
       <li
         v-for="doc in store.documents"
         :key="doc.id"
-        class="group flex items-center rounded-md transition-colors"
+        class="group relative flex items-center rounded-md transition-colors"
         :class="[
           doc.id === store.activeId ? 'bg-accent-soft text-accent' : 'hover:bg-surface-muted',
           dropTarget === doc.id ? 'ring-2 ring-accent' : '',
@@ -97,7 +106,7 @@ function onDrop(event: DragEvent, id: DocumentId) {
             <span class="flex items-center gap-1.5 text-xs text-fg-muted">
               <span
                 v-if="doc.hasPendingChanges"
-                class="size-[7px] rounded-full bg-warning"
+                class="size-1.75 rounded-full bg-warning"
                 title="Modifiche non applicate"
               />
               {{ doc.pages.length }}
@@ -120,6 +129,26 @@ function onDrop(event: DragEvent, id: DocumentId) {
           :class="doc.id === store.activeId ? '' : 'opacity-0 group-hover:opacity-100'"
           @click="store.close(doc.id)"
         />
+        <!--
+          Thumbnails rendered so far: fills as the pages render, fades out
+          once they all are. Back to empty when the thumbnail size changes,
+          as they're rendered again at the new resolution.
+        -->
+        <div
+          class="pointer-events-none absolute inset-x-2 bottom-0.5 h-0.5 overflow-hidden rounded-full bg-line transition-opacity duration-500"
+          :class="percent(doc.id) < 100 ? 'opacity-100' : 'opacity-0'"
+          role="progressbar"
+          :aria-label="`Anteprime di ${doc.name}`"
+          aria-valuemin="0"
+          :aria-valuemax="progress.get(doc.id)?.total ?? 0"
+          :aria-valuenow="progress.get(doc.id)?.done ?? 0"
+          :aria-hidden="percent(doc.id) >= 100"
+        >
+          <div
+            class="h-full rounded-full bg-accent transition-[width] duration-300 ease-out"
+            :style="{ width: `${percent(doc.id)}%` }"
+          />
+        </div>
       </li>
     </ul>
     <p v-else class="mx-2 my-1 text-[13px] text-fg-muted">Nessun documento aperto.</p>

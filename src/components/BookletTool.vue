@@ -73,7 +73,7 @@ const sizes: { value: PageSize; label: string }[] = [
     <figure class="flex flex-col items-center gap-2" aria-label="Schema del libretto">
       <div class="flex h-24 w-36 rounded-sm bg-white p-1.5 shadow-card ring-1 ring-line" data-sheet>
         <span
-          class="grid flex-1 place-items-center rounded-[2px] bg-surface-muted text-[10px] font-semibold text-fg-muted"
+          class="grid flex-1 place-items-center rounded-xs bg-surface-muted text-[10px] font-semibold text-fg-muted"
         >
           {{ binding === 'left' ? plan.sheets * 4 : 1 }}
         </span>
@@ -82,7 +82,7 @@ const sizes: { value: PageSize; label: string }[] = [
           :class="foldLine ? 'border-l border-dashed border-fg-muted' : ''"
         />
         <span
-          class="grid flex-1 place-items-center rounded-[2px] bg-surface-muted text-[10px] font-semibold text-fg-muted"
+          class="grid flex-1 place-items-center rounded-xs bg-surface-muted text-[10px] font-semibold text-fg-muted"
         >
           {{ binding === 'left' ? 1 : plan.sheets * 4 }}
         </span>

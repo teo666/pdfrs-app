@@ -464,7 +464,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             :class="{
               // On narrow screens the signature panel floats over the right
               // side: the bar takes the space left of it.
-              'max-md:right-[19rem] max-md:left-4 max-md:max-w-none max-md:translate-x-0': signing,
+              'max-md:right-76 max-md:left-4 max-md:max-w-none max-md:translate-x-0': signing,
             }"
             role="group"
             :aria-label="
@@ -566,7 +566,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
     </button>
     <button
       class="fixed top-1/2 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-black/55 hover:bg-black/75 disabled:cursor-default disabled:opacity-25"
-      :class="signing ? 'right-[19rem] max-md:right-4' : 'right-4'"
+      :class="signing ? 'right-76 max-md:right-4' : 'right-4'"
       aria-label="Pagina successiva"
       title="Pagina successiva (→)"
       :disabled="index >= total - 1"

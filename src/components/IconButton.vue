@@ -14,7 +14,7 @@ const { variant = 'default', size = 'md' } = defineProps<{
   <button
     class="inline-grid shrink-0 cursor-pointer place-items-center rounded-md transition disabled:cursor-default disabled:opacity-40"
     :class="[
-      size === 'sm' ? 'size-[26px]' : 'size-[30px]',
+      size === 'sm' ? 'size-6.5' : 'size-7.5',
       variant === 'danger'
         ? 'enabled:hover:bg-danger-soft enabled:hover:text-danger'
         : 'enabled:hover:bg-surface-muted',

@@ -98,6 +98,13 @@ test.afterEach(() => {
   expect(errors).toEqual([])
 })
 
+/** Waits for a document's bar in the sidebar to report every page rendered. */
+async function expectRendered(page: Page, name: string, total: number, timeout = 20_000) {
+  const bar = page.getByRole('progressbar', { name: `Anteprime di ${name}`, includeHidden: true })
+  await expect(bar).toHaveAttribute('aria-valuemax', String(total))
+  await expect(bar).toHaveAttribute('aria-valuenow', String(total), { timeout })
+}
+
 test('edits a PDF: rotate, delete, undo/redo, reorder, apply and download', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('Trascina qui i tuoi PDF o JPEG')).toBeVisible()
@@ -188,19 +195,9 @@ test('dragging over a 900-page document touches nothing but the drop indicator',
   const chooser = await chooserPromise
   await chooser.setFiles({ name: 'grande.pdf', mimeType: 'application/pdf', buffer: await bigPdf(30) })
   await expect(cards(page)).toHaveCount(900)
-  // Let the thumbnails of the cards on screen arrive first: they change
-  // those cards on their own, and would muddle the check below.
-  let thumbnails = -1
-  await expect
-    .poll(
-      async () => {
-        const before = thumbnails
-        thumbnails = await page.locator('main article img').count()
-        return thumbnails > 0 && thumbnails === before
-      },
-      { intervals: [300] },
-    )
-    .toBe(true)
+  // Let every thumbnail arrive first (they're rendered in the background
+  // too): they change the cards on their own, and would muddle the check below.
+  await expectRendered(page, 'grande.pdf', 900, 60_000)
 
   // `dragover` fires continuously during a drag: each one must stay O(1).
   // Synthetic events, because Playwright's dragTo only does a single drop.
@@ -941,6 +938,35 @@ test('the header slider sets the thumbnail size, with sharper renders for big ca
   // Remembered for the next visit.
   await page.reload()
   await expect(slider).toHaveValue('170')
+})
+
+test('a bar under each document fills as its pages render, and starts over at a new size', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Apri file' }).first().click()
+  await (await chooserPromise).setFiles([
+    { name: 'lungo.pdf', mimeType: 'application/pdf', buffer: await bigPdf(4) },
+    {
+      name: 'ten_pages.pdf',
+      mimeType: 'application/pdf',
+      buffer: await readFile(fixture('ten_pages.pdf')),
+    },
+  ])
+  // Both documents render, not just the one on show; the bars then fade out.
+  await expectRendered(page, 'lungo.pdf', 120)
+  await expectRendered(page, 'ten_pages.pdf', 10)
+  const bar = page.getByRole('progressbar', { name: 'Anteprime di lungo.pdf', includeHidden: true })
+  await expect(bar).toHaveCSS('opacity', '0')
+  // Every page has its thumbnail, even far down the grid.
+  await cards(page).last().scrollIntoViewIfNeeded()
+  await expect(cards(page).last().locator('img').first()).toBeVisible()
+
+  // Bigger cards want sharper thumbnails: rendered all over again.
+  await page.getByRole('slider', { name: 'Dimensione delle anteprime' }).fill('340')
+  await expect.poll(() => bar.getAttribute('aria-valuenow')).not.toBe('120')
+  await expectRendered(page, 'lungo.pdf', 120)
 })
 
 test('text tool: real text placed, edited with a double-click, written into the PDF as text', async ({

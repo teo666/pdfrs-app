@@ -161,6 +161,8 @@ interface DocumentInternals {
   urls: Set<string>
   requested: Set<PageId>
   inFlight: Set<PageId>
+  /** Pages whose render failed at the current scale: the background pass skips them. */
+  failed: Set<PageId>
   flushScheduled: boolean
   /** Where a shift-click range starts: the last page clicked. */
   anchor: PageId | null
@@ -175,6 +177,8 @@ export const useEditorStore = defineStore('editor', () => {
   // The same cached PNG buffer comes back from the model every time its page
   // is asked for again (e.g. after undoing a commit), so it maps to one URL.
   const urlByPng = new WeakMap<Uint8Array, string>()
+  // And back: a revoked URL must not be handed out again for its PNG.
+  const pngByUrl = new Map<string, Uint8Array>()
 
   const documents = ref<DocumentState[]>([])
   const activeId = ref<DocumentId | null>(null)
@@ -236,6 +240,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (!url) {
       url = URL.createObjectURL(new Blob([png as Uint8Array<ArrayBuffer>], { type: 'image/png' }))
       urlByPng.set(png, url)
+      pngByUrl.set(url, png)
     }
     inner.urls.add(url)
     return url
@@ -288,6 +293,8 @@ export const useEditorStore = defineStore('editor', () => {
       state.selection.clear()
       inner.anchor = null
     }
+    // New pages (opened, inserted, moved in) have no thumbnail yet.
+    scheduleBackground()
   }
 
   /**
@@ -300,8 +307,10 @@ export const useEditorStore = defineStore('editor', () => {
     const waiting = [...inner.requested, ...inner.inFlight]
     inner.requested.clear()
     inner.inFlight.clear()
+    inner.failed.clear()
     state.previews = {}
     for (const page of waiting) requestPreview(state.id, page)
+    scheduleBackground()
   }
 
   function syncAnnotations(state: DocumentState, inner: DocumentInternals) {
@@ -341,6 +350,7 @@ export const useEditorStore = defineStore('editor', () => {
       urls: new Set(),
       requested: new Set(),
       inFlight: new Set(),
+      failed: new Set(),
       flushScheduled: false,
       anchor: null,
       assetBySignature: new Map(),
@@ -400,8 +410,18 @@ export const useEditorStore = defineStore('editor', () => {
   function close(id: DocumentId) {
     const index = documents.value.findIndex((d) => d.id === id)
     if (index === -1) return
-    internals.get(id)?.urls.forEach((url) => URL.revokeObjectURL(url))
+    // A merge or a copy of pages hands the same cached PNGs - so the same
+    // URLs - to another document: only those nobody else shows go.
+    const urls = internals.get(id)?.urls ?? new Set<string>()
     internals.delete(id)
+    const kept = new Set([...internals.values()].flatMap((inner) => [...inner.urls]))
+    for (const url of urls) {
+      if (kept.has(url)) continue
+      URL.revokeObjectURL(url)
+      const png = pngByUrl.get(url)
+      if (png) urlByPng.delete(png)
+      pngByUrl.delete(url)
+    }
     editor.removeDocument(id)
     documents.value.splice(index, 1)
     mergePicks.value = mergePicks.value.filter((pick) => pick !== id)
@@ -864,16 +884,124 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function flushPreviews(id: DocumentId) {
+    const inner = internals.get(id)
+    if (!inner || inner.requested.size === 0) return
+    const pages = [...inner.requested]
+    inner.requested.clear()
+    foreground += 1
+    try {
+      await renderPreviews(id, pages)
+    } finally {
+      foreground -= 1
+    }
+  }
+
+  // --- Background rendering ----------------------------------------------
+  //
+  // Cards only ask for their thumbnail when they scroll into view. In the
+  // gaps, the rest of the pages are rendered too - the active document's
+  // first, then the others' - so scrolling finds them ready and the sidebar
+  // can show each document's progress. All of it runs on the workers; the
+  // main thread only hands out the work.
+  //
+  // The worker pool takes jobs first come, first served, so this goes a few
+  // pages at a time and only when nothing on screen is waiting: a card that
+  // scrolls into view waits for one small chunk at most, never for the
+  // whole document.
+
+  /** Pages per background chunk: about one per worker of the pool. */
+  const BACKGROUND_CHUNK = 8
+  /** Renders for the cards on screen being collected or under way. */
+  let foreground = 0
+  let backgroundScheduled = false
+  let backgroundRunning = false
+
+  /** Runs `task` once the browser has a moment (or soon, where it can't say). */
+  function whenIdle(task: () => void) {
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(task, { timeout: 500 })
+    else setTimeout(task, 50)
+  }
+
+  /** Makes sure a background pass will run: after any change that leaves pages without a thumbnail. */
+  function scheduleBackground() {
+    if (backgroundScheduled || backgroundRunning) return
+    backgroundScheduled = true
+    whenIdle(() => {
+      backgroundScheduled = false
+      void renderInBackground()
+    })
+  }
+
+  /** The next pages to render behind the scenes: the active document's first. */
+  function nextBackgroundChunk(): { id: DocumentId; pages: PageId[] } | null {
+    const ordered = [...documents.value].sort(
+      (a, b) => Number(b.id === activeId.value) - Number(a.id === activeId.value),
+    )
+    for (const state of ordered) {
+      const inner = internals.get(state.id)
+      if (!inner) continue
+      const pages: PageId[] = []
+      for (const page of state.pages) {
+        if (
+          !state.previews[page.id] &&
+          !inner.inFlight.has(page.id) &&
+          !inner.requested.has(page.id) &&
+          !inner.failed.has(page.id)
+        ) {
+          pages.push(page.id)
+          if (pages.length === BACKGROUND_CHUNK) break
+        }
+      }
+      if (pages.length) return { id: state.id, pages }
+    }
+    return null
+  }
+
+  async function renderInBackground() {
+    // Nothing changes under a drag: picked up again when it ends (see the watch below).
+    if (backgroundRunning || draggingPages.value) return
+    // The cards on screen go first: try again once they're done.
+    const waiting = [...internals.values()].some((inner) => inner.requested.size > 0)
+    if (foreground > 0 || waiting) return scheduleBackground()
+    const chunk = nextBackgroundChunk()
+    if (!chunk) return
+    backgroundRunning = true
+    try {
+      await renderPreviews(chunk.id, chunk.pages)
+    } finally {
+      backgroundRunning = false
+    }
+    scheduleBackground()
+  }
+
+  watch(draggingPages, (dragging) => {
+    if (!dragging) scheduleBackground()
+  })
+
+  /**
+   * Thumbnails rendered so far for a document, at the current size, against
+   * its page count. Starts again from nothing when the size changes (the
+   * thumbnails are rendered anew, at the new resolution) or a commit
+   * replaces the pages.
+   */
+  function renderProgress(id: DocumentId): { done: number; total: number } {
+    const state = stateOf(id)
+    if (!state) return { done: 0, total: 0 }
+    const done = state.pages.reduce((sum, page) => sum + (state.previews[page.id] ? 1 : 0), 0)
+    return { done, total: state.pages.length }
+  }
+
+  /** Renders `pages` of a document at the current scale, in range batches. */
+  async function renderPreviews(id: DocumentId, pages: PageId[]) {
     const state = stateOf(id)
     const inner = internals.get(id)
-    if (!state || !inner || inner.requested.size === 0) return
+    if (!state || !inner) return
 
     const order = inner.doc.pages().map((p) => p.id)
-    const positions = [...inner.requested]
+    const positions = pages
       .map((page) => order.indexOf(page) + 1)
       .filter((position) => position > 0)
       .sort((a, b) => a - b)
-    inner.requested.clear()
 
     const batches: { start: number; end: number }[] = []
     for (const position of positions) {
@@ -900,7 +1028,11 @@ export const useEditorStore = defineStore('editor', () => {
             },
           })
         } catch (err) {
-          if (current()) report(err)
+          if (current()) {
+            report(err)
+            // Not tried again behind the scenes (a card on screen still may).
+            for (const page of pages) if (!state.previews[page]) inner.failed.add(page)
+          }
         } finally {
           if (current()) pages.forEach((page) => inner.inFlight.delete(page))
         }
@@ -1001,6 +1133,7 @@ export const useEditorStore = defineStore('editor', () => {
     commit,
     download,
     requestPreview,
+    renderProgress,
     viewerPageId,
     viewerZoom,
     openViewer,

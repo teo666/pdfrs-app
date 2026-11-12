@@ -1,4 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The real package spins up Web Workers running wasm, which jsdom has no
@@ -252,7 +253,19 @@ vi.mock('pdfrs-editor', () => {
       )
       const newId = this.nextId++
       const total = shown.reduce((sum, pages) => sum + pages.length, 0)
-      this.docs.set(newId, new FakeDocument(new Uint8Array([total]), total))
+      const merged = new FakeDocument(new Uint8Array([total]), total)
+      // Like the real model: the sources' rendered pages carry over, the
+      // very same PNG buffers.
+      let position = 1
+      ids.forEach((id, index) => {
+        const source = this.getDocument(id)
+        for (const page of shown[index]!) {
+          const png = source.pngs.get(`${source.bytes[0]}:${page.id}`)
+          if (png) merged.pngs.set(`${total}:${position}`, png)
+          position += 1
+        }
+      })
+      this.docs.set(newId, merged)
       return newId
     }
     async transferPages(from: number, pages: number[], to: number, options: { move?: boolean }) {
@@ -318,6 +331,15 @@ async function flushPreviews() {
 }
 
 let urlCount = 0
+const idleCallbacks: (() => void)[] = []
+
+/** Gives the background renderer `times` idle moments, letting each chunk finish. */
+async function runIdle(times = 1) {
+  for (let i = 0; i < times && idleCallbacks.length; i++) {
+    idleCallbacks.splice(0).forEach((cb) => cb())
+    await flushPreviews()
+  }
+}
 const revoked: string[] = []
 
 beforeEach(() => {
@@ -330,6 +352,9 @@ beforeEach(() => {
     revokeObjectURL: (url: string) => revoked.push(url),
   })
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => setTimeout(() => cb(0), 0))
+  // Background rendering stays off unless a test runs the idle callbacks.
+  idleCallbacks.length = 0
+  vi.stubGlobal('requestIdleCallback', (cb: () => void) => idleCallbacks.push(cb))
 })
 
 afterEach(() => {
@@ -776,5 +801,75 @@ describe('editor store', () => {
     expect(view.url).toBe('')
     // Two lines of 5 and 5 characters: 2.7 em wide, 2.4 em tall.
     expect(view.aspect).toBeCloseTo(2.4 / 2.7)
+  })
+
+  it('renders every page behind the scenes, the active document first, and again at a new size', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 20), pdfFile('b.pdf', 3)])
+    const [a, b] = store.documents.map((d) => d.id) as [number, number]
+    store.select(b)
+    expect(store.renderProgress(a)).toEqual({ done: 0, total: 20 })
+
+    // A chunk at a time, the active document's first.
+    await runIdle()
+    expect(store.renderProgress(b)).toEqual({ done: 3, total: 3 })
+    expect(store.renderProgress(a).done).toBe(0)
+    await runIdle()
+    expect(store.renderProgress(a).done).toBe(8)
+    await runIdle(10)
+    expect(store.renderProgress(a)).toEqual({ done: 20, total: 20 })
+    expect(idleCallbacks).toHaveLength(0)
+
+    // A size in another resolution tier: everything is rendered again.
+    store.thumbSize = 320
+    await nextTick()
+    expect(store.renderProgress(a).done).toBe(0)
+    expect(store.renderProgress(b).done).toBe(0)
+    await runIdle(10)
+    expect(store.renderProgress(a).done).toBe(20)
+    expect(store.renderProgress(b).done).toBe(3)
+  })
+
+  it('lets the cards on screen go before the background chunks', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 20)])
+    const doc = store.active!
+
+    store.requestPreview(doc.id, 15)
+    // The card's request is waiting for its frame: the background pass steps aside.
+    idleCallbacks.splice(0).forEach((cb) => cb())
+    expect(store.renderProgress(doc.id).done).toBe(0)
+    await flushPreviews()
+    expect(Object.keys(doc.previews)).toEqual(['15'])
+
+    // Then picks up the rest, skipping what's already there.
+    await runIdle(10)
+    expect(store.renderProgress(doc.id)).toEqual({ done: 20, total: 20 })
+  })
+
+  it("closing a merge's source keeps the thumbnails the merged document shares with it", async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 2), pdfFile('b.pdf', 2)])
+    const [a, b] = store.documents.map((d) => d.id) as [number, number]
+    for (const id of [a, b]) {
+      store.requestPreview(id, 1)
+      store.requestPreview(id, 2)
+    }
+    await flushPreviews()
+    const fromA = Object.values(store.documents[0]!.previews)
+
+    store.toggleMergePick(a)
+    store.toggleMergePick(b)
+    await store.mergePicked()
+    const merged = store.active!
+    for (const page of [1, 2, 3, 4]) store.requestPreview(merged.id, page)
+    await flushPreviews()
+    expect(Object.values(merged.previews).slice(0, 2)).toEqual(fromA)
+
+    store.close(a)
+    expect(revoked).toEqual([])
+    // Gone for good once no open document shows them.
+    store.close(merged.id)
+    expect(revoked.sort()).toEqual([...fromA].sort())
   })
 })

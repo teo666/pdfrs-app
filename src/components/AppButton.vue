@@ -9,7 +9,7 @@ const { variant = 'default' } = defineProps<{
 
 <template>
   <button
-    class="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-md border px-3 whitespace-nowrap transition disabled:cursor-default disabled:opacity-45"
+    class="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-md border px-3 whitespace-nowrap transition disabled:cursor-default disabled:opacity-45"
     :class="
       variant === 'primary'
         ? 'border-accent bg-accent text-accent-fg enabled:hover:brightness-110'
