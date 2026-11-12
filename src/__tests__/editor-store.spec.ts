@@ -199,7 +199,10 @@ vi.mock('pdfrs-editor', () => {
       }))
     }
     async exportBytes() {
-      return this.bytes
+      return new Uint8Array([this.pageList.filter((p) => !p.markedForDeletion).length])
+    }
+    async exportPages(ids: number[]) {
+      return new Uint8Array([ids.length])
     }
     async getPreviews(
       _scale: number,
@@ -265,6 +268,17 @@ vi.mock('pdfrs-editor', () => {
 vi.mock('pdfrs-editor/operations', () => ({
   // A JPEG becomes a one-page PDF.
   image_to_pdf: async () => new Uint8Array([1]),
+  // Imposition: the fake document's page count lives in byte 10, see pdfFile().
+  nup_pdf: async (bytes: Uint8Array, options: { layout: number }) => {
+    const out = new Uint8Array(16)
+    out[10] = Math.ceil((bytes[0] ?? 0) / options.layout)
+    return out
+  },
+  booklet_pdf: async (bytes: Uint8Array) => {
+    const out = new Uint8Array(16)
+    out[10] = Math.ceil((bytes[0] ?? 0) / 4) * 2
+    return out
+  },
 }))
 
 import { useEditorStore } from '@/stores/editor'
@@ -656,5 +670,26 @@ describe('editor store', () => {
     store.selectPage(3, 'only')
     store.placeSignatureFromPanel(signature.id)
     expect(store.viewerPageId).toBe(3)
+  })
+
+  it('imposes the selection, or the whole document, into a new opened document', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('relazione.pdf', 10)])
+    const source = store.active!
+    store.activeTool = 'nup'
+
+    await store.impose({ kind: 'nup', options: { layout: 4 } })
+    expect(store.active?.name).toBe('relazione (4 per foglio).pdf')
+    expect(store.active?.pages).toHaveLength(3) // 10 pages, 4 per sheet
+    expect(store.activeTool).toBeNull()
+    store.notice?.action?.run() // "Torna all'originale"
+    expect(store.active).toStrictEqual(source)
+
+    store.selectPage(1, 'only')
+    store.selectPage(5, 'range')
+    await store.impose({ kind: 'booklet', options: {} })
+    expect(store.active?.name).toBe('relazione (libretto).pdf')
+    expect(store.active?.pages).toHaveLength(4) // 5 pages: 2 sheets, front and back
+    expect(source.pages).toHaveLength(10)
   })
 })

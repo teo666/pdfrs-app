@@ -12,6 +12,18 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
     hint: 'Firma: disegna o carica una firma e mettila sulle pagine',
   },
   { id: 'merge', icon: 'merge-arrows', label: 'Unisci', hint: 'Unisci più documenti in uno' },
+  {
+    id: 'nup',
+    icon: 'layout-grid',
+    label: 'N per foglio',
+    hint: 'Più pagine su ogni foglio, per stampare con meno carta',
+  },
+  {
+    id: 'booklet',
+    icon: 'book',
+    label: 'Libretto',
+    hint: 'Libretto da stampare fronte e retro e piegare a metà',
+  },
 ]
 </script>
 

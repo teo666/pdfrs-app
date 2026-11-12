@@ -650,3 +650,39 @@ test('sign tool: draw a signature in the panel and it lands on the selected page
   await panel.getByRole('button', { name: 'Metti «Firma 1» sulla pagina 3' }).click()
   await expect(viewer.locator('[data-annotation]')).toHaveCount(2)
 })
+
+test('N-up and booklet tools make new documents from the selection or the whole document', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'ten_pages.pdf')
+  await expectAllThumbnails(page, 10)
+  const tools = page.getByRole('navigation', { name: 'Strumenti' })
+
+  // N-up on three selected pages, two per sheet: two sheets.
+  await cards(page).nth(0).getByRole('checkbox', { name: /Seleziona/ }).click()
+  await cards(page).nth(2).getByRole('checkbox', { name: /Seleziona/ }).click({ modifiers: ['Shift'] })
+  await tools.getByRole('button', { name: 'N per foglio' }).click()
+  const nup = page.getByRole('complementary', { name: 'Più pagine per foglio' })
+  await expect(nup).toContainText('Si applica alle 3 pagine selezionate')
+  await expect(nup.locator('[data-sheet] > *')).toHaveCount(2)
+  await nup.getByRole('radio', { name: '4' }).click()
+  await expect(nup.locator('[data-sheet] > *')).toHaveCount(4)
+  await expect(nup).toContainText('2 × 2, foglio verticale')
+  await nup.getByRole('radio', { name: '2' }).click()
+  await nup.getByRole('button', { name: 'Crea documento (2 fogli)' }).click()
+  await expect(page.getByRole('heading', { name: 'ten_pages (2 per foglio).pdf' })).toBeVisible()
+  await expectAllThumbnails(page, 2)
+  await expect(nup).toBeHidden()
+
+  // Booklet of the whole original: 10 pages padded to 12, 3 sheets, 6 faces.
+  await page.getByRole('status').getByRole('button', { name: 'Torna all’originale' }).click()
+  await page.keyboard.press('Escape') // clear the selection: the whole document
+  await tools.getByRole('button', { name: 'Libretto' }).click()
+  const booklet = page.getByRole('complementary', { name: 'Libretto' })
+  await expect(booklet).toContainText('3 fogli da piegare · 2 pagine bianche aggiunte')
+  await booklet.getByRole('button', { name: 'Crea libretto' }).click()
+  await expect(page.getByRole('heading', { name: 'ten_pages (libretto).pdf' })).toBeVisible()
+  await expectAllThumbnails(page, 6)
+  await expect(page.locator('aside li')).toHaveCount(3)
+})

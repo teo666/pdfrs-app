@@ -11,7 +11,13 @@ import {
   type PageInfo,
   type PdfDocument,
 } from 'pdfrs-editor'
-import { image_to_pdf } from 'pdfrs-editor/operations'
+import {
+  booklet_pdf,
+  image_to_pdf,
+  nup_pdf,
+  type BookletOptions,
+  type NUpOptions,
+} from 'pdfrs-editor/operations'
 
 import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
 
@@ -21,7 +27,12 @@ export const PREVIEW_SCALE = 0.4
 export type ViewerZoom = 'actual' | 'fit'
 
 /** The tools of the right-hand panel. */
-export type ToolId = 'sign' | 'merge'
+export type ToolId = 'sign' | 'merge' | 'nup' | 'booklet'
+
+/** What an imposition tool makes: several pages per sheet, or a folded booklet. */
+export type Imposition =
+  | { kind: 'nup'; options: NUpOptions }
+  | { kind: 'booklet'; options: BookletOptions }
 
 /** A signature (or any stamp image) in the session's library, ready to be placed on pages. */
 export interface Signature {
@@ -81,6 +92,12 @@ export type SelectMode = 'only' | 'toggle' | 'range'
 export interface Notice {
   message: string
   action?: { label: string; run: () => void }
+}
+
+/** Pages per sheet of an N-up layout (2 when unspecified, the engine's default). */
+export function perSheet(layout: NUpOptions['layout']): number {
+  if (layout === undefined) return 2
+  return typeof layout === 'number' ? layout : layout.rows * layout.cols
 }
 
 /** How long an informational notice stays up. */
@@ -599,6 +616,33 @@ export const useEditorStore = defineStore('editor', () => {
     edit((doc) => (allMarked ? doc.restorePages(pages) : doc.deletePages(pages)))
   }
 
+  /**
+   * Lays out the selected pages - or the whole document, as it looks now -
+   * several to a sheet or as a booklet, into a new document, which is
+   * opened (the original stays as it is).
+   */
+  const impose = (imposition: Imposition) =>
+    runBusy(async (doc, state) => {
+      const pages = selectedPages()
+      const source = pages.length > 0 ? await doc.exportPages(pages) : await doc.exportBytes()
+      const result =
+        imposition.kind === 'nup'
+          ? await nup_pdf(source, imposition.options)
+          : await booklet_pdf(source, imposition.options)
+      const id = await editor.addDocument(result)
+      const base = state.name.replace(/\.(pdf|jpe?g)$/i, '')
+      const suffix =
+        imposition.kind === 'nup' ? `${perSheet(imposition.options.layout)} per foglio` : 'libretto'
+      const name = `${base} (${suffix}).pdf`
+      register(id, name)
+      activeTool.value = null
+      select(id)
+      notify(`Creato «${name}»: l’originale resta com’era`, {
+        label: 'Torna all’originale',
+        run: () => select(state.id),
+      })
+    })
+
   /** Copies the selected pages, as they look now, into a new document. */
   const extractSelected = () =>
     runBusy(async (_doc, state) => {
@@ -755,6 +799,7 @@ export const useEditorStore = defineStore('editor', () => {
     rotateSelected,
     toggleDeleteSelected,
     extractSelected,
+    impose,
     undo,
     redo,
     commit,
