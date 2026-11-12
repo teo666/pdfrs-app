@@ -8,12 +8,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // undo/redo, and a baseline (`getBytes()`) that only a commit replaces.
 vi.mock('pdfrs-editor', () => {
   type Page = { id: number; pendingRotation: number; markedForDeletion: boolean }
+  type Meta = { base: Record<string, string>; pending: Record<string, string | null> }
 
   class FakeDocument {
     bytes: Uint8Array
     pageList: Page[]
-    undoStack: { bytes: Uint8Array; pages: Page[]; annotations: unknown }[] = []
-    redoStack: { bytes: Uint8Array; pages: Page[]; annotations: unknown }[] = []
+    undoStack: { bytes: Uint8Array; pages: Page[]; annotations: unknown; meta: Meta }[] = []
+    redoStack: { bytes: Uint8Array; pages: Page[]; annotations: unknown; meta: Meta }[] = []
+    /** Properties: what the baseline holds, and the edits pending over it (null: remove). */
+    meta: Meta = { base: { title: 'Relazione', author: 'Mario Rossi' }, pending: {} }
     pngs = new Map<string, Uint8Array>()
     /** Set on a password-protected document: the password, and the pages it hides. */
     lock: { password: string; pages: number } | null = null
@@ -31,8 +34,32 @@ vi.mock('pdfrs-editor', () => {
         bytes: this.bytes,
         pages: structuredClone(this.pageList),
         annotations: this.annotationList,
+        meta: structuredClone(this.meta),
       })
       this.redoStack = []
+    }
+    async getMetadata() {
+      const merged: Record<string, string> = { ...this.meta.base }
+      for (const [key, value] of Object.entries(this.meta.pending)) {
+        if (value === null) delete merged[key]
+        else merged[key] = value
+      }
+      return merged
+    }
+    pendingMetadataFields() {
+      return new Set(Object.keys(this.meta.pending))
+    }
+    async setMetadata(patch: Record<string, string | null>) {
+      const current = await this.getMetadata()
+      const changed = Object.entries(patch).filter(
+        ([key, value]) => (current[key] ?? null) !== value,
+      )
+      if (changed.length === 0) return
+      this.save()
+      for (const [key, value] of changed) {
+        if ((this.meta.base[key] ?? null) === value) delete this.meta.pending[key]
+        else this.meta.pending[key] = value
+      }
     }
     private page(id: number) {
       const page = this.pageList.find((p) => p.id === id)
@@ -51,6 +78,7 @@ vi.mock('pdfrs-editor', () => {
     hasPendingChanges() {
       return (
         this.annotationList.length > 0 ||
+        Object.keys(this.meta.pending).length > 0 ||
         this.pageList.some(
           (p, i) => p.pendingRotation !== 0 || p.markedForDeletion || p.id !== i + 1,
         )
@@ -186,8 +214,9 @@ vi.mock('pdfrs-editor', () => {
         bytes: this.bytes,
         pages: this.pageList,
         annotations: this.annotationList,
+        meta: this.meta,
       })
-      ;({ bytes: this.bytes, pages: this.pageList } = prev)
+      ;({ bytes: this.bytes, pages: this.pageList, meta: this.meta } = prev)
       this.annotationList = prev.annotations as typeof this.annotationList
       return true
     }
@@ -198,8 +227,9 @@ vi.mock('pdfrs-editor', () => {
         bytes: this.bytes,
         pages: this.pageList,
         annotations: this.annotationList,
+        meta: this.meta,
       })
-      ;({ bytes: this.bytes, pages: this.pageList } = next)
+      ;({ bytes: this.bytes, pages: this.pageList, meta: this.meta } = next)
       this.annotationList = next.annotations as typeof this.annotationList
       return true
     }
@@ -207,6 +237,7 @@ vi.mock('pdfrs-editor', () => {
       this.save()
       const kept = this.pageList.filter((p) => !p.markedForDeletion)
       this.bytes = new Uint8Array([kept.length])
+      this.meta = { base: await this.getMetadata(), pending: {} }
       this.pageList = kept.map((_, i) => ({
         id: i + 1,
         pendingRotation: 0,
@@ -965,5 +996,34 @@ describe('editor store', () => {
     expect(await store.unlock('segreta')).toBe(true)
     expect(store.active?.name).toBe('segreto (sbloccato).pdf')
     expect(store.active?.pages).toHaveLength(5)
+  })
+
+  it('edits the properties as pending changes: undoable, applied with the rest', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('relazione.pdf', 2)])
+    const doc = store.active!
+    // Not read until asked for.
+    expect(doc.metadata).toBeNull()
+    await store.loadMetadata(doc.id)
+    expect(doc.metadata).toEqual({ title: 'Relazione', author: 'Mario Rossi' })
+
+    await store.setMetadata({ title: 'Relazione finale', author: null })
+    expect(doc.metadata).toEqual({ title: 'Relazione finale' })
+    expect(doc.pendingMetadata.sort()).toEqual(['author', 'title'])
+    expect(doc.hasPendingChanges).toBe(true)
+
+    // The same value again is no edit at all.
+    await store.setMetadata({ title: 'Relazione finale' })
+    store.undo()
+    await flushPreviews()
+    expect(doc.metadata).toEqual({ title: 'Relazione', author: 'Mario Rossi' })
+    expect(doc.pendingMetadata).toEqual([])
+    expect(doc.hasPendingChanges).toBe(false)
+
+    store.redo()
+    await store.commit()
+    await flushPreviews()
+    expect(doc.metadata).toEqual({ title: 'Relazione finale' })
+    expect(doc.pendingMetadata).toEqual([])
   })
 })

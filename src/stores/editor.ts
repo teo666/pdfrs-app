@@ -9,7 +9,10 @@ import {
   type AssetId,
   type DocumentId,
   type ImageAsset,
+  type MetadataField,
+  type MetadataPatch,
   type PageAnnotation,
+  type PdfMetadata,
   type PageId,
   type PageInfo,
   type PdfDocument,
@@ -56,7 +59,16 @@ function savedThumbSize(): number {
 export type ViewerZoom = 'actual' | 'fit'
 
 /** The tools of the right-hand panel. */
-export type ToolId = 'sign' | 'image' | 'text' | 'merge' | 'split' | 'nup' | 'booklet' | 'protect'
+export type ToolId =
+  | 'sign'
+  | 'image'
+  | 'text'
+  | 'merge'
+  | 'split'
+  | 'nup'
+  | 'booklet'
+  | 'protect'
+  | 'properties'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -136,6 +148,14 @@ export interface DocumentState {
    * unlocked with it (`unlock`); can still be downloaded as it is.
    */
   locked: boolean
+  /**
+   * The document's properties (title, author...) as they'll be written:
+   * null until something asks for them (`loadMetadata`), since reading them
+   * costs a pass over the file. Then kept current with every edit.
+   */
+  metadata: PdfMetadata | null
+  /** Fields edited and not yet applied. */
+  pendingMetadata: MetadataField[]
 }
 
 /** How a click extends the selection: only this page, toggle it, or everything from the last clicked page to it. */
@@ -302,6 +322,39 @@ export const useEditorStore = defineStore('editor', () => {
     }
     // New pages (opened, inserted, moved in) have no thumbnail yet.
     scheduleBackground()
+    // An undo, a redo or a commit may change them too.
+    if (state.metadata !== null) void refreshMetadata(state.id)
+  }
+
+  /** Reads the document's properties as they'd be written (pending edits included). */
+  async function refreshMetadata(id: DocumentId) {
+    const state = stateOf(id)
+    const inner = internals.get(id)
+    if (!state || !inner || state.locked) return
+    try {
+      const metadata = await inner.doc.getMetadata()
+      state.metadata = metadata
+      state.pendingMetadata = [...inner.doc.pendingMetadataFields()]
+    } catch (err) {
+      report(err)
+    }
+  }
+
+  /** Makes a document's properties available (`metadata`), reading them the first time. */
+  async function loadMetadata(id: DocumentId) {
+    if (stateOf(id)?.metadata === null) await refreshMetadata(id)
+  }
+
+  /**
+   * Edits the active document's properties: a string sets a field, null
+   * removes it, a field left out stays as it is. A pending edit like the
+   * others - one undoable step, written by Applica modifiche or Scarica.
+   */
+  async function setMetadata(patch: MetadataPatch) {
+    const id = activeId.value
+    if (id === null) return
+    await runBusy((doc) => doc.setMetadata(patch))
+    await refreshMetadata(id)
   }
 
   /**
@@ -376,6 +429,8 @@ export const useEditorStore = defineStore('editor', () => {
       annotations: {},
       splitParts: {},
       locked: doc.isLocked(),
+      metadata: null,
+      pendingMetadata: [],
     })
     sync(id)
   }
@@ -1181,6 +1236,8 @@ export const useEditorStore = defineStore('editor', () => {
     transferPages,
     protect,
     unlock,
+    loadMetadata,
+    setMetadata,
     openFiles,
     select,
     rename,

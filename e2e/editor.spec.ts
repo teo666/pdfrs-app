@@ -1110,3 +1110,37 @@ test('protects a copy with a password, opens a protected PDF and unlocks it', as
   await expectAllThumbnails(page, 10)
   await expect(sidebar.getByRole('img', { name: 'Protetto da password' })).toHaveCount(2)
 })
+
+test('edits the document properties, written into the PDF with the download', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Proprietà' }).click()
+  const panel = page.getByRole('complementary', { name: 'Proprietà del documento' })
+  const title = panel.getByLabel('Titolo')
+  await expect(title).toBeVisible()
+
+  // Saved on leaving the field, or on Enter; marked until applied.
+  await title.fill('Relazione 2026')
+  await title.press('Enter')
+  await expect(panel.getByText('Titolo · modificato')).toBeVisible()
+  await panel.getByLabel('Autore').fill('Ufficio tecnico')
+  await panel.getByLabel('Autore').blur()
+  await panel.getByLabel('Creato il').fill('2024-07-01T09:05')
+  await panel.getByLabel('Creato il').blur()
+  await expect(page.getByText('modifiche non applicate')).toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica', exact: true }).click()
+  const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
+  expect(pdf).toMatch(/\/Title\s*\(Relazione 2026\)/)
+  expect(pdf).toMatch(/\/Author\s*\(Ufficio tecnico\)/)
+  expect(pdf).toMatch(/\/CreationDate\s*\(D:20240701090500[+-]\d\d'\d\d'\)/)
+
+  // Undone like any other edit; all of them cleared in one go.
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  await expect(panel.getByLabel('Creato il')).toHaveValue('')
+  await panel.getByRole('button', { name: 'Togli tutte le proprietà' }).click()
+  await expect(title).toHaveValue('')
+  await expect(panel.getByLabel('Autore')).toHaveValue('')
+  await expect(panel.getByRole('button', { name: 'Togli tutte le proprietà' })).toBeDisabled()
+})

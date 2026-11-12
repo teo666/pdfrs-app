@@ -43,6 +43,12 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
     label: 'Proteggi',
     hint: 'Proteggi con password: una copia che si apre solo con la password',
   },
+  {
+    id: 'properties',
+    icon: 'info',
+    label: 'Proprietà',
+    hint: 'Proprietà del documento: titolo, autore, oggetto, parole chiave',
+  },
 ]
 </script>
 

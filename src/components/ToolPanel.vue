@@ -6,6 +6,7 @@ import BookletTool from './BookletTool.vue'
 import ImageTool from './ImageTool.vue'
 import MergeTool from './MergeTool.vue'
 import NupTool from './NupTool.vue'
+import PropertiesTool from './PropertiesTool.vue'
 import ProtectTool from './ProtectTool.vue'
 import SignTool from './SignTool.vue'
 import SplitTool from './SplitTool.vue'
@@ -23,6 +24,7 @@ const titles = {
   nup: 'Più pagine per foglio',
   booklet: 'Libretto',
   protect: 'Proteggi con password',
+  properties: 'Proprietà del documento',
 } as const
 const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
 </script>
@@ -53,6 +55,7 @@ const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
       <NupTool v-else-if="store.activeTool === 'nup'" />
       <BookletTool v-else-if="store.activeTool === 'booklet'" />
       <ProtectTool v-else-if="store.activeTool === 'protect'" />
+      <PropertiesTool v-else-if="store.activeTool === 'properties'" />
     </div>
   </aside>
 </template>
