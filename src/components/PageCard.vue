@@ -31,9 +31,9 @@ const emit = defineEmits<{
   needPreview: []
   /** Show this page full size. */
   open: []
-  /** A click on the thumbnail; the grid decides between opening and selecting. */
+  /** A click on the thumbnail: selects (the grid reads the modifiers). */
   pick: [event: MouseEvent]
-  /** The selection checkbox (or Space) was used; `range` when shift was held. */
+  /** Space on the thumbnail: toggles the selection; `range` when shift was held. */
   check: [range: boolean]
 }>()
 
@@ -129,35 +129,41 @@ const label = computed(() =>
       </div>
 
       <!--
-        The whole thumbnail: a click opens the full-size viewer, or selects
-        while a selection is in progress (the grid decides). Enter opens,
-        Space selects. The checkbox and the action bar sit above it.
+        The whole thumbnail selects the page: a click toggles it, shift+click
+        selects a range (the grid decides), Space toggles from the keyboard.
+        Opening the full-size view is the magnifier's job (or Enter, or a
+        double-click). The magnifier and the action bar sit above it.
         A div, not a <button>: Firefox won't start a drag from a button, and
         the thumbnail is where people grab the card to reorder it.
       -->
       <div
-        class="absolute inset-0 cursor-zoom-in rounded-md in-data-selecting:cursor-pointer"
-        role="button"
+        class="absolute inset-0 cursor-pointer rounded-md"
+        role="checkbox"
         tabindex="0"
-        :aria-label="`Apri ${label.toLowerCase()} a grandezza reale`"
+        :aria-checked="selected"
+        :aria-label="`Seleziona ${label.toLowerCase()}`"
         @click="emit('pick', $event)"
+        @dblclick="emit('open')"
         @keydown.enter.prevent="emit('open')"
         @keydown.space.prevent="emit('check', $event.shiftKey)"
       />
 
-      <button
-        class="absolute top-1.5 left-1.5 grid size-6 cursor-pointer place-items-center rounded-md border-2 shadow-card transition"
-        :class="
-          selected
-            ? 'border-accent bg-accent text-accent-fg'
-            : 'border-line bg-surface/90 text-transparent opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 in-data-selecting:opacity-100 pointer-coarse:opacity-100'
-        "
-        role="checkbox"
-        :aria-checked="selected"
-        :aria-label="`Seleziona ${label.toLowerCase()}`"
-        @click="emit('check', $event.shiftKey)"
+      <!-- Selected: a check mark, just a sign (the thumbnail itself is the control). -->
+      <span
+        v-if="selected"
+        class="pointer-events-none absolute top-1.5 left-1.5 grid size-6 place-items-center rounded-md bg-accent text-accent-fg shadow-card"
+        aria-hidden="true"
       >
         <AppIcon name="check" :size="14" />
+      </span>
+
+      <button
+        class="absolute top-1.5 right-1.5 grid size-8 cursor-zoom-in place-items-center rounded-full bg-surface/95 opacity-0 shadow-card transition group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-surface hover:text-accent pointer-coarse:opacity-100"
+        :aria-label="`Apri ${label.toLowerCase()} a grandezza reale`"
+        title="Vedi la pagina in dettaglio (Invio, o doppio clic)"
+        @click="emit('open')"
+      >
+        <AppIcon name="zoom-in" :size="18" />
       </button>
 
       <div

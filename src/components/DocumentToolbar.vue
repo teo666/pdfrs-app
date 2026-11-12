@@ -37,7 +37,7 @@ const summary = computed(() => {
 
 <template>
   <div
-    class="sticky top-0 z-10 flex items-center gap-x-4 gap-y-2 border-b border-line bg-canvas/88 px-6 py-3 backdrop-blur-md @max-2xl:flex-wrap @max-md:px-4"
+    class="sticky top-0 z-10 flex items-center flex-wrap gap-x-4 gap-y-2 border-b border-line bg-canvas/88 px-6 py-3 backdrop-blur-md @max-md:px-4"
   >
     <!-- Wraps on the width of the workspace (the @container in EditorView), not of the window. -->
     <div class="min-w-0 flex-1 @max-2xl:basis-full">

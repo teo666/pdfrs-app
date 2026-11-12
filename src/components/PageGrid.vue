@@ -64,15 +64,11 @@ function setCountDragImage(transfer: DataTransfer, count: number) {
 }
 
 /**
- * A click on a thumbnail: opens the viewer, unless a selection is in
- * progress or a modifier asks for selecting - then it selects instead
- * (shift: everything from the last clicked page; Cmd/Ctrl: toggle).
+ * A click on a thumbnail selects: it toggles that page, shift+click selects
+ * everything from the last clicked page. (The magnifier opens the viewer.)
  */
 function onPick(event: MouseEvent, id: PageId) {
-  if (event.shiftKey) store.selectPage(id, 'range')
-  else if (event.metaKey || event.ctrlKey || props.doc.selection.size > 0) {
-    store.selectPage(id, 'toggle')
-  } else store.openViewer(id)
+  store.selectPage(id, event.shiftKey ? 'range' : 'toggle')
 }
 
 function onDragOver(event: DragEvent, index: number, id: PageId) {
@@ -183,7 +179,6 @@ async function animateReorder(lo: number, hi: number, apply: () => void) {
   <div
     ref="grid"
     class="relative grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-[18px] px-6 pt-5 pb-10 @max-md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] @max-md:gap-3 @max-md:px-4"
-    :data-selecting="doc.selection.size > 0 || undefined"
     @dragleave.self="onGridLeave"
   >
     <!--

@@ -321,8 +321,7 @@ test('selects pages, acts on them together, drags them as a block and extracts t
   await page.goto('/')
   await openFiles(page, 'ten_pages.pdf')
   await expectAllThumbnails(page, 10)
-  const thumb = (index: number) =>
-    cards(page).nth(index).getByRole('button', { name: /a grandezza reale/ })
+  const thumb = (index: number) => cards(page).nth(index).getByRole('checkbox', { name: /Seleziona/ })
   const selectedIds = () =>
     cards(page).evaluateAll((els) =>
       els
@@ -331,9 +330,9 @@ test('selects pages, acts on them together, drags them as a block and extracts t
     )
   const bar = page.getByRole('toolbar', { name: 'Azioni sulle pagine selezionate' })
 
-  // Cmd/Ctrl+click starts a selection instead of opening the viewer,
-  // shift+click extends it, a plain click now toggles.
-  await thumb(1).click({ modifiers: ['ControlOrMeta'] })
+  // A click on a thumbnail selects (it doesn't open the viewer: that's the
+  // magnifier), shift+click selects a range, another click toggles.
+  await thumb(1).click()
   await thumb(4).click({ modifiers: ['Shift'] })
   await expect(bar).toContainText('4 pagine selezionate')
   await thumb(2).click()
@@ -383,9 +382,8 @@ test('moves pages to another document, inserts a file and merges documents', asy
   const doc = (name: string) => docs.filter({ hasText: name })
 
   // Select pages 2-3 and drag them onto the other document in the sidebar.
-  const thumb = (index: number) =>
-    cards(page).nth(index).getByRole('button', { name: /a grandezza reale/ })
-  await thumb(1).click({ modifiers: ['ControlOrMeta'] })
+  const thumb = (index: number) => cards(page).nth(index).getByRole('checkbox', { name: /Seleziona/ })
+  await thumb(1).click()
   await thumb(2).click({ modifiers: ['Shift'] })
   await cards(page).nth(1).dragTo(doc('four_pages.pdf'))
   const notice = page.getByRole('status').filter({ hasText: 'four_pages.pdf' })
@@ -529,4 +527,35 @@ test('puts a signature on every page and moves just one copy on its own', async 
   await bar.getByRole('button', { name: 'Rimuovi da 3 pagine' }).click()
   await expect(page.locator('main [data-stamp]')).toHaveCount(1)
   await expect(cards(page).nth(1).locator('[data-stamp]')).toHaveCount(1)
+})
+
+test('a click selects the page, the magnifier or a double-click opens it', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  const thumb = cards(page).nth(1).getByRole('checkbox', { name: /Seleziona/ })
+
+  await thumb.click()
+  await expect(thumb).toHaveAttribute('aria-checked', 'true')
+  await expect(viewer).toBeHidden()
+  await thumb.click()
+  await expect(thumb).toHaveAttribute('aria-checked', 'false')
+
+  await cards(page).nth(1).getByRole('button', { name: /a grandezza reale/ }).click()
+  await expect(viewer.locator('header')).toContainText('Pagina 2 di 4')
+  await page.keyboard.press('Escape')
+
+  // A double-click opens it too, and leaves the selection as it was.
+  await thumb.dblclick()
+  await expect(viewer.locator('header')).toContainText('Pagina 2 di 4')
+  await page.keyboard.press('Escape')
+  await expect(thumb).toHaveAttribute('aria-checked', 'false')
+
+  // From the keyboard: Space selects, Enter opens.
+  await thumb.focus()
+  await page.keyboard.press('Space')
+  await expect(thumb).toHaveAttribute('aria-checked', 'true')
+  await page.keyboard.press('Enter')
+  await expect(viewer).toBeVisible()
 })
