@@ -559,3 +559,38 @@ test('a click selects the page, the magnifier or a double-click opens it', async
   await page.keyboard.press('Enter')
   await expect(viewer).toBeVisible()
 })
+
+test('renames a document from the sidebar or from its title', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  const item = page.locator('aside li').first()
+
+  // Sidebar: the pen, then type over the name (the extension isn't selected).
+  await item.hover()
+  await item.getByRole('button', { name: 'Rinomina four_pages.pdf' }).click()
+  const field = page.getByRole('textbox', { name: 'Nuovo nome per four_pages.pdf' })
+  await expect(field).toBeFocused()
+  await page.keyboard.type('contratto')
+  await page.keyboard.press('Enter')
+  await expect(item).toContainText('contratto.pdf')
+  await expect(page.getByRole('heading', { name: 'contratto.pdf' })).toBeVisible()
+
+  // Title: double-click; Esc gives up without touching the page selection.
+  await cards(page).nth(0).getByRole('checkbox', { name: /Seleziona/ }).click()
+  await page.getByRole('heading', { name: 'contratto.pdf' }).dblclick()
+  await page.keyboard.type('da buttare')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('heading', { name: 'contratto.pdf' })).toBeVisible()
+  await expect(page.getByRole('toolbar', { name: 'Azioni sulle pagine selezionate' })).toBeVisible()
+
+  // Leaving the field saves too, and the download takes the new name.
+  await page.getByRole('heading', { name: 'contratto.pdf' }).hover()
+  await page.locator('main').getByRole('button', { name: 'Rinomina contratto.pdf' }).click()
+  await page.keyboard.press('ControlOrMeta+a')
+  await page.keyboard.type('Contratto firmato')
+  await page.getByRole('button', { name: 'Inserisci pagine' }).focus()
+  await expect(page.getByRole('heading', { name: 'Contratto firmato' })).toBeVisible()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica' }).click()
+  expect((await downloadPromise).suggestedFilename()).toBe('Contratto firmato.pdf')
+})

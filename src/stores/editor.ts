@@ -260,6 +260,17 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  /**
+   * Renames a document in the app: the name it's listed under and the file
+   * name it's downloaded as (".pdf" is added there if missing). Blank names
+   * are ignored.
+   */
+  function rename(id: DocumentId, name: string) {
+    const state = stateOf(id)
+    const trimmed = name.trim()
+    if (state && trimmed) state.name = trimmed
+  }
+
   function select(id: DocumentId) {
     if (!stateOf(id) || id === activeId.value) return
     activeId.value = id
@@ -678,6 +689,7 @@ export const useEditorStore = defineStore('editor', () => {
     transferPages,
     openFiles,
     select,
+    rename,
     close,
     rotate,
     move,

@@ -8,6 +8,7 @@ Cosa fa oggi:
 - mostra le miniature delle pagine, generate solo quando entrano nello schermo e in parallelo su un pool di Web Worker;
 - ruota, elimina e ripristina le pagine, e le riordina trascinandole, in modo fluido anche su documenti con migliaia di pagine;
 - seleziona le pagine con un clic sulla miniatura (⇧+clic per un intervallo, Spazio da tastiera, ⌘/Ctrl+A per tutte; Esc deseleziona) per ruotarle, eliminarle (anche con Canc) o trascinarle insieme come un blocco, e per **estrarle in un nuovo documento** così come appaiono;
+- rinomina un documento al volo: la penna accanto al nome nella barra laterale o nel titolo (oppure doppio clic sul nome); Invio salva, Esc annulla, e il PDF si scarica con il nuovo nome;
 - sposta le pagine in un altro documento trascinandole sul suo nome nella barra laterale (con ⌥/Alt le copia);
 - inserisce le pagine di un PDF o JPEG nel documento aperto, dopo la selezione o in fondo;
 - unisce più documenti, così come appaiono, nell'ordine in cui li scegli con le caselle numerate della barra laterale;

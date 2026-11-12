@@ -5,6 +5,7 @@ import type { DocumentId } from 'pdfrs-editor'
 import AppButton from './AppButton.vue'
 import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
+import InlineRename from './InlineRename.vue'
 import { PAGE_DRAG_TYPE } from '@/lib/reorder'
 import { useEditorStore } from '@/stores/editor'
 
@@ -14,6 +15,9 @@ const emit = defineEmits<{ open: [] }>()
 // --- Pages dragged from the grid onto another document ------------------
 
 const dropTarget = ref<DocumentId | null>(null)
+
+/** The document whose name is being edited in place. */
+const renaming = ref<DocumentId | null>(null)
 
 const carriesPages = (event: DragEvent) =>
   event.dataTransfer?.types.includes(PAGE_DRAG_TYPE) ?? false
@@ -89,22 +93,47 @@ const pickNumber = (id: DocumentId) => store.mergePicks.indexOf(id) + 1
         >
           {{ pickNumber(doc.id) || '' }}
         </button>
-        <button
-          class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-2 pr-1 pl-2 text-left"
-          :aria-current="doc.id === store.activeId"
-          @click="store.select(doc.id)"
+        <!-- Renaming: the field takes the place of the name; Enter or leaving it saves. -->
+        <div
+          v-if="renaming === doc.id"
+          class="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 pl-2"
         >
           <AppIcon name="file" />
-          <span class="flex-1 truncate" :title="doc.name">{{ doc.name }}</span>
-          <span class="flex items-center gap-1.5 text-xs text-fg-muted">
-            <span
-              v-if="doc.hasPendingChanges"
-              class="size-[7px] rounded-full bg-warning"
-              title="Modifiche non applicate"
-            />
-            {{ doc.pages.length }}
-          </span>
-        </button>
+          <InlineRename
+            class="flex-1"
+            :value="doc.name"
+            :label="`Nuovo nome per ${doc.name}`"
+            @save="(name) => (store.rename(doc.id, name), (renaming = null))"
+            @cancel="renaming = null"
+          />
+        </div>
+        <template v-else>
+          <button
+            class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-2 pr-1 pl-2 text-left"
+            :aria-current="doc.id === store.activeId"
+            @click="store.select(doc.id)"
+            @dblclick="renaming = doc.id"
+          >
+            <AppIcon name="file" />
+            <span class="flex-1 truncate" :title="doc.name">{{ doc.name }}</span>
+            <span class="flex items-center gap-1.5 text-xs text-fg-muted">
+              <span
+                v-if="doc.hasPendingChanges"
+                class="size-[7px] rounded-full bg-warning"
+                title="Modifiche non applicate"
+              />
+              {{ doc.pages.length }}
+            </span>
+          </button>
+          <IconButton
+            icon="pen"
+            :label="`Rinomina ${doc.name}`"
+            size="sm"
+            class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            title="Rinomina (anche con doppio clic sul nome)"
+            @click="renaming = doc.id"
+          />
+        </template>
         <IconButton
           icon="close"
           :label="`Chiudi ${doc.name}`"

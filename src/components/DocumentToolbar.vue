@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import AppButton from './AppButton.vue'
 import IconButton from './IconButton.vue'
+import InlineRename from './InlineRename.vue'
 import { pickFiles } from '@/lib/files'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
@@ -11,6 +12,14 @@ const store = useEditorStore()
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 const mod = isMac ? '⌘' : 'Ctrl+'
+
+/** The title is being edited in place. */
+const renaming = ref(false)
+// Another document opened meanwhile: drop the edit rather than rename the wrong one.
+watch(
+  () => props.doc.id,
+  () => (renaming.value = false),
+)
 
 async function insert() {
   const files = await pickFiles()
@@ -41,7 +50,27 @@ const summary = computed(() => {
   >
     <!-- Wraps on the width of the workspace (the @container in EditorView), not of the window. -->
     <div class="min-w-0 flex-1 @max-2xl:basis-full">
-      <h1 class="truncate text-base font-semibold" :title="doc.name">{{ doc.name }}</h1>
+      <InlineRename
+        v-if="renaming"
+        class="w-full max-w-md text-base font-semibold"
+        :value="doc.name"
+        :label="`Nuovo nome per ${doc.name}`"
+        @save="(name) => (store.rename(doc.id, name), (renaming = false))"
+        @cancel="renaming = false"
+      />
+      <div v-else class="group/title flex min-w-0 items-center gap-1">
+        <h1 class="truncate text-base font-semibold" :title="doc.name" @dblclick="renaming = true">
+          {{ doc.name }}
+        </h1>
+        <IconButton
+          icon="pen"
+          :label="`Rinomina ${doc.name}`"
+          size="sm"
+          class="opacity-0 group-hover/title:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+          title="Rinomina (anche con doppio clic sul nome)"
+          @click="renaming = true"
+        />
+      </div>
       <p class="text-xs text-fg-muted">
         {{ summary }}
         <span v-if="doc.hasPendingChanges" class="text-warning">· modifiche non applicate</span>

@@ -609,4 +609,14 @@ describe('editor store', () => {
     expect(doc.annotations[2]![0]!.linked).toBe(false)
     expect(store.linkedCopies(1)).toBe(2)
   })
+
+  it('renames a document, ignoring blank names', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 1)])
+    const doc = store.active!
+    store.rename(doc.id, '  Contratto firmato.pdf ')
+    expect(doc.name).toBe('Contratto firmato.pdf')
+    store.rename(doc.id, '   ')
+    expect(doc.name).toBe('Contratto firmato.pdf')
+  })
 })
