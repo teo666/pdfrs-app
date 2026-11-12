@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, useTemplateRef } from 'vue'
+import { onMounted, ref, useTemplateRef, watch } from 'vue'
 import type { ImageAsset } from 'pdfrs-editor'
 
+import ColorPicker from './ColorPicker.vue'
 import { cropToInk } from '@/lib/images'
 
 /** "dark" on the viewer's black backdrop, "light" in the app's tool panel. */
@@ -26,8 +27,25 @@ const styles = {
 }[tone]
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
-const inks = { Nero: '#111111', Blu: '#1a3fb0' } as const
-const ink = ref<keyof typeof inks>('Nero')
+const ink = ref('#1c2026')
+
+// A new ink colours what's already drawn too: every inked pixel takes the
+// new colour, its alpha (the antialiased edge) kept.
+watch(ink, (color) => {
+  const el = canvas.value
+  const ctx = el?.getContext('2d', { willReadFrequently: true })
+  if (!el || !ctx || empty.value) return
+  const image = ctx.getImageData(0, 0, el.width, el.height)
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16))
+  for (let i = 0; i < image.data.length; i += 4) {
+    if (image.data[i + 3]! > 0) {
+      image.data[i] = r!
+      image.data[i + 1] = g!
+      image.data[i + 2] = b!
+    }
+  }
+  ctx.putImageData(image, 0, 0)
+})
 const empty = ref(true)
 
 /** Drawn at twice the screen density, so the signature stays sharp when enlarged on the page. */
@@ -48,7 +66,7 @@ function context() {
   ctx.lineWidth = LINE_WIDTH * DENSITY
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.strokeStyle = inks[ink.value]
+  ctx.strokeStyle = ink.value
   return ctx
 }
 
@@ -66,7 +84,7 @@ function onDown(event: PointerEvent) {
   const ctx = context()
   ctx.beginPath()
   ctx.arc(last.x, last.y, (LINE_WIDTH * DENSITY) / 2, 0, Math.PI * 2)
-  ctx.fillStyle = inks[ink.value]
+  ctx.fillStyle = ink.value
   ctx.fill()
   empty.value = false
 }
@@ -139,18 +157,8 @@ onMounted(() => {
         Firma qui con il mouse o con il dito
       </p>
     </div>
-    <div class="flex items-center gap-1.5 text-xs">
-      <span :class="styles.muted">Inchiostro</span>
-      <button
-        v-for="(color, name) in inks"
-        :key="name"
-        class="size-5 cursor-pointer rounded-full border-2"
-        :class="ink === name ? styles.chosen : 'border-transparent'"
-        :style="{ background: color }"
-        :aria-label="`Inchiostro ${name.toLowerCase()}`"
-        :aria-pressed="ink === name"
-        @click="ink = name"
-      />
+    <div class="flex items-end gap-1.5 text-xs">
+      <ColorPicker v-model="ink" label="Inchiostro" :tone="tone" />
       <button class="ml-auto cursor-pointer px-2 py-1" :class="styles.quiet" @click="clear">
         Cancella
       </button>

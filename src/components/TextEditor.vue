@@ -2,19 +2,13 @@
 import { computed, ref, watch } from 'vue'
 import { isWinAnsi, type TextContent } from 'pdfrs-editor'
 
+import ColorPicker from './ColorPicker.vue'
 import SegmentedControl from './SegmentedControl.vue'
 
 /** The text and its look, as a form. Shared by the Testo tool and the viewer. */
 const content = defineModel<TextContent>({ required: true })
 /** Font size in points, when the form sets it (placing new text). */
 const size = defineModel<number>('size')
-
-const colors = [
-  { value: '#1c2026', label: 'Nero' },
-  { value: '#1a3fb0', label: 'Blu' },
-  { value: '#c4261d', label: 'Rosso' },
-  { value: '#1f7a45', label: 'Verde' },
-]
 
 // A local copy that's always current: two changes in a row (before the
 // parent has passed the first one back down) must build on each other.
@@ -90,26 +84,7 @@ function set<K extends keyof TextContent>(key: K, value: TextContent[K]) {
           C
         </button>
       </div>
-      <div class="flex items-center gap-1.5" role="radiogroup" aria-label="Colore">
-        <button
-          v-for="color in colors"
-          :key="color.value"
-          class="size-6 cursor-pointer rounded-full border-2"
-          :class="local.color === color.value ? 'border-accent' : 'border-transparent'"
-          :style="{ backgroundColor: color.value }"
-          role="radio"
-          :aria-checked="local.color === color.value"
-          :aria-label="color.label"
-          @click="set('color', color.value)"
-        />
-        <input
-          type="color"
-          :value="local.color"
-          class="size-6 cursor-pointer rounded border-0 bg-transparent p-0"
-          aria-label="Altro colore"
-          @input="set('color', ($event.target as HTMLInputElement).value)"
-        />
-      </div>
+      <ColorPicker :model-value="local.color" @update:model-value="set('color', $event)" />
     </div>
 
     <SegmentedControl

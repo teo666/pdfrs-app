@@ -992,3 +992,42 @@ test('text tool: real text placed, edited with a double-click, written into the 
   const contents = inflatedStreams(await readFile(await (await downloadPromise).path()))
   expect(contents.some((stream) => stream.toLowerCase().includes(hex) && stream.includes('Tj'))).toBe(true)
 })
+
+test('colour pickers: any colour for text, and for the signature ink (even after drawing)', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  const tools = page.getByRole('navigation', { name: 'Strumenti' })
+
+  // Text: a colour of one's own, shown as its code and used in the preview.
+  await tools.getByRole('button', { name: 'Testo' }).click()
+  const text = page.getByRole('complementary', { name: 'Testo' })
+  await text.getByRole('textbox', { name: 'Testo' }).fill('Colorato')
+  await text.getByLabel('Scegli un altro colore').fill('#ff8800')
+  await expect(text.getByRole('radiogroup', { name: 'Colore' })).toContainText('#ff8800')
+  await expect(text.getByRole('figure', { name: 'Anteprima del testo' }).locator('text')).toHaveAttribute(
+    'fill',
+    '#ff8800',
+  )
+  await text.getByRole('radio', { name: 'Blu' }).click()
+  await expect(text.getByRole('radio', { name: 'Blu' })).toHaveAttribute('aria-checked', 'true')
+
+  // Signature: draw, then change the ink - the drawing changes colour too.
+  await tools.getByRole('button', { name: 'Firma' }).click()
+  const sign = page.getByRole('complementary', { name: 'Firma' })
+  await sign.getByRole('button', { name: 'Disegna una firma' }).click()
+  const pad = sign.getByLabel('Area per disegnare la firma')
+  const box = (await pad.boundingBox())!
+  await page.mouse.move(box.x + 30, box.y + 90)
+  await page.mouse.down()
+  for (let i = 1; i <= 20; i++) await page.mouse.move(box.x + 30 + i * 8, box.y + 90 - (i % 2) * 20)
+  await page.mouse.up()
+  await sign.getByLabel('Scegli un altro colore').fill('#7a1fa2')
+  const inked = await pad.evaluate((canvas) => {
+    const { data } = (canvas as HTMLCanvasElement).getContext('2d')!.getImageData(0, 0, 400, 300)
+    for (let i = 0; i < data.length; i += 4) if (data[i + 3] === 255) return [data[i], data[i + 1], data[i + 2]]
+    return null
+  })
+  expect(inked).toEqual([0x7a, 0x1f, 0xa2])
+})
