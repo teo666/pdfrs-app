@@ -851,6 +851,42 @@ test('stretches a placed image from its side handles, and puts its proportions b
   expect(narrower.height).toBe(taller.height)
   expect(narrower.width).toBeLessThan(taller.width - 40)
 
+  // Turned a quarter: the "right" side now points down on screen. Stretching
+  // it must keep the opposite side - now the top - where it is.
+  const knob = viewer.getByRole('slider', { name: 'Ruota' })
+  const frame = (await placed.boundingBox())!
+  const centre = { x: frame.x + frame.width / 2, y: frame.y + frame.height / 2 }
+  const knobBox = (await knob.boundingBox())!
+  await page.mouse.move(knobBox.x + knobBox.width / 2, knobBox.y + 6)
+  await page.mouse.down()
+  for (let i = 1; i <= 10; i++) {
+    const angle = (i / 10) * (Math.PI / 2)
+    await page.mouse.move(centre.x + Math.sin(angle) * 120, centre.y - Math.cos(angle) * 120)
+  }
+  await page.mouse.up()
+  await expect(knob).toHaveAttribute('aria-valuenow', '90')
+  const turned = (await placed.boundingBox())!
+  await drag(viewer.getByRole('slider', { name: 'Allarga o stringi' }), 0, 50)
+  const stretched = (await placed.boundingBox())!
+  expect(Math.abs(stretched.y - turned.y)).toBeLessThan(2) // top side stayed
+  expect(Math.abs(stretched.x - turned.x)).toBeLessThan(2)
+  expect(stretched.height).toBeGreaterThan(turned.height + 40)
+  expect(Math.abs(stretched.width - turned.width)).toBeLessThan(2)
+  await page.keyboard.press('ControlOrMeta+z')
+  await page.keyboard.press('ControlOrMeta+z') // back upright, as before the turn
+
+  // Shift: from the centre - both sides move, the centre stays.
+  const beforeShift = (await placed.boundingBox())!
+  await page.keyboard.down('Shift')
+  await drag(viewer.getByRole('slider', { name: 'Allarga o stringi' }), 30, 0)
+  await page.keyboard.up('Shift')
+  const fromCentre = (await placed.boundingBox())!
+  expect(fromCentre.width).toBeGreaterThan(beforeShift.width + 50) // 30 on each side
+  expect(
+    Math.abs(fromCentre.x + fromCentre.width / 2 - (beforeShift.x + beforeShift.width / 2)),
+  ).toBeLessThan(2)
+  await page.keyboard.press('ControlOrMeta+z')
+
   // Back to the image's own proportions: the height follows the width again.
   await viewer.getByRole('button', { name: 'Proporzioni originali' }).click()
   const restored = await size()

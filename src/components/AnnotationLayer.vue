@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { AnnotationId } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
+import { resizeBox, unrotate } from '@/lib/box'
 import type { AnnotationBox, AnnotationView } from '@/stores/editor'
 
 const props = defineProps<{
@@ -22,8 +23,6 @@ const emit = defineEmits<{
   remove: [id: AnnotationId]
 }>()
 
-/** Smallest width a signature can be resized to, as a fraction of the page. */
-const MIN_WIDTH = 0.03
 /** While turning, angles this close to a right angle snap onto it. */
 const SNAP_DEGREES = 6
 /** With Shift held, the angle moves in steps of this many degrees. */
@@ -39,14 +38,6 @@ function boxOf(annotation: AnnotationView): AnnotationBox {
 /** Height as a fraction of the page: the stretched one, or from the width and the image's aspect. */
 function heightOf(annotation: AnnotationView, box: AnnotationBox) {
   return box.height ?? (box.width * annotation.aspect * props.pageWidth) / props.pageHeight
-}
-
-/** A vector turned by `degrees` counter-clockwise: undoes a clockwise CSS rotation. */
-function unrotate(dx: number, dy: number, degrees: number) {
-  const r = (degrees * Math.PI) / 180
-  const cos = Math.cos(r)
-  const sin = Math.sin(r)
-  return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos }
 }
 
 /**
@@ -81,9 +72,6 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
  */
 type DragMode = 'move' | 'resize' | 'stretch-x' | 'stretch-y' | 'rotate'
 
-/** Smallest stretched height, as a fraction of the page. */
-const MIN_HEIGHT = 0.01
-
 function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMode) {
   if (event.button !== 0) return
   event.preventDefault()
@@ -110,29 +98,31 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
     moved = true
     const box = { ...start.box }
     // The pointer's movement along the box's own axes (the page and the box
-    // may both be turned), in fractions of the page.
+    // may both be turned), in page pixels.
     const onPage = unrotate(move.clientX - start.x, move.clientY - start.y, props.rotation)
     const along = unrotate(onPage.x, onPage.y, start.box.rotation)
-    const alongX = along.x / props.pageWidth
-    const alongY = along.y / props.pageHeight
     const startHeight = heightOf(annotation, start.box)
+    const pagePx = { width: props.pageWidth, height: props.pageHeight }
     if (mode === 'move') {
       box.x = clamp(start.box.x + delta.x, 0, Math.max(0, 1 - box.width))
       box.y = clamp(start.box.y + delta.y, 0, Math.max(0, 1 - startHeight))
-    } else if (mode === 'resize') {
-      // The width follows the pointer and the height keeps the box's current
-      // proportions (the image's own, or the stretched ones); the top-left
-      // corner stays put.
-      const ratio = startHeight / start.box.width
-      const maxWidth = Math.min(1 - box.x, (1 - box.y) / ratio)
-      box.width = clamp(start.box.width + alongX, MIN_WIDTH, maxWidth)
-      if (start.box.height !== null) box.height = box.width * ratio
-    } else if (mode === 'stretch-x') {
-      // Only the width: the height stays what it is now, made explicit.
-      box.width = clamp(start.box.width + alongX, MIN_WIDTH, 1 - box.x)
-      box.height = startHeight
-    } else if (mode === 'stretch-y') {
-      box.height = clamp(startHeight + alongY, MIN_HEIGHT, 1 - box.y)
+    } else if (mode === 'resize' || mode === 'stretch-x' || mode === 'stretch-y') {
+      // The side or corner opposite the handle stays where it is on the
+      // page, turned box or not (see lib/box.ts).
+      // Shift: from the centre, both opposite sides move.
+      const next = resizeBox(
+        { ...start.box, height: startHeight },
+        mode,
+        along,
+        pagePx,
+        move.shiftKey,
+      )
+      box.x = next.x
+      box.y = next.y
+      box.width = next.width
+      // The corner keeps proportions: an image still at its own ones stays
+      // that way (no explicit height); a stretched one keeps its stretch.
+      box.height = mode === 'resize' && start.box.height === null ? null : next.height
     } else {
       // The handle sits above the box: the angle from the centre to the
       // pointer, plus a quarter turn, is the box's angle on screen - minus
@@ -237,7 +227,7 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
           :aria-valuenow="Math.round(boxOf(annotation).width * 100)"
           aria-valuemin="3"
           aria-valuemax="100"
-          title="Trascina per cambiare solo la larghezza"
+          title="Trascina per cambiare solo la larghezza (⇧: dal centro)"
           data-stretch-x
           @pointerdown="startDrag($event, annotation, 'stretch-x')"
         />
@@ -248,7 +238,7 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
           :aria-valuenow="Math.round(heightOf(annotation, boxOf(annotation)) * 100)"
           aria-valuemin="1"
           aria-valuemax="100"
-          title="Trascina per cambiare solo l’altezza"
+          title="Trascina per cambiare solo l’altezza (⇧: dal centro)"
           data-stretch-y
           @pointerdown="startDrag($event, annotation, 'stretch-y')"
         />
@@ -256,7 +246,7 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
           class="absolute -right-2 -bottom-2 size-4 cursor-nwse-resize rounded-sm border-2 border-white bg-accent shadow-lift"
           role="slider"
           aria-label="Ridimensiona"
-          title="Trascina per ingrandire o rimpicciolire, mantenendo le proporzioni"
+          title="Trascina per ingrandire o rimpicciolire, mantenendo le proporzioni (⇧: dal centro)"
           :aria-valuenow="Math.round(boxOf(annotation).width * 100)"
           aria-valuemin="3"
           aria-valuemax="100"
