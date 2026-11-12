@@ -13,6 +13,8 @@ import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
 /** Thumbnail render scale: ~240px wide for an A4 page, sharp enough on a 2x screen at card size. */
 export const PREVIEW_SCALE = 0.4
 
+export type ViewerZoom = 'actual' | 'fit'
+
 /** Visible pages further apart than this get separate render batches instead of one range covering everything in between. */
 const MAX_BATCH_GAP = 4
 
@@ -67,6 +69,8 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** The page open in the full-size viewer, always one of the active document's. */
   const viewerPageId = ref<PageId | null>(null)
+  /** "actual" is 100% (one PDF point per CSS pixel); "fit" scales the page to the window. Kept across openings. */
+  const viewerZoom = ref<ViewerZoom>('actual')
 
   /** One object URL per PNG buffer, remembered so the document can revoke it when closed. */
   function urlFor(inner: DocumentInternals, png: Uint8Array): string {
@@ -335,6 +339,7 @@ export const useEditorStore = defineStore('editor', () => {
     download,
     requestPreview,
     viewerPageId,
+    viewerZoom,
     openViewer,
     closeViewer,
     stepViewer,

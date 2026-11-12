@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, wa
 import type { PageId } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
-import { PREVIEW_SCALE, useEditorStore, type DocumentState } from '@/stores/editor'
+import { PREVIEW_SCALE, useEditorStore, type DocumentState, type ViewerZoom } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState; pageId: PageId }>()
 const store = useEditorStore()
@@ -11,27 +11,65 @@ const store = useEditorStore()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const scroller = useTemplateRef<HTMLElement>('scroller')
 
-/**
- * 100% means one PDF point per CSS pixel, as in desktop PDF viewers. The
- * page is rendered at the screen's pixel density on top of that (capped), so
- * it stays sharp on a 2x display instead of being upscaled.
- */
-const renderScale = Math.min(window.devicePixelRatio || 1, 3)
+/** Breathing room around the page, matching the `p-10` of the stage. */
+const STAGE_PADDING = 40
+/** Highest render scale asked of the wasm renderer (a 4x A4 is ~2400 x 3400 px). */
+const MAX_RENDER_SCALE = 4
+
+const dpr = window.devicePixelRatio || 1
 
 const index = computed(() => props.doc.pages.findIndex((p) => p.id === props.pageId))
 const page = computed(() => props.doc.pages[index.value])
 const total = computed(() => props.doc.pages.length)
+const rotation = computed(() => page.value?.pendingRotation ?? 0)
+const sideways = computed(() => rotation.value % 180 !== 0)
 
 interface Shown {
   url: string
-  /** Size at 100%, in CSS pixels, before the pending rotation. */
+  /** The page's size in PDF points, before the pending rotation. */
   width: number
   height: number
+  /** The scale the image was rendered at (pixels per point). */
+  scale: number
   /** A blown-up thumbnail standing in while the real render is on its way. */
   placeholder: boolean
 }
 const shown = ref<Shown | null>(null)
 const error = ref<string | null>(null)
+
+// --- Zoom ---------------------------------------------------------------
+// 100% is one PDF point per CSS pixel, as in desktop PDF viewers. "Fit"
+// scales the page, as rotated, to the space the stage has.
+
+const stage = ref({ width: 0, height: 0 })
+let resizeObserver: ResizeObserver | null = null
+
+/** The rotated page's size in points: what has to fit. */
+const box = computed(() => {
+  if (!shown.value) return null
+  const { width, height } = shown.value
+  return sideways.value ? { width: height, height: width } : { width, height }
+})
+
+const zoom = computed(() => {
+  if (store.viewerZoom === 'actual' || !box.value) return 1
+  const fit = Math.min(stage.value.width / box.value.width, stage.value.height / box.value.height)
+  return fit > 0 ? fit : 1
+})
+
+/**
+ * Pixels per point the image needs to look sharp at the current zoom on
+ * this screen. Rounded up to half steps so small resizes reuse the model's
+ * render cache instead of asking for a new scale each time.
+ */
+const neededScale = computed(() => Math.min(MAX_RENDER_SCALE, Math.ceil(dpr * zoom.value * 2) / 2))
+
+function setZoom(mode: ViewerZoom) {
+  store.viewerZoom = mode
+}
+
+// --- Loading ------------------------------------------------------------
+
 let request = 0
 
 async function decodedSize(url: string, scale: number) {
@@ -41,9 +79,18 @@ async function decodedSize(url: string, scale: number) {
   return { width: img.naturalWidth / scale, height: img.naturalHeight / scale }
 }
 
+async function render(id: PageId, scale: number, isCurrent: () => boolean) {
+  const url = await store.renderPage(id, scale)
+  const size = await decodedSize(url, scale)
+  if (isCurrent()) shown.value = { url, ...size, scale, placeholder: false }
+}
+
 async function show(id: PageId) {
   const token = ++request
-  const current = () => token === request
+  const isCurrent = () => token === request
+  // Pages of a document are usually all the same size, so the scale needed
+  // for the previous one is the best guess for this one too.
+  const scale = shown.value?.placeholder === false ? neededScale.value : dpr
   shown.value = null
   error.value = null
 
@@ -53,25 +100,24 @@ async function show(id: PageId) {
   if (thumbnail) {
     decodedSize(thumbnail, PREVIEW_SCALE)
       .then((size) => {
-        if (current() && !shown.value) shown.value = { url: thumbnail, ...size, placeholder: true }
+        if (isCurrent() && !shown.value) {
+          shown.value = { url: thumbnail, ...size, scale: PREVIEW_SCALE, placeholder: true }
+        }
       })
       .catch(() => {})
   }
 
   try {
-    const url = await store.renderPage(id, renderScale)
-    const size = await decodedSize(url, renderScale)
-    if (!current()) return
-    shown.value = { url, ...size, placeholder: false }
+    await render(id, scale, isCurrent)
   } catch (err) {
-    if (current()) error.value = err instanceof Error ? err.message : String(err)
+    if (isCurrent()) error.value = err instanceof Error ? err.message : String(err)
     return
   }
 
   // Warm the cache for the neighbours, so the arrow keys feel instant.
   for (const delta of [1, -1]) {
     const neighbour = props.doc.pages[index.value + delta]
-    if (neighbour && current()) void store.renderPage(neighbour.id, renderScale).catch(() => {})
+    if (neighbour && isCurrent()) void store.renderPage(neighbour.id, scale).catch(() => {})
   }
 }
 
@@ -85,20 +131,20 @@ watch(
   { immediate: true },
 )
 
-const rotation = computed(() => page.value?.pendingRotation ?? 0)
-const sideways = computed(() => rotation.value % 180 !== 0)
-
-// A rotated element keeps its unrotated layout box, so the box is sized by
-// hand (sides swapped a quarter turn) and the image is centred inside it.
-const box = computed(() => {
-  if (!shown.value) return {}
-  const { width, height } = shown.value
-  return sideways.value
-    ? { width: `${height}px`, height: `${width}px` }
-    : { width: `${width}px`, height: `${height}px` }
+// Zooming in past what the current render can show sharply (fit on a big
+// window, or a page that turned out bigger than guessed): render again,
+// sharper. Never downgrades - a sharper image only costs memory.
+watch(neededScale, (scale) => {
+  const current = shown.value
+  if (!current || current.placeholder || scale <= current.scale) return
+  const token = request
+  render(props.pageId, scale, () => token === request).catch(() => {})
 })
 
+// --- Keyboard & lifecycle -----------------------------------------------
+
 function onKeyDown(event: KeyboardEvent) {
+  if (event.metaKey || event.ctrlKey || event.altKey) return
   const steps: Record<string, number> = {
     ArrowRight: 1,
     ArrowLeft: -1,
@@ -107,10 +153,14 @@ function onKeyDown(event: KeyboardEvent) {
     Home: -Infinity,
     End: Infinity,
   }
-  const delta = steps[event.key]
-  if (delta === undefined) return
-  event.preventDefault()
-  store.stepViewer(delta)
+  const zooms: Record<string, ViewerZoom> = { '0': 'fit', '1': 'actual' }
+  if (event.key in steps) {
+    event.preventDefault()
+    store.stepViewer(steps[event.key]!)
+  } else if (event.key in zooms) {
+    event.preventDefault()
+    setZoom(zooms[event.key]!)
+  }
 }
 
 // Esc fires "cancel" on a modal <dialog>: the store decides, the dialog just reflects it.
@@ -119,10 +169,30 @@ function onCancel(event: Event) {
   store.closeViewer()
 }
 
-onMounted(() => dialog.value?.showModal())
+onMounted(() => {
+  dialog.value?.showModal()
+  const el = scroller.value
+  if (!el) return
+  resizeObserver = new ResizeObserver(() => {
+    stage.value = {
+      width: el.clientWidth - 2 * STAGE_PADDING,
+      height: el.clientHeight - 2 * STAGE_PADDING,
+    }
+  })
+  resizeObserver.observe(el)
+})
+
 // Closed while still in the document, so the browser hands focus back to
 // the card that opened it.
-onBeforeUnmount(() => dialog.value?.close())
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  dialog.value?.close()
+})
+
+const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
+  { mode: 'fit', label: 'Adatta', key: '0' },
+  { mode: 'actual', label: '100%', key: '1' },
+]
 </script>
 
 <template>
@@ -135,18 +205,43 @@ onBeforeUnmount(() => dialog.value?.close())
   >
     <div class="flex h-full flex-col">
       <header class="flex items-center gap-3 bg-black/50 px-4 py-2.5 backdrop-blur">
-        <span class="font-semibold">Pagina {{ index + 1 }} di {{ total }}</span>
-        <span v-if="page && page.id !== index + 1" class="text-white/60">era {{ page.id }}</span>
+        <span class="font-semibold whitespace-nowrap">Pagina {{ index + 1 }} di {{ total }}</span>
+        <span v-if="page && page.id !== index + 1" class="text-white/60 whitespace-nowrap">
+          era {{ page.id }}
+        </span>
         <span v-if="rotation" class="rounded-full bg-white/15 px-2 text-xs font-semibold">
           {{ rotation }}°
         </span>
         <span
           v-if="page?.markedForDeletion"
-          class="rounded-full bg-danger px-2 text-xs font-semibold text-white"
+          class="rounded-full bg-danger px-2 text-xs font-semibold whitespace-nowrap text-white"
         >
           Da eliminare
         </span>
         <span class="ml-auto truncate text-white/60 max-md:hidden">{{ doc.name }}</span>
+
+        <div
+          class="flex shrink-0 rounded-md bg-white/10 p-0.5 max-md:ml-auto"
+          role="group"
+          aria-label="Zoom"
+        >
+          <button
+            v-for="option in zoomOptions"
+            :key="option.mode"
+            class="cursor-pointer rounded px-2.5 py-1 text-xs font-semibold transition-colors"
+            :class="
+              store.viewerZoom === option.mode
+                ? 'bg-white text-black'
+                : 'text-white/75 hover:text-white'
+            "
+            :aria-pressed="store.viewerZoom === option.mode"
+            :title="`${option.label} (${option.key})`"
+            @click="setZoom(option.mode)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+
         <button
           class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md hover:bg-white/15"
           aria-label="Chiudi anteprima"
@@ -163,15 +258,24 @@ onBeforeUnmount(() => dialog.value?.close())
           class="flex min-h-full w-max min-w-full items-center justify-center p-10"
           @click.self="store.closeViewer()"
         >
-          <div v-if="shown" class="relative shrink-0" :style="box">
+          <!--
+            A rotated element keeps its unrotated layout box, so the box is
+            sized by hand (sides swapped a quarter turn) and the image is
+            centred inside it.
+          -->
+          <div
+            v-if="shown && box"
+            class="relative shrink-0"
+            :style="{ width: `${box.width * zoom}px`, height: `${box.height * zoom}px` }"
+          >
             <img
               :src="shown.url"
               :alt="`Pagina ${index + 1}`"
               class="absolute top-1/2 left-1/2 max-w-none bg-white shadow-2xl transition-[filter] duration-200"
               :class="{ 'blur-[2px]': shown.placeholder, 'opacity-50': page?.markedForDeletion }"
               :style="{
-                width: `${shown.width}px`,
-                height: `${shown.height}px`,
+                width: `${shown.width * zoom}px`,
+                height: `${shown.height * zoom}px`,
                 transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
               }"
               :data-full="!shown.placeholder"

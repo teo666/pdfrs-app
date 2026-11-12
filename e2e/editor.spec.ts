@@ -262,8 +262,38 @@ test('opens a page full size and walks through the pages in their current order'
   await page.keyboard.press('ArrowLeft')
   await expect(viewer.locator('header')).toContainText('Pagina 3 di 4')
 
+  // Fit: the whole page inside the window, then back to 100%.
+  const fits = async () => {
+    const box = (await image.boundingBox())!
+    const viewport = page.viewportSize()!
+    return box.y >= 0 && box.y + box.height <= viewport.height && box.width < 595
+  }
+  await page.keyboard.press('0')
+  await expect(viewer.getByRole('button', { name: 'Adatta' })).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(fits).toBe(true)
+  await page.keyboard.press('1')
+  await expect(image).toHaveCSS('width', '595px')
+  await viewer.getByRole('button', { name: 'Adatta' }).click()
+  await expect.poll(fits).toBe(true)
+
   await page.keyboard.press('Escape')
   await expect(viewer).toBeHidden()
+
+  // The zoom choice is kept for the next opening, and a page rotated a
+  // quarter turn is fitted by its rotated (landscape) size.
+  const third = cards(page).nth(2)
+  await third.hover()
+  await third.getByRole('button', { name: 'Ruota a destra' }).click()
+  await third.getByRole('button', { name: /a grandezza reale/ }).click()
+  await expect(viewer.getByRole('button', { name: 'Adatta' })).toHaveAttribute('aria-pressed', 'true')
+  await expect
+    .poll(async () => {
+      const box = (await image.boundingBox())!
+      return box.width > box.height && box.width <= page.viewportSize()!.width
+    })
+    .toBe(true)
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('ControlOrMeta+z') // undo the rotation
   // Editing shortcuts are back once the viewer is closed.
   await page.keyboard.press('ControlOrMeta+z')
   await expect.poll(() => pageIds(page)).toEqual([1, 2, 3, 4])
