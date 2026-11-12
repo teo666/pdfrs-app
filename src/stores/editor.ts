@@ -35,7 +35,23 @@ export interface DocumentState {
   previews: Record<PageId, string>
   /** A commit/export is running: page actions are disabled meanwhile. */
   busy: boolean
+  /**
+   * Selected pages. A reactive Set: a card asking `has(its id)` only
+   * re-renders when its own entry changes, not on every selection change.
+   */
+  selection: Set<PageId>
 }
+
+/** How a click extends the selection: only this page, toggle it, or everything from the last clicked page to it. */
+export type SelectMode = 'only' | 'toggle' | 'range'
+
+export interface Notice {
+  message: string
+  action?: { label: string; run: () => void }
+}
+
+/** How long an informational notice stays up. */
+const NOTICE_MS = 6000
 
 /** Bookkeeping that the UI never reads, kept out of the reactive state. */
 interface DocumentInternals {
@@ -51,6 +67,8 @@ interface DocumentInternals {
   requested: Set<PageId>
   inFlight: Set<PageId>
   flushScheduled: boolean
+  /** Where a shift-click range starts: the last page clicked. */
+  anchor: PageId | null
 }
 
 export const useEditorStore = defineStore('editor', () => {
@@ -64,6 +82,8 @@ export const useEditorStore = defineStore('editor', () => {
   const activeId = ref<DocumentId | null>(null)
   const loading = ref(0)
   const error = ref<string | null>(null)
+  const notice = ref<Notice | null>(null)
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined
 
   const active = computed(() => documents.value.find((d) => d.id === activeId.value) ?? null)
 
@@ -91,6 +111,17 @@ export const useEditorStore = defineStore('editor', () => {
     error.value = err instanceof Error ? err.message : String(err)
   }
 
+  function notify(message: string, action?: Notice['action']) {
+    notice.value = { message, action }
+    clearTimeout(noticeTimer)
+    noticeTimer = setTimeout(() => (notice.value = null), NOTICE_MS)
+  }
+
+  function dismissNotice() {
+    clearTimeout(noticeTimer)
+    notice.value = null
+  }
+
   function sync(id: DocumentId) {
     const state = stateOf(id)
     const inner = internals.get(id)
@@ -116,7 +147,36 @@ export const useEditorStore = defineStore('editor', () => {
       inner.requested.clear()
       inner.inFlight.clear()
       state.previews = {}
+      // Page ids are renumbered by a commit: the old selection means nothing.
+      state.selection.clear()
+      inner.anchor = null
     }
+  }
+
+  /** Starts tracking a document the editor just created. */
+  function register(id: DocumentId, name: string) {
+    const doc = editor.getDocument(id)
+    internals.set(id, {
+      doc,
+      baseline: doc.getBytes(),
+      urls: new Set(),
+      requested: new Set(),
+      inFlight: new Set(),
+      flushScheduled: false,
+      anchor: null,
+    })
+    documents.value.push({
+      id,
+      name,
+      pages: [],
+      canUndo: false,
+      canRedo: false,
+      hasPendingChanges: false,
+      previews: {},
+      busy: false,
+      selection: new Set(),
+    })
+    sync(id)
   }
 
   async function openFiles(files: File[]) {
@@ -127,26 +187,7 @@ export const useEditorStore = defineStore('editor', () => {
         const kind = detectKind(bytes)
         if (!kind) throw new Error(`${file.name}: non è un PDF né un'immagine JPEG`)
         const id = kind === 'pdf' ? await editor.addDocument(bytes) : await editor.addImage(bytes)
-        const doc = editor.getDocument(id)
-        internals.set(id, {
-          doc,
-          baseline: doc.getBytes(),
-          urls: new Set(),
-          requested: new Set(),
-          inFlight: new Set(),
-          flushScheduled: false,
-        })
-        documents.value.push({
-          id,
-          name: file.name,
-          pages: [],
-          canUndo: false,
-          canRedo: false,
-          hasPendingChanges: false,
-          previews: {},
-          busy: false,
-        })
-        sync(id)
+        register(id, file.name)
         activeId.value ??= id
       } catch (err) {
         report(err)
@@ -191,6 +232,9 @@ export const useEditorStore = defineStore('editor', () => {
 
   const rotate = (page: PageId, degrees: number) => edit((doc) => doc.rotatePage(page, degrees))
   const move = (page: PageId, toIndex: number) => edit((doc) => doc.movePage(page, toIndex))
+  /** Moves pages as one block; `toIndex` counts the other pages only (see `PdfDocument.movePages`). */
+  const movePages = (pages: PageId[], toIndex: number) =>
+    edit((doc) => doc.movePages(pages, toIndex))
   const undo = () => edit((doc) => doc.undo())
   const redo = () => edit((doc) => doc.redo())
 
@@ -219,6 +263,78 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   const commit = () => runBusy((doc) => doc.commit())
+
+  // --- Selection ----------------------------------------------------------
+
+  /** The selected pages of the active document, in display order. */
+  function selectedPages(): PageId[] {
+    const state = active.value
+    if (!state) return []
+    return state.pages.filter((p) => state.selection.has(p.id)).map((p) => p.id)
+  }
+
+  function selectPage(page: PageId, mode: SelectMode) {
+    const state = active.value
+    const inner = state ? internals.get(state.id) : undefined
+    if (!state || !inner) return
+    const { selection } = state
+    if (mode === 'range' && inner.anchor !== null) {
+      const ids = state.pages.map((p) => p.id)
+      const from = ids.indexOf(inner.anchor)
+      const to = ids.indexOf(page)
+      if (from !== -1 && to !== -1) {
+        selection.clear()
+        for (const id of ids.slice(Math.min(from, to), Math.max(from, to) + 1)) selection.add(id)
+        return // the anchor stays put, so the range can be adjusted
+      }
+    }
+    if (mode === 'toggle') {
+      if (selection.has(page)) selection.delete(page)
+      else selection.add(page)
+    } else {
+      selection.clear()
+      selection.add(page)
+    }
+    inner.anchor = page
+  }
+
+  function selectAll() {
+    const state = active.value
+    if (!state) return
+    for (const page of state.pages) state.selection.add(page.id)
+  }
+
+  function clearSelection() {
+    const state = active.value
+    if (!state) return
+    state.selection.clear()
+    const inner = internals.get(state.id)
+    if (inner) inner.anchor = null
+  }
+
+  const rotateSelected = (degrees: number) =>
+    edit((doc) => doc.rotatePages(selectedPages(), degrees))
+
+  /** Marks the selected pages for deletion, or restores them if they all are already. */
+  function toggleDeleteSelected() {
+    const pages = selectedPages()
+    const allMarked = active.value?.pages
+      .filter((p) => pages.includes(p.id))
+      .every((p) => p.markedForDeletion)
+    edit((doc) => (allMarked ? doc.restorePages(pages) : doc.deletePages(pages)))
+  }
+
+  /** Copies the selected pages, as they look now, into a new document. */
+  const extractSelected = () =>
+    runBusy(async (_doc, state) => {
+      const pages = selectedPages()
+      if (pages.length === 0) return
+      const id = await editor.extractPages(state.id, pages)
+      const name = `${state.name.replace(/\.(pdf|jpe?g)$/i, '')} (estratto).pdf`
+      register(id, name)
+      const count = pages.length === 1 ? '1 pagina' : `${pages.length} pagine`
+      notify(`${count} in «${name}»`, { label: 'Apri', run: () => select(id) })
+    })
 
   const download = () =>
     runBusy(async (doc, state) => {
@@ -327,12 +443,21 @@ export const useEditorStore = defineStore('editor', () => {
     active,
     loading: computed(() => loading.value > 0),
     error,
+    notice,
+    dismissNotice,
     openFiles,
     select,
     close,
     rotate,
     move,
+    movePages,
     toggleDelete,
+    selectPage,
+    selectAll,
+    clearSelection,
+    rotateSelected,
+    toggleDeleteSelected,
+    extractSelected,
     undo,
     redo,
     commit,

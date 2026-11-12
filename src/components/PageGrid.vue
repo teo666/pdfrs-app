@@ -4,7 +4,7 @@ import type { PageId } from 'pdfrs-editor'
 
 import DropIndicator, { type DropIndicatorState } from './DropIndicator.vue'
 import PageCard from './PageCard.vue'
-import { dropTargetIndex, type DropSide } from '@/lib/reorder'
+import { blockDropIndex, type DropSide } from '@/lib/reorder'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState }>()
@@ -15,12 +15,13 @@ const grid = useTemplateRef<HTMLElement>('grid')
  * Drag & drop has to stay cheap on documents with a thousand pages:
  * `dragover` fires continuously, even with the pointer standing still.
  * So a drag never re-renders the list. The drag state lives in plain
- * variables, the dragged card is dimmed straight on its element, and the
+ * variables, the dragged cards are dimmed straight in the DOM (a class on
+ * the card, or a data attribute on the grid for a whole selection), and the
  * only reactive piece is the drop indicator - its own component, updated
  * only when the target slot actually changes. The model is touched once,
  * on drop.
  */
-let dragged: { id: PageId; el: HTMLElement } | null = null
+let dragged: { ids: PageId[]; el: HTMLElement } | null = null
 let target: { index: number; side: DropSide } | null = null
 const indicator = reactive<DropIndicatorState>({ visible: false, left: 0, top: 0, height: 0 })
 
@@ -29,15 +30,49 @@ const DRAGGED_CLASS = 'opacity-35'
 function onDragStart(event: DragEvent, id: PageId) {
   if (props.doc.busy || !event.dataTransfer) return
   const el = event.currentTarget as HTMLElement
-  dragged = { id, el }
-  el.classList.add(DRAGGED_CLASS)
+  const { selection } = props.doc
+  // Grabbing a selected page drags the whole selection; grabbing any other
+  // page drags just that one, leaving the selection alone.
+  const block = selection.has(id) && selection.size > 1
+  const ids = block ? props.doc.pages.filter((p) => selection.has(p.id)).map((p) => p.id) : [id]
+  dragged = { ids, el }
   event.dataTransfer.effectAllowed = 'move'
   // Some browsers won't start a drag without data; this type also keeps the
   // window-level file drop overlay from reacting (it only looks at "Files").
-  event.dataTransfer.setData('application/x-pdfrs-page', String(id))
+  event.dataTransfer.setData('application/x-pdfrs-page', ids.join(','))
+  if (block) {
+    grid.value?.setAttribute('data-drag', 'selection') // dims every selected card, see PageCard
+    setCountDragImage(event.dataTransfer, ids.length)
+  } else {
+    el.classList.add(DRAGGED_CLASS)
+  }
 }
 
-function onDragOver(event: DragEvent, index: number) {
+/** For a multi-page drag, a "12 pagine" label follows the pointer instead of one card's picture. */
+function setCountDragImage(transfer: DataTransfer, count: number) {
+  const label = document.createElement('div')
+  label.textContent = `${count} pagine`
+  label.className =
+    'fixed -top-96 left-0 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg shadow-lift'
+  document.body.append(label)
+  transfer.setDragImage(label, 12, 12)
+  // The browser takes its snapshot synchronously; the element can go.
+  requestAnimationFrame(() => label.remove())
+}
+
+/**
+ * A click on a thumbnail: opens the viewer, unless a selection is in
+ * progress or a modifier asks for selecting - then it selects instead
+ * (shift: everything from the last clicked page; Cmd/Ctrl: toggle).
+ */
+function onPick(event: MouseEvent, id: PageId) {
+  if (event.shiftKey) store.selectPage(id, 'range')
+  else if (event.metaKey || event.ctrlKey || props.doc.selection.size > 0) {
+    store.selectPage(id, 'toggle')
+  } else store.openViewer(id)
+}
+
+function onDragOver(event: DragEvent, index: number, id: PageId) {
   if (!dragged) return
   event.preventDefault()
   const card = event.currentTarget as HTMLElement
@@ -46,7 +81,8 @@ function onDragOver(event: DragEvent, index: number) {
   if (target?.index === index && target.side === side) return
   target = { index, side }
 
-  if (card === dragged.el) {
+  // Dropping next to a page that is itself being moved: shown as no slot.
+  if (dragged.ids.includes(id)) {
     indicator.visible = false
     return
   }
@@ -66,13 +102,19 @@ function onDragOver(event: DragEvent, index: number) {
 function onDrop(event: DragEvent) {
   if (!dragged || !target) return
   event.preventDefault()
-  const id = dragged.id
-  const fromIndex = props.doc.pages.findIndex((p) => p.id === id)
-  const toIndex = dropTargetIndex(fromIndex, target.index, target.side)
+  const { ids } = dragged
+  const order = props.doc.pages.map((p) => p.id)
+  const moving = new Set(ids)
+  // On a page that is itself moving there's no indicator, so no drop either.
+  if (moving.has(order[target.index]!)) return onDragEnd()
+  const toIndex = blockDropIndex(order, moving, target.index, target.side)
+  const insertAt = target.side === 'before' ? target.index : target.index + 1
   onDragEnd()
-  if (fromIndex !== -1 && toIndex !== fromIndex) {
-    void animateReorder(fromIndex, toIndex, () => store.move(id, toIndex))
-  }
+  // Every card between the first moving page and the drop slot can shift.
+  const indexes = ids.map((id) => order.indexOf(id))
+  const lo = Math.min(insertAt, ...indexes)
+  const hi = Math.max(insertAt - 1, ...indexes)
+  void animateReorder(lo, hi, () => store.movePages(ids, toIndex))
 }
 
 /** The pointer left the grid for its padding or outside: no slot is targeted. */
@@ -83,6 +125,7 @@ function onGridLeave() {
 
 function onDragEnd() {
   dragged?.el.classList.remove(DRAGGED_CLASS)
+  grid.value?.removeAttribute('data-drag')
   dragged = null
   target = null
   indicator.visible = false
@@ -90,18 +133,18 @@ function onDragEnd() {
 
 /**
  * FLIP animation of a move, limited to what can actually be seen: only the
- * cards between the old and the new position shift, and of those only the
- * ones inside the scroll viewport get measured and animated. (TransitionGroup
+ * cards with an index in `lo..hi` can shift, and of those only the ones
+ * inside the scroll viewport get measured and animated. (TransitionGroup
  * would measure every card on every update - hundreds of layout reads.)
  */
-async function animateReorder(fromIndex: number, toIndex: number, apply: () => void) {
+async function animateReorder(lo: number, hi: number, apply: () => void) {
   const container = grid.value
   const viewport = container?.closest('main')?.getBoundingClientRect()
   if (!container || !viewport) return apply()
 
   const cards = container.querySelectorAll<HTMLElement>(':scope > article')
   const first = new Map<HTMLElement, DOMRect>()
-  for (let i = Math.min(fromIndex, toIndex); i <= Math.max(fromIndex, toIndex); i++) {
+  for (let i = lo; i <= hi; i++) {
     const card = cards[i]
     if (!card) continue
     const rect = card.getBoundingClientRect()
@@ -136,6 +179,7 @@ async function animateReorder(fromIndex: number, toIndex: number, apply: () => v
   <div
     ref="grid"
     class="relative grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-[18px] px-6 pt-5 pb-10 @max-md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] @max-md:gap-3 @max-md:px-4"
+    :data-selecting="doc.selection.size > 0 || undefined"
     @dragleave.self="onGridLeave"
   >
     <!--
@@ -147,20 +191,23 @@ async function animateReorder(fromIndex: number, toIndex: number, apply: () => v
     <PageCard
       v-for="(page, index) in doc.pages"
       :key="page.id"
-      v-memo="[page, index, doc.busy, doc.previews]"
+      v-memo="[page, index, doc.busy, doc.previews, doc.selection]"
       :page="page"
       :position="index + 1"
       :previews="doc.previews"
+      :selection="doc.selection"
       :disabled="doc.busy"
       :draggable="!doc.busy"
       @dragstart="onDragStart($event, page.id)"
-      @dragover="onDragOver($event, index)"
+      @dragover="onDragOver($event, index, page.id)"
       @drop="onDrop"
       @dragend="onDragEnd"
       @rotate="store.rotate(page.id, $event)"
       @toggle-delete="store.toggleDelete(page.id)"
       @need-preview="store.requestPreview(doc.id, page.id)"
       @open="store.openViewer(page.id)"
+      @pick="onPick($event, page.id)"
+      @check="store.selectPage(page.id, $event ? 'range' : 'toggle')"
     />
     <DropIndicator :state="indicator" />
   </div>

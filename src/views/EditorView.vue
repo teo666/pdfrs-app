@@ -26,8 +26,20 @@ function onKeyDown(event: KeyboardEvent) {
   if (store.viewerPageId !== null) return
   const target = event.target as HTMLElement | null
   if (target?.closest('input, textarea, [contenteditable]')) return
-  if (!(event.metaKey || event.ctrlKey)) return
   const key = event.key.toLowerCase()
+  const selecting = (store.active?.selection.size ?? 0) > 0
+
+  if (!(event.metaKey || event.ctrlKey)) {
+    if (key === 'escape' && selecting) {
+      event.preventDefault()
+      store.clearSelection()
+    } else if ((key === 'delete' || key === 'backspace') && selecting) {
+      event.preventDefault()
+      store.toggleDeleteSelected()
+    }
+    return
+  }
+
   if (key === 'z' && !event.shiftKey) {
     event.preventDefault()
     store.undo()
@@ -37,6 +49,9 @@ function onKeyDown(event: KeyboardEvent) {
   } else if (key === 'o') {
     event.preventDefault()
     void openPicker()
+  } else if (key === 'a' && store.active) {
+    event.preventDefault()
+    store.selectAll()
   }
 }
 
@@ -93,6 +108,30 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           <AppIcon name="upload" :size="32" class="text-accent" />
           Rilascia per aprire
         </div>
+      </div>
+    </Transition>
+
+    <Transition
+      enter-from-class="translate-y-2 opacity-0"
+      leave-to-class="translate-y-2 opacity-0"
+      enter-active-class="transition duration-150"
+      leave-active-class="transition duration-150"
+    >
+      <div
+        v-if="store.notice && !store.error"
+        class="fixed inset-x-0 bottom-5 z-50 mx-auto flex w-fit max-w-[min(560px,calc(100%-32px))] items-center gap-3 rounded-card border border-line bg-surface py-2 pr-2 pl-3.5 shadow-lift"
+        role="status"
+      >
+        <AppIcon name="check" class="text-accent" />
+        <span>{{ store.notice.message }}</span>
+        <AppButton
+          v-if="store.notice.action"
+          variant="primary"
+          @click="(store.notice.action.run(), store.dismissNotice())"
+        >
+          {{ store.notice.action.label }}
+        </AppButton>
+        <IconButton icon="close" label="Chiudi avviso" @click="store.dismissNotice()" />
       </div>
     </Transition>
 

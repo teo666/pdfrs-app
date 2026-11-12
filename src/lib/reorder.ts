@@ -1,12 +1,21 @@
 export type DropSide = 'before' | 'after'
 
 /**
- * Where a dragged page ends up when dropped on one side of the page at
- * `overIndex`, as the final index `PdfDocument.movePage()` expects - that
- * index is counted *after* the page has been taken out of its old spot, so
- * dropping further down the list shifts it back by one.
+ * Where pages being dragged end up when dropped on one side of the page at
+ * `overIndex`, as the index `PdfDocument.movePages()` expects: it counts
+ * only the pages that are *not* moving, so every moving page in front of
+ * the drop slot shifts it back by one. Works for a single page too.
  */
-export function dropTargetIndex(fromIndex: number, overIndex: number, side: DropSide): number {
+export function blockDropIndex<T>(
+  order: readonly T[],
+  moving: ReadonlySet<T>,
+  overIndex: number,
+  side: DropSide,
+): number {
   const insertAt = side === 'before' ? overIndex : overIndex + 1
-  return fromIndex < insertAt ? insertAt - 1 : insertAt
+  let movingBefore = 0
+  for (let i = 0; i < insertAt && i < order.length; i++) {
+    if (moving.has(order[i] as T)) movingBefore++
+  }
+  return insertAt - movingBefore
 }

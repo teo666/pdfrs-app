@@ -68,6 +68,29 @@ vi.mock('pdfrs-editor', () => {
       this.pageList.splice(this.pageList.indexOf(page), 1)
       this.pageList.splice(toIndex, 0, page)
     }
+    // Group edits: one undo step each, like the real model.
+    rotatePages(ids: number[], degrees: number) {
+      this.save()
+      for (const id of ids) {
+        const page = this.page(id)
+        page.pendingRotation = (((page.pendingRotation + degrees) % 360) + 360) % 360
+      }
+    }
+    deletePages(ids: number[]) {
+      this.save()
+      for (const id of ids) this.page(id).markedForDeletion = true
+    }
+    restorePages(ids: number[]) {
+      this.save()
+      for (const id of ids) this.page(id).markedForDeletion = false
+    }
+    movePages(ids: number[], toIndex: number) {
+      this.save()
+      const moving = new Set(ids)
+      const block = this.pageList.filter((p) => moving.has(p.id))
+      const rest = this.pageList.filter((p) => !moving.has(p.id))
+      this.pageList = [...rest.slice(0, toIndex), ...block, ...rest.slice(toIndex)]
+    }
     undo() {
       const prev = this.undoStack.pop()
       if (!prev) return false
@@ -125,6 +148,12 @@ vi.mock('pdfrs-editor', () => {
       const doc = this.docs.get(id)
       if (!doc) throw new Error(`nessun documento con id ${id}`)
       return doc
+    }
+    async extractPages(id: number, pages: number[]) {
+      this.getDocument(id)
+      const newId = this.nextId++
+      this.docs.set(newId, new FakeDocument(new Uint8Array([pages.length]), pages.length))
+      return newId
     }
     removeDocument(id: number) {
       this.docs.delete(id)
@@ -290,5 +319,77 @@ describe('editor store', () => {
     store.openViewer(1)
     store.close(store.activeId!)
     expect(store.viewerPageId).toBeNull()
+  })
+
+  it('selects with click modes: only, toggle and range from the last clicked page', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 6)])
+    const doc = store.active!
+    const selected = () => [...doc.selection].sort((a, b) => a - b)
+
+    store.selectPage(2, 'only')
+    store.selectPage(5, 'range')
+    expect(selected()).toEqual([2, 3, 4, 5])
+    store.selectPage(3, 'range') // the anchor stays on 2: the range shrinks
+    expect(selected()).toEqual([2, 3])
+    store.selectPage(6, 'toggle')
+    store.selectPage(2, 'toggle')
+    expect(selected()).toEqual([3, 6])
+
+    // A range follows the display order, not the page numbers.
+    store.move(6, 0) // order: 6, 1, 2, 3, 4, 5
+    store.selectPage(6, 'only')
+    store.selectPage(2, 'range')
+    expect(selected()).toEqual([1, 2, 6])
+
+    store.selectAll()
+    expect(doc.selection.size).toBe(6)
+    store.clearSelection()
+    expect(doc.selection.size).toBe(0)
+  })
+
+  it('applies group actions to the selection and clears it when a commit renumbers pages', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 4)])
+    const doc = store.active!
+
+    store.selectPage(1, 'only')
+    store.selectPage(3, 'toggle')
+    store.rotateSelected(90)
+    expect(doc.pages.map((p) => p.pendingRotation)).toEqual([90, 0, 90, 0])
+
+    store.toggleDeleteSelected()
+    expect(doc.pages.map((p) => p.markedForDeletion)).toEqual([true, false, true, false])
+    store.toggleDeleteSelected() // all selected already marked: restores them
+    expect(doc.pages.every((p) => !p.markedForDeletion)).toBe(true)
+
+    store.movePages([1, 3], 2)
+    expect(doc.pages.map((p) => p.id)).toEqual([2, 4, 1, 3])
+
+    // One undo step per group action.
+    store.undo()
+    expect(doc.pages.map((p) => p.id)).toEqual([1, 2, 3, 4])
+
+    await store.commit()
+    expect(doc.selection.size).toBe(0)
+  })
+
+  it('extracts the selection into a new document and offers to open it', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('relazione.pdf', 5)])
+    const source = store.active!
+    store.selectPage(2, 'only')
+    store.selectPage(4, 'range')
+
+    await store.extractSelected()
+
+    expect(store.documents.map((d) => [d.name, d.pages.length])).toEqual([
+      ['relazione.pdf', 5],
+      ['relazione (estratto).pdf', 3],
+    ])
+    expect(store.active).toBe(source) // stays on the source...
+    expect(store.notice?.message).toBe('3 pagine in «relazione (estratto).pdf»')
+    store.notice?.action?.run() // ...until "Apri"
+    expect(store.active?.name).toBe('relazione (estratto).pdf')
   })
 })

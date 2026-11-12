@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { bigPdf } from './big-pdf'
 
@@ -34,6 +34,13 @@ async function expectAllThumbnails(page: Page, count: number) {
       ),
     )
     .toBe(count)
+}
+
+/** True when the element is entirely inside the window and smaller than its 100% width (595px). */
+async function fitsInWindow(page: Page, element: Locator) {
+  const box = (await element.boundingBox())!
+  const viewport = page.viewportSize()!
+  return box.y >= 0 && box.y + box.height <= viewport.height && box.width < 595
 }
 
 /** Counts page objects in a PDF saved without object streams, as lopdf writes them. */
@@ -263,11 +270,7 @@ test('opens a page full size and walks through the pages in their current order'
   await expect(viewer.locator('header')).toContainText('Pagina 3 di 4')
 
   // Fit: the whole page inside the window, then back to 100%.
-  const fits = async () => {
-    const box = (await image.boundingBox())!
-    const viewport = page.viewportSize()!
-    return box.y >= 0 && box.y + box.height <= viewport.height && box.width < 595
-  }
+  const fits = () => fitsInWindow(page, image)
   await page.keyboard.press('0')
   await expect(viewer.getByRole('button', { name: 'Adatta' })).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(fits).toBe(true)
@@ -297,4 +300,64 @@ test('opens a page full size and walks through the pages in their current order'
   // Editing shortcuts are back once the viewer is closed.
   await page.keyboard.press('ControlOrMeta+z')
   await expect.poll(() => pageIds(page)).toEqual([1, 2, 3, 4])
+})
+
+test('selects pages, acts on them together, drags them as a block and extracts them', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'ten_pages.pdf')
+  await expectAllThumbnails(page, 10)
+  const thumb = (index: number) =>
+    cards(page).nth(index).getByRole('button', { name: /a grandezza reale/ })
+  const selectedIds = () =>
+    cards(page).evaluateAll((els) =>
+      els
+        .filter((el) => el.querySelector('[role=checkbox]')?.getAttribute('aria-checked') === 'true')
+        .map((el) => Number(el.getAttribute('data-page-id'))),
+    )
+  const bar = page.getByRole('toolbar', { name: 'Azioni sulle pagine selezionate' })
+
+  // Cmd/Ctrl+click starts a selection instead of opening the viewer,
+  // shift+click extends it, a plain click now toggles.
+  await thumb(1).click({ modifiers: ['ControlOrMeta'] })
+  await thumb(4).click({ modifiers: ['Shift'] })
+  await expect(bar).toContainText('4 pagine selezionate')
+  await thumb(2).click()
+  await expect.poll(selectedIds).toEqual([2, 4, 5])
+  await expect(page.getByRole('dialog')).toBeHidden()
+
+  // One rotation for all of them, undone in one step.
+  await bar.getByRole('button', { name: 'Ruota a destra le pagine selezionate' }).click()
+  for (const index of [1, 3, 4]) await expect(cards(page).nth(index).getByText('90°')).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(page.getByText('90°')).toHaveCount(0)
+
+  // Delete key marks them, pressing it again restores them.
+  await page.keyboard.press('Delete')
+  await expect(page.getByText('Da eliminare', { exact: true })).toHaveCount(3)
+  await expect(bar.getByRole('button', { name: 'Ripristina' })).toBeVisible()
+  await page.keyboard.press('Delete')
+  await expect(page.getByText('Da eliminare', { exact: true })).toHaveCount(0)
+
+  // Dragging one selected page moves the whole selection after page 8.
+  await cards(page).nth(3).dragTo(cards(page).nth(7), { targetPosition: { x: 150, y: 60 } })
+  await expect.poll(() => pageIds(page)).toEqual([1, 3, 6, 7, 8, 2, 4, 5, 9, 10])
+
+  // Extract: a new document with those pages, in their current order.
+  await bar.getByRole('button', { name: 'Estrai in un nuovo documento' }).click()
+  const notice = page.getByRole('status').filter({ hasText: 'ten_pages (estratto).pdf' })
+  await expect(notice).toContainText('3 pagine')
+  await expect(page.locator('aside li')).toHaveCount(2)
+  await notice.getByRole('button', { name: 'Apri' }).click()
+  await expect(page.getByRole('heading', { name: 'ten_pages (estratto).pdf' })).toBeVisible()
+  await expectAllThumbnails(page, 3)
+
+  // Back on the source: Escape clears the selection, Cmd/Ctrl+A selects all.
+  await page.locator('aside li').filter({ hasText: /^ten_pages\.pdf/ }).locator('button[aria-current]').click()
+  await expect(bar).toContainText('3 pagine selezionate')
+  await page.keyboard.press('Escape')
+  await expect(bar).toBeHidden()
+  await page.keyboard.press('ControlOrMeta+a')
+  await expect(bar).toContainText('10 pagine selezionate')
 })

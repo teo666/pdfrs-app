@@ -11,6 +11,15 @@ const store = useEditorStore()
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 const mod = isMac ? '⌘' : 'Ctrl+'
 
+const selected = computed(() => props.doc.selection.size)
+const allSelected = computed(() => selected.value === props.doc.pages.length)
+/** The selection's delete button restores instead when every selected page is already marked. */
+const selectionAllMarked = computed(
+  () =>
+    selected.value > 0 &&
+    props.doc.pages.every((p) => !props.doc.selection.has(p.id) || p.markedForDeletion),
+)
+
 const summary = computed(() => {
   const total = props.doc.pages.length
   const deleted = props.doc.pages.filter((p) => p.markedForDeletion).length
@@ -68,6 +77,63 @@ const summary = computed(() => {
       >
         Scarica
       </AppButton>
+    </div>
+
+    <!-- Actions on the selected pages, while there are any. -->
+    <div
+      v-if="selected > 0"
+      class="flex basis-full flex-wrap items-center gap-x-3 gap-y-2 rounded-card bg-accent-soft px-3 py-2"
+      role="toolbar"
+      aria-label="Azioni sulle pagine selezionate"
+    >
+      <span class="font-semibold text-accent">
+        {{ selected === 1 ? '1 pagina selezionata' : `${selected} pagine selezionate` }}
+      </span>
+      <button
+        v-if="!allSelected"
+        class="cursor-pointer text-accent underline-offset-2 hover:underline"
+        @click="store.selectAll()"
+      >
+        Seleziona tutte
+      </button>
+      <button
+        class="cursor-pointer text-accent underline-offset-2 hover:underline"
+        title="Deseleziona (Esc)"
+        @click="store.clearSelection()"
+      >
+        Deseleziona
+      </button>
+
+      <div class="ml-auto flex flex-wrap items-center gap-1.5">
+        <IconButton
+          icon="rotate-left"
+          label="Ruota a sinistra le pagine selezionate"
+          :disabled="doc.busy"
+          @click="store.rotateSelected(-90)"
+        />
+        <IconButton
+          icon="rotate-right"
+          label="Ruota a destra le pagine selezionate"
+          :disabled="doc.busy"
+          @click="store.rotateSelected(90)"
+        />
+        <AppButton
+          :icon="selectionAllMarked ? 'restore' : 'trash'"
+          :title="selectionAllMarked ? undefined : 'Segna per l’eliminazione (Canc)'"
+          :disabled="doc.busy"
+          @click="store.toggleDeleteSelected()"
+        >
+          {{ selectionAllMarked ? 'Ripristina' : 'Elimina' }}
+        </AppButton>
+        <AppButton
+          icon="file-plus"
+          title="Copia le pagine selezionate, così come appaiono, in un nuovo documento"
+          :disabled="doc.busy"
+          @click="store.extractSelected()"
+        >
+          Estrai in un nuovo documento
+        </AppButton>
+      </div>
     </div>
   </div>
 </template>

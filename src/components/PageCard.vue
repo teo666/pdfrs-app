@@ -2,6 +2,7 @@
 import { computed, useTemplateRef, watch } from 'vue'
 import type { PageId, PageInfo } from 'pdfrs-editor'
 
+import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
 import { useVisibility } from '@/composables/useVisibility'
 
@@ -15,6 +16,8 @@ const props = defineProps<{
    * re-renders one card instead of the parent's entire list.
    */
   previews: Record<PageId, string>
+  /** The document's selection, read here for the same reason as `previews`. */
+  selection: Set<PageId>
   disabled?: boolean
 }>()
 
@@ -25,11 +28,16 @@ const emit = defineEmits<{
   needPreview: []
   /** Show this page full size. */
   open: []
+  /** A click on the thumbnail; the grid decides between opening and selecting. */
+  pick: [event: MouseEvent]
+  /** The selection checkbox (or Space) was used; `range` when shift was held. */
+  check: [range: boolean]
 }>()
 
 const root = useTemplateRef<HTMLElement>('root')
 const visible = useVisibility(root)
 const previewUrl = computed(() => props.previews[props.page.id])
+const selected = computed(() => props.selection.has(props.page.id))
 
 // Asks when the card scrolls in, and again if its thumbnail is thrown away
 // (after a commit) while it stays on screen.
@@ -54,6 +62,11 @@ const label = computed(() =>
   <article
     ref="root"
     class="group relative flex cursor-grab flex-col gap-2 rounded-card bg-surface p-2.5 shadow-card transition-[box-shadow,opacity] [contain-intrinsic-size:auto_240px] [content-visibility:auto] hover:shadow-lift"
+    :class="
+      selected
+        ? 'ring-2 ring-accent ring-offset-2 ring-offset-canvas in-data-[drag=selection]:opacity-35'
+        : ''
+    "
     :aria-label="label"
     :data-page-id="page.id"
   >
@@ -86,20 +99,37 @@ const label = computed(() =>
         Da eliminare
       </div>
 
-      <!-- The whole thumbnail opens the full-size viewer; the action bar sits above it. -->
       <!--
+        The whole thumbnail: a click opens the full-size viewer, or selects
+        while a selection is in progress (the grid decides). Enter opens,
+        Space selects. The checkbox and the action bar sit above it.
         A div, not a <button>: Firefox won't start a drag from a button, and
         the thumbnail is where people grab the card to reorder it.
       -->
       <div
-        class="absolute inset-0 cursor-zoom-in rounded-md"
+        class="absolute inset-0 cursor-zoom-in rounded-md in-data-selecting:cursor-pointer"
         role="button"
         tabindex="0"
         :aria-label="`Apri ${label.toLowerCase()} a grandezza reale`"
-        @click="emit('open')"
+        @click="emit('pick', $event)"
         @keydown.enter.prevent="emit('open')"
-        @keydown.space.prevent="emit('open')"
+        @keydown.space.prevent="emit('check', $event.shiftKey)"
       />
+
+      <button
+        class="absolute top-1.5 left-1.5 grid size-6 cursor-pointer place-items-center rounded-md border-2 shadow-card transition"
+        :class="
+          selected
+            ? 'border-accent bg-accent text-accent-fg'
+            : 'border-line bg-surface/90 text-transparent opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 in-data-selecting:opacity-100 pointer-coarse:opacity-100'
+        "
+        role="checkbox"
+        :aria-checked="selected"
+        :aria-label="`Seleziona ${label.toLowerCase()}`"
+        @click="emit('check', $event.shiftKey)"
+      >
+        <AppIcon name="check" :size="14" />
+      </button>
 
       <div
         class="absolute right-1.5 bottom-1.5 flex gap-0.5 rounded-md bg-surface p-0.5 shadow-card transition"
