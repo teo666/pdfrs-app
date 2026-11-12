@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-import type { PageId } from 'pdfrs-editor'
+import type { AnnotationId, PageId } from 'pdfrs-editor'
 
+import AnnotationLayer from './AnnotationLayer.vue'
 import AppIcon from './AppIcon.vue'
+import SignaturePanel from './SignaturePanel.vue'
 import { PREVIEW_SCALE, useEditorStore, type DocumentState, type ViewerZoom } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState; pageId: PageId }>()
@@ -23,6 +25,44 @@ const page = computed(() => props.doc.pages[index.value])
 const total = computed(() => props.doc.pages.length)
 const rotation = computed(() => page.value?.pendingRotation ?? 0)
 const sideways = computed(() => rotation.value % 180 !== 0)
+
+// --- Signatures ----------------------------------------------------------
+
+const signing = ref(false)
+const selectedAnnotation = ref<AnnotationId | null>(null)
+const pageAnnotations = computed(() => props.doc.annotations[props.pageId] ?? [])
+
+/** Default width of a newly placed signature, as a fraction of the page. */
+const PLACE_WIDTH = 0.3
+
+/** Puts a library signature in the middle of the page, selected so it can be dragged right away. */
+function placeSignature(signatureId: number) {
+  const signature = store.signatures.find((s) => s.id === signatureId)
+  if (!signature || !shown.value) return
+  const pageAspect = shown.value.width / shown.value.height
+  const height = PLACE_WIDTH * signature.aspect * pageAspect
+  const id = store.placeSignature(props.pageId, signatureId, {
+    x: (1 - PLACE_WIDTH) / 2,
+    y: Math.max(0, (1 - height) / 2),
+    width: PLACE_WIDTH,
+  })
+  selectedAnnotation.value = id
+}
+
+function removeSelectedAnnotation() {
+  if (selectedAnnotation.value === null) return
+  store.removeAnnotation(selectedAnnotation.value)
+  selectedAnnotation.value = null
+}
+
+// Selection is per page; an undo can also take the selected one away.
+watch(
+  () => props.pageId,
+  () => (selectedAnnotation.value = null),
+)
+watch(pageAnnotations, (list) => {
+  if (!list.some((a) => a.id === selectedAnnotation.value)) selectedAnnotation.value = null
+})
 
 interface Shown {
   url: string
@@ -144,7 +184,23 @@ watch(neededScale, (scale) => {
 // --- Keyboard & lifecycle -----------------------------------------------
 
 function onKeyDown(event: KeyboardEvent) {
-  if (event.metaKey || event.ctrlKey || event.altKey) return
+  if ((event.target as HTMLElement | null)?.closest('input, textarea')) return
+  // Undo/redo work in here too: signatures are edited in the viewer.
+  if (event.metaKey || event.ctrlKey) {
+    const key = event.key.toLowerCase()
+    if (key === 'z' || key === 'y') {
+      event.preventDefault()
+      if (key === 'y' || event.shiftKey) store.redo()
+      else store.undo()
+    }
+    return
+  }
+  if (event.altKey) return
+  if ((event.key === 'Delete' || event.key === 'Backspace') && selectedAnnotation.value !== null) {
+    event.preventDefault()
+    removeSelectedAnnotation()
+    return
+  }
   const steps: Record<string, number> = {
     ArrowRight: 1,
     ArrowLeft: -1,
@@ -163,10 +219,12 @@ function onKeyDown(event: KeyboardEvent) {
   }
 }
 
-// Esc fires "cancel" on a modal <dialog>: the store decides, the dialog just reflects it.
+// Esc fires "cancel" on a modal <dialog>: the store decides, the dialog just
+// reflects it. With a signature selected, Esc first just deselects it.
 function onCancel(event: Event) {
   event.preventDefault()
-  store.closeViewer()
+  if (selectedAnnotation.value !== null) selectedAnnotation.value = null
+  else store.closeViewer()
 }
 
 onMounted(() => {
@@ -220,6 +278,16 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
         </span>
         <span class="ml-auto truncate text-white/60 max-md:hidden">{{ doc.name }}</span>
 
+        <button
+          class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors max-md:ml-auto"
+          :class="signing ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20'"
+          :aria-pressed="signing"
+          @click="signing = !signing"
+        >
+          <AppIcon name="pen" :size="14" />
+          Firma
+        </button>
+
         <div
           class="flex shrink-0 rounded-md bg-white/10 p-0.5 max-md:ml-auto"
           role="group"
@@ -252,43 +320,69 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
         </button>
       </header>
 
-      <!-- Clicking the dark area around the page closes the viewer. -->
-      <div ref="scroller" class="relative flex-1 overflow-auto" @click.self="store.closeViewer()">
+      <div class="relative flex min-h-0 flex-1">
+        <!-- Clicking the dark area around the page closes the viewer. -->
         <div
-          class="flex min-h-full w-max min-w-full items-center justify-center p-10"
+          ref="scroller"
+          class="relative min-w-0 flex-1 overflow-auto"
           @click.self="store.closeViewer()"
         >
-          <!--
-            A rotated element keeps its unrotated layout box, so the box is
-            sized by hand (sides swapped a quarter turn) and the image is
-            centred inside it.
-          -->
           <div
-            v-if="shown && box"
-            class="relative shrink-0"
-            :style="{ width: `${box.width * zoom}px`, height: `${box.height * zoom}px` }"
+            class="flex min-h-full w-max min-w-full items-center justify-center p-10"
+            @click.self="store.closeViewer()"
           >
-            <img
-              :src="shown.url"
-              :alt="`Pagina ${index + 1}`"
-              class="absolute top-1/2 left-1/2 max-w-none bg-white shadow-2xl transition-[filter] duration-200"
-              :class="{ 'blur-[2px]': shown.placeholder, 'opacity-50': page?.markedForDeletion }"
-              :style="{
-                width: `${shown.width * zoom}px`,
-                height: `${shown.height * zoom}px`,
-                transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-              }"
-              :data-full="!shown.placeholder"
+            <!--
+            A rotated element keeps its unrotated layout box, so the box is
+            sized by hand (sides swapped a quarter turn) and the page - image
+            and signatures together - is centred and turned inside it.
+          -->
+            <div
+              v-if="shown && box"
+              class="relative shrink-0"
+              :style="{ width: `${box.width * zoom}px`, height: `${box.height * zoom}px` }"
+            >
+              <div
+                class="absolute top-1/2 left-1/2"
+                :style="{
+                  width: `${shown.width * zoom}px`,
+                  height: `${shown.height * zoom}px`,
+                  transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+                }"
+              >
+                <img
+                  :src="shown.url"
+                  :alt="`Pagina ${index + 1}`"
+                  class="block size-full max-w-none bg-white shadow-2xl transition-[filter] duration-200"
+                  :class="{
+                    'blur-[2px]': shown.placeholder,
+                    'opacity-50': page?.markedForDeletion,
+                  }"
+                  :data-full="!shown.placeholder"
+                  draggable="false"
+                />
+                <AnnotationLayer
+                  :annotations="pageAnnotations"
+                  :rotation="rotation"
+                  :page-width="shown.width * zoom"
+                  :page-height="shown.height * zoom"
+                  :selected-id="selectedAnnotation"
+                  @select="selectedAnnotation = $event"
+                  @change="(id, change) => store.updateAnnotation(id, change)"
+                  @remove="(id) => (store.removeAnnotation(id), (selectedAnnotation = null))"
+                />
+              </div>
+            </div>
+            <p v-else-if="error" class="text-white/80">{{ error }}</p>
+            <div
+              v-else
+              class="size-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
+              role="status"
+              aria-label="Caricamento"
             />
           </div>
-          <p v-else-if="error" class="text-white/80">{{ error }}</p>
-          <div
-            v-else
-            class="size-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
-            role="status"
-            aria-label="Caricamento"
-          />
         </div>
+
+        <SignaturePanel v-if="signing" @place="placeSignature" @close="signing = false" />
       </div>
     </div>
 
@@ -302,7 +396,8 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
       <AppIcon name="chevron-left" :size="24" />
     </button>
     <button
-      class="fixed top-1/2 right-4 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-black/55 hover:bg-black/75 disabled:cursor-default disabled:opacity-25"
+      class="fixed top-1/2 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-black/55 hover:bg-black/75 disabled:cursor-default disabled:opacity-25"
+      :class="signing ? 'right-[19rem] max-md:right-4' : 'right-4'"
       aria-label="Pagina successiva"
       title="Pagina successiva (→)"
       :disabled="index >= total - 1"

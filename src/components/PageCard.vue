@@ -5,6 +5,7 @@ import type { PageId, PageInfo } from 'pdfrs-editor'
 import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
 import { useVisibility } from '@/composables/useVisibility'
+import type { AnnotationView } from '@/stores/editor'
 
 const props = defineProps<{
   page: PageInfo
@@ -18,6 +19,8 @@ const props = defineProps<{
   previews: Record<PageId, string>
   /** The document's selection, read here for the same reason as `previews`. */
   selection: Set<PageId>
+  /** Pending signatures by page, read here for the same reason as `previews`. */
+  annotations: Record<PageId, AnnotationView[]>
   disabled?: boolean
 }>()
 
@@ -38,6 +41,7 @@ const root = useTemplateRef<HTMLElement>('root')
 const visible = useVisibility(root)
 const previewUrl = computed(() => props.previews[props.page.id])
 const selected = computed(() => props.selection.has(props.page.id))
+const stamps = computed(() => props.annotations[props.page.id] ?? [])
 
 // Asks when the card scrolls in, and again if its thumbnail is thrown away
 // (after a commit) while it stays on screen.
@@ -75,16 +79,40 @@ const label = computed(() =>
       The image is absolutely positioned so its percentage limits resolve
       against the box.
     -->
-    <div class="relative aspect-square overflow-hidden rounded-md bg-surface-muted">
-      <img
+    <div class="@container relative aspect-square overflow-hidden rounded-md bg-surface-muted">
+      <!--
+        The page and its pending signatures turn together. The box takes its
+        size from the image, which is limited in container units (the box is
+        square, so 100cqw is also its height) - percentages wouldn't resolve
+        against a box sized by its own content.
+      -->
+      <div
         v-if="previewUrl"
-        :src="previewUrl"
-        :alt="label"
-        class="absolute inset-0 m-auto max-h-[calc(100%-20px)] max-w-[calc(100%-20px)] bg-white shadow-[0_0_0_1px_var(--color-line),0_2px_6px_#0000001a] transition-transform duration-200"
+        class="absolute top-1/2 left-1/2 transition-transform duration-200"
         :class="{ 'opacity-30 grayscale': page.markedForDeletion }"
-        :style="{ transform: `rotate(${page.pendingRotation}deg)` }"
-        draggable="false"
-      />
+        :style="{ transform: `translate(-50%, -50%) rotate(${page.pendingRotation}deg)` }"
+      >
+        <img
+          :src="previewUrl"
+          :alt="label"
+          class="block max-h-[calc(100cqw-20px)] max-w-[calc(100cqw-20px)] bg-white shadow-[0_0_0_1px_var(--color-line),0_2px_6px_#0000001a]"
+          draggable="false"
+        />
+        <img
+          v-for="stamp in stamps"
+          :key="stamp.id"
+          :src="stamp.url"
+          alt=""
+          class="pointer-events-none absolute"
+          :style="{
+            left: `${stamp.x * 100}%`,
+            top: `${stamp.y * 100}%`,
+            width: `${stamp.width * 100}%`,
+          }"
+          draggable="false"
+          data-stamp
+        />
+      </div>
       <div
         v-else
         class="absolute inset-0 m-auto h-[88%] w-[64%] animate-shimmer rounded-[3px] bg-linear-to-r from-surface-muted via-line to-surface-muted bg-size-[200%_100%]"

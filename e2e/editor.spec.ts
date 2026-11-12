@@ -402,3 +402,65 @@ test('moves pages to another document, inserts a file and merges documents', asy
   await expect(cards(page)).toHaveCount(16)
   await expect(docs).toHaveCount(3)
 })
+
+test('draws a signature, places and moves it on a page, then writes it into the PDF', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+
+  await cards(page).nth(0).getByRole('button', { name: /a grandezza reale/ }).click()
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  await expect(viewer.locator('img[data-full="true"]')).toBeVisible()
+  await viewer.getByRole('button', { name: 'Firma', exact: true }).click()
+
+  // Draw with the real mouse on the pad (opened right away: the library is empty).
+  const pad = viewer.getByLabel('Area per disegnare la firma')
+  const box = (await pad.boundingBox())!
+  await page.mouse.move(box.x + 30, box.y + 90)
+  await page.mouse.down()
+  for (let i = 1; i <= 30; i++) {
+    await page.mouse.move(box.x + 30 + i * 6, box.y + 90 - Math.sin(i / 3) * 30)
+  }
+  await page.mouse.up()
+  await viewer.getByRole('button', { name: 'Usa questa firma' }).click()
+
+  // Placed in the middle of the page and selected.
+  const stamp = viewer.locator('[data-annotation]')
+  await expect(stamp).toHaveCount(1)
+  await expect(stamp).toHaveAttribute('aria-pressed', 'true')
+  await expect(viewer.getByRole('button', { name: 'Metti «Firma 1» sulla pagina' })).toBeVisible()
+
+  // Drag it down-left: one move, one undo step.
+  const before = (await stamp.boundingBox())!
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(before.x + before.width / 2 - 80, before.y + before.height / 2 + 60, {
+    steps: 8,
+  })
+  await page.mouse.up()
+  const after = (await stamp.boundingBox())!
+  expect(after.x).toBeLessThan(before.x - 60)
+  expect(after.y).toBeGreaterThan(before.y + 40)
+
+  // Esc first deselects, then closes; the card shows the pending signature.
+  await page.keyboard.press('Escape')
+  await expect(stamp).toHaveAttribute('aria-pressed', 'false')
+  await page.keyboard.press('Escape')
+  await expect(viewer).toBeHidden()
+  await expect(cards(page).nth(0).locator('[data-stamp]')).toHaveCount(1)
+  await expect(page.getByText('modifiche non applicate')).toBeVisible()
+
+  // Applying writes it into the page: no overlay anymore, an image in the file.
+  await page.getByRole('button', { name: 'Applica modifiche' }).click()
+  await expect(page.getByText('modifiche non applicate')).toBeHidden()
+  await expect(cards(page).nth(0).locator('[data-stamp]')).toHaveCount(0)
+  await expectAllThumbnails(page, 4)
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica' }).click()
+  const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
+  expect(pdf).toMatch(/\/Subtype\s*\/Image/)
+  expect(pdf).toMatch(/\/SMask/) // transparent around the ink
+})

@@ -1,8 +1,12 @@
 import { defineStore } from 'pinia'
-import { computed, ref, toRaw } from 'vue'
+import { computed, markRaw, ref, shallowRef, toRaw } from 'vue'
 import {
   PdfEditor,
+  type AnnotationId,
+  type AssetId,
   type DocumentId,
+  type ImageAsset,
+  type PageAnnotation,
   type PageId,
   type PageInfo,
   type PdfDocument,
@@ -15,6 +19,26 @@ import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
 export const PREVIEW_SCALE = 0.4
 
 export type ViewerZoom = 'actual' | 'fit'
+
+/** A signature (or any stamp image) in the session's library, ready to be placed on pages. */
+export interface Signature {
+  id: number
+  name: string
+  /** PNG object URL, for showing it. */
+  url: string
+  /** Height / width. */
+  aspect: number
+  image: ImageAsset
+}
+
+/** A pending annotation as the UI draws it: the model's data plus the image to show. */
+export interface AnnotationView extends PageAnnotation {
+  url: string
+  aspect: number
+}
+
+/** The box of a placed signature: fractions of the page (see PageAnnotation). */
+export type AnnotationBox = Pick<PageAnnotation, 'x' | 'y' | 'width'>
 
 /** Visible pages further apart than this get separate render batches instead of one range covering everything in between. */
 const MAX_BATCH_GAP = 4
@@ -41,6 +65,11 @@ export interface DocumentState {
    * re-renders when its own entry changes, not on every selection change.
    */
   selection: Set<PageId>
+  /**
+   * Pending annotations by page. Updated entry by entry, never replaced, so
+   * a card reading its own page's entry is the only one to re-render.
+   */
+  annotations: Record<PageId, AnnotationView[]>
 }
 
 /** How a click extends the selection: only this page, toggle it, or everything from the last clicked page to it. */
@@ -70,6 +99,9 @@ interface DocumentInternals {
   flushScheduled: boolean
   /** Where a shift-click range starts: the last page clicked. */
   anchor: PageId | null
+  /** Each library signature is registered with the document once, as an asset. */
+  assetBySignature: Map<number, AssetId>
+  signatureByAsset: Map<AssetId, Signature>
 }
 
 export const useEditorStore = defineStore('editor', () => {
@@ -87,6 +119,10 @@ export const useEditorStore = defineStore('editor', () => {
   let noticeTimer: ReturnType<typeof setTimeout> | undefined
 
   const active = computed(() => documents.value.find((d) => d.id === activeId.value) ?? null)
+
+  /** The session's signatures. Not persisted anywhere: they're personal data. */
+  const signatures = shallowRef<Signature[]>([])
+  let nextSignatureId = 1
 
   /** Pages are being dragged out of the grid (the sidebar shows where they can go). */
   const draggingPages = ref(false)
@@ -149,6 +185,7 @@ export const useEditorStore = defineStore('editor', () => {
     state.canUndo = doc.canUndo()
     state.canRedo = doc.canRedo()
     state.hasPendingChanges = doc.hasPendingChanges()
+    syncAnnotations(state, inner)
     if (doc.getBytes() !== inner.baseline) {
       inner.baseline = doc.getBytes()
       inner.requested.clear()
@@ -157,6 +194,22 @@ export const useEditorStore = defineStore('editor', () => {
       // Page ids are renumbered by a commit: the old selection means nothing.
       state.selection.clear()
       inner.anchor = null
+    }
+  }
+
+  function syncAnnotations(state: DocumentState, inner: DocumentInternals) {
+    const byPage = new Map<PageId, AnnotationView[]>()
+    for (const annotation of inner.doc.annotations()) {
+      const signature = inner.signatureByAsset.get(annotation.asset)
+      const view = { ...annotation, url: signature?.url ?? '', aspect: signature?.aspect ?? 1 }
+      byPage.set(annotation.page, [...(byPage.get(annotation.page) ?? []), view])
+    }
+    const current = state.annotations
+    for (const key of Object.keys(current)) {
+      if (!byPage.has(Number(key))) delete current[Number(key)]
+    }
+    for (const [page, views] of byPage) {
+      if (JSON.stringify(current[page]) !== JSON.stringify(views)) current[page] = views
     }
   }
 
@@ -171,6 +224,8 @@ export const useEditorStore = defineStore('editor', () => {
       inFlight: new Set(),
       flushScheduled: false,
       anchor: null,
+      assetBySignature: new Map(),
+      signatureByAsset: new Map(),
     })
     documents.value.push({
       id,
@@ -182,6 +237,7 @@ export const useEditorStore = defineStore('editor', () => {
       previews: {},
       busy: false,
       selection: new Set(),
+      annotations: {},
     })
     sync(id)
   }
@@ -271,6 +327,52 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   const commit = () => runBusy((doc) => doc.commit())
+
+  // --- Signatures ------------------------------------------------------------
+
+  function addSignature(image: ImageAsset, url: string, name: string): Signature {
+    const signature = markRaw({
+      id: nextSignatureId++,
+      name,
+      url,
+      aspect: image.height / image.width,
+      image,
+    })
+    signatures.value = [...signatures.value, signature]
+    return signature
+  }
+
+  /** Takes a signature out of the library; ones already placed on pages stay. */
+  function removeSignature(id: number) {
+    signatures.value = signatures.value.filter((signature) => signature.id !== id)
+  }
+
+  /** Places a library signature on a page of the active document; returns the new annotation's id. */
+  function placeSignature(
+    page: PageId,
+    signatureId: number,
+    box: AnnotationBox,
+  ): AnnotationId | null {
+    const signature = signatures.value.find((s) => s.id === signatureId)
+    const state = active.value
+    const inner = state ? internals.get(state.id) : undefined
+    if (!signature || !inner) return null
+    let id: AnnotationId | null = null
+    edit((doc) => {
+      let asset = inner.assetBySignature.get(signature.id)
+      if (asset === undefined) {
+        asset = doc.addAsset(signature.image)
+        inner.assetBySignature.set(signature.id, asset)
+        inner.signatureByAsset.set(asset, signature)
+      }
+      id = doc.addAnnotation({ page, asset, ...box })
+    })
+    return id
+  }
+
+  const updateAnnotation = (id: AnnotationId, box: Partial<AnnotationBox>) =>
+    edit((doc) => doc.updateAnnotation(id, box))
+  const removeAnnotation = (id: AnnotationId) => edit((doc) => doc.removeAnnotation(id))
 
   // --- Between documents ----------------------------------------------------
 
@@ -542,6 +644,12 @@ export const useEditorStore = defineStore('editor', () => {
     error,
     notice,
     dismissNotice,
+    signatures,
+    addSignature,
+    removeSignature,
+    placeSignature,
+    updateAnnotation,
+    removeAnnotation,
     draggingPages,
     mergePicks,
     toggleMergePick,

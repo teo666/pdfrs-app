@@ -195,11 +195,12 @@ async function animateReorder(lo: number, hi: number, apply: () => void) {
     <PageCard
       v-for="(page, index) in doc.pages"
       :key="page.id"
-      v-memo="[page, index, doc.busy, doc.previews, doc.selection]"
+      v-memo="[page, index, doc.busy, doc.previews, doc.selection, doc.annotations]"
       :page="page"
       :position="index + 1"
       :previews="doc.previews"
       :selection="doc.selection"
+      :annotations="doc.annotations"
       :disabled="doc.busy"
       :draggable="!doc.busy"
       @dragstart="onDragStart($event, page.id)"

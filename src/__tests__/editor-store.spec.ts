@@ -11,8 +11,8 @@ vi.mock('pdfrs-editor', () => {
   class FakeDocument {
     bytes: Uint8Array
     pageList: Page[]
-    undoStack: { bytes: Uint8Array; pages: Page[] }[] = []
-    redoStack: { bytes: Uint8Array; pages: Page[] }[] = []
+    undoStack: { bytes: Uint8Array; pages: Page[]; annotations: unknown }[] = []
+    redoStack: { bytes: Uint8Array; pages: Page[]; annotations: unknown }[] = []
     pngs = new Map<string, Uint8Array>()
 
     constructor(bytes: Uint8Array, count: number) {
@@ -24,7 +24,11 @@ vi.mock('pdfrs-editor', () => {
       }))
     }
     private save() {
-      this.undoStack.push({ bytes: this.bytes, pages: structuredClone(this.pageList) })
+      this.undoStack.push({
+        bytes: this.bytes,
+        pages: structuredClone(this.pageList),
+        annotations: this.annotationList,
+      })
       this.redoStack = []
     }
     private page(id: number) {
@@ -39,8 +43,11 @@ vi.mock('pdfrs-editor', () => {
       return this.bytes
     }
     hasPendingChanges() {
-      return this.pageList.some(
-        (p, i) => p.pendingRotation !== 0 || p.markedForDeletion || p.id !== i + 1,
+      return (
+        this.annotationList.length > 0 ||
+        this.pageList.some(
+          (p, i) => p.pendingRotation !== 0 || p.markedForDeletion || p.id !== i + 1,
+        )
       )
     }
     canUndo() {
@@ -91,6 +98,39 @@ vi.mock('pdfrs-editor', () => {
       const rest = this.pageList.filter((p) => !moving.has(p.id))
       this.pageList = [...rest.slice(0, toIndex), ...block, ...rest.slice(toIndex)]
     }
+    // Annotations, kept simple: pending, undoable through the same snapshots.
+    assets = new Map<number, unknown>()
+    annotationList: {
+      id: number
+      page: number
+      asset: number
+      x: number
+      y: number
+      width: number
+    }[] = []
+    nextAnnotation = 1
+    addAsset(asset: unknown) {
+      const id = this.assets.size + 1
+      this.assets.set(id, asset)
+      return id
+    }
+    annotations() {
+      return structuredClone(this.annotationList)
+    }
+    addAnnotation(a: { page: number; asset: number; x: number; y: number; width: number }) {
+      this.save()
+      const id = this.nextAnnotation++
+      this.annotationList = [...this.annotationList, { ...a, id }]
+      return id
+    }
+    updateAnnotation(id: number, patch: object) {
+      this.save()
+      this.annotationList = this.annotationList.map((a) => (a.id === id ? { ...a, ...patch } : a))
+    }
+    removeAnnotation(id: number) {
+      this.save()
+      this.annotationList = this.annotationList.filter((a) => a.id !== id)
+    }
     async insertPages(bytes: Uint8Array, at?: number) {
       this.save()
       const added = bytes[10] ?? bytes[0] ?? 1
@@ -107,15 +147,25 @@ vi.mock('pdfrs-editor', () => {
     undo() {
       const prev = this.undoStack.pop()
       if (!prev) return false
-      this.redoStack.push({ bytes: this.bytes, pages: this.pageList })
+      this.redoStack.push({
+        bytes: this.bytes,
+        pages: this.pageList,
+        annotations: this.annotationList,
+      })
       ;({ bytes: this.bytes, pages: this.pageList } = prev)
+      this.annotationList = prev.annotations as typeof this.annotationList
       return true
     }
     redo() {
       const next = this.redoStack.pop()
       if (!next) return false
-      this.undoStack.push({ bytes: this.bytes, pages: this.pageList })
+      this.undoStack.push({
+        bytes: this.bytes,
+        pages: this.pageList,
+        annotations: this.annotationList,
+      })
       ;({ bytes: this.bytes, pages: this.pageList } = next)
+      this.annotationList = next.annotations as typeof this.annotationList
       return true
     }
     async commit() {
@@ -482,5 +532,39 @@ describe('editor store', () => {
     await store.insertFiles([jpeg])
     expect(doc.pages.map((p) => p.id)).toEqual([1, 6, 2, 3, 4, 5])
     expect(store.notice?.message).toBe('Inserita 1 pagina')
+  })
+
+  it('places library signatures as pending annotations, shown per page', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 3)])
+    const doc = store.active!
+    const image = { pixels: new Uint8Array(4 * 4 * 2), width: 4, height: 2 }
+    const signature = store.addSignature(image, 'blob:firma', 'Firma 1')
+    expect(store.signatures).toHaveLength(1)
+
+    const id = store.placeSignature(2, signature.id, { x: 0.1, y: 0.2, width: 0.3 })!
+    store.placeSignature(2, signature.id, { x: 0.5, y: 0.6, width: 0.2 })
+    expect(doc.annotations[2]).toHaveLength(2)
+    expect(doc.annotations[2]![0]).toMatchObject({ x: 0.1, url: 'blob:firma', aspect: 0.5 })
+    expect(doc.annotations[1]).toBeUndefined()
+    expect(doc.hasPendingChanges).toBe(true)
+
+    // Updating one page's entry leaves the record itself in place (cards
+    // read their own entry from it).
+    const record = doc.annotations
+    store.updateAnnotation(id, { x: 0.15 })
+    expect(doc.annotations).toBe(record)
+    expect(doc.annotations[2]![0]!.x).toBe(0.15)
+
+    store.removeAnnotation(id)
+    expect(doc.annotations[2]).toHaveLength(1)
+    store.undo()
+    store.undo()
+    expect(doc.annotations[2]![0]!.x).toBe(0.1)
+
+    // Out of the library, but still on the page.
+    store.removeSignature(signature.id)
+    expect(store.signatures).toHaveLength(0)
+    expect(doc.annotations[2]).toHaveLength(2)
   })
 })
