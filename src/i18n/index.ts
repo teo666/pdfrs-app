@@ -1,5 +1,9 @@
 import { createI18n } from 'vue-i18n'
 
+import de from './locales/de'
+import en from './locales/en'
+import es from './locales/es'
+import fr from './locales/fr'
 import it, { type Messages } from './locales/it'
 
 /** The languages the app speaks, by code, with their names as their speakers write them. */
@@ -31,7 +35,7 @@ export function initialLocale(): Locale {
   return 'en'
 }
 
-const messages: Record<Locale, Messages> = { it, en: it, es: it, de: it, fr: it }
+const messages: Record<Locale, Messages> = { it, en, es, de, fr }
 
 export const i18n = createI18n<[Messages], Locale, false>({
   legacy: false,

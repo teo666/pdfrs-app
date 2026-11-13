@@ -1388,3 +1388,34 @@ test('theme: follows the system until chosen, then stays as chosen', async ({ pa
   await themes.getByRole('radio', { name: /automatico/ }).click()
   await expect(html).toHaveAttribute('data-theme', 'light')
 })
+
+test('language: the switcher changes every text, and the choice is kept', async ({ page }) => {
+  await page.goto('/')
+  const html = page.locator('html')
+  await expect(html).toHaveAttribute('lang', 'it')
+  await expect(page.getByRole('button', { name: 'Apri file' }).first()).toBeVisible()
+
+  await page.getByRole('combobox', { name: 'Lingua' }).selectOption('en')
+  await expect(html).toHaveAttribute('lang', 'en')
+  await expect(page.getByRole('button', { name: 'Open files' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Apri file' })).toHaveCount(0)
+
+  // Remembered over the browser's language, and texts the store makes follow too.
+  await page.reload()
+  await expect(html).toHaveAttribute('lang', 'en')
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Open files' }).first().click()
+  await (await chooserPromise).setFiles(fixture('four_pages.pdf'))
+  await expect(page.getByText('4 pages')).toBeVisible()
+
+  for (const [code, open] of [
+    ['de', 'Dateien öffnen'],
+    ['es', 'Abrir archivos'],
+    ['fr', 'Ouvrir des fichiers'],
+  ]) {
+    await page.getByRole('combobox').first().selectOption(code!)
+    await expect(html).toHaveAttribute('lang', code!)
+    await expect(page.getByRole('button', { name: open! }).first()).toBeVisible()
+  }
+  await page.getByRole('combobox').first().selectOption('it')
+})

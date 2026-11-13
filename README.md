@@ -43,7 +43,10 @@ In questo repo:
 | `src/lib/split.ts` | Le parti di una divisione: ogni N pagine, intervalli scritti a mano, inizio dalle pagine selezionate |
 | `src/lib/imposition.ts` | Le stesse regole di impaginazione del motore, per disegnare lo schema del foglio prima di crearlo |
 | `src/components/` | `PageGrid` (griglia e riordino con drag & drop; vedi il commento in testa per i vincoli di prestazioni), `PageCard`, `PageViewer` (modale al 100% su `<dialog>` nativo), `DocumentList`, `DocumentToolbar`, `EmptyState` |
-| `src/assets/main.css` | Token di design per Tailwind (`@theme`): colori, ombre, raggi. Il tema scuro ridefinisce solo le variabili, quindi i componenti non usano `dark:` |
+| `src/assets/main.css` | Token di design per Tailwind (`@theme`): colori, ombre, raggi. Il tema scuro ridefinisce solo le variabili su `<html data-theme="dark">`, quindi i componenti non usano `dark:` |
+| `src/composables/useTheme.ts`, `public/theme-boot.js` | Tema automatico (segue il sistema), chiaro o scuro, scelto nell'intestazione e ricordato; `theme-boot.js` lo applica prima del primo disegno |
+| `src/i18n/` | vue-i18n: italiano (la fonte, `locales/it`), inglese, spagnolo, tedesco, francese, un file per area. Lingua iniziale dal browser, scelta ricordata. Un test controlla che ogni lingua abbia le stesse chiavi, segnaposto e forme plurali dell'italiano. La cronologia si traduce dalle descrizioni strutturate del modello (`lib/historyLabel.ts`) |
+| `extension/`, `scripts/build-extension.mjs` | L'estensione per Chrome/Edge e Firefox (`pnpm build:extension`): vedi `extension/README.md` |
 | `src/components/AppButton.vue`, `IconButton.vue` | Pulsanti riusabili: lo stile ripetuto sta in un componente, non in classi `@apply` |
 | `src/lib/` | Funzioni pure: riconoscimento dei file dai primi byte, calcolo dell'indice di destinazione del drop |
 
@@ -68,6 +71,9 @@ pnpm test:e2e     # Playwright sul wasm vero, con un dev server dedicato sulla p
 pnpm type-check
 pnpm lint
 pnpm build
+pnpm build:extension   # l'estensione per i browser, in dist-extension/
 ```
+
+Per aggiungere un testo: mettilo in `src/i18n/locales/it/<area>.ts` e nelle stesse chiavi delle altre quattro lingue (il type-check segnala la chiave mancante, il test delle lingue segnaposto e plurali diversi). I test girano in italiano.
 
 La prima volta, Playwright ha bisogno del browser: `pnpm exec playwright install chromium`.

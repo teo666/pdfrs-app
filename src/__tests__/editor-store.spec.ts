@@ -488,6 +488,7 @@ vi.mock('pdfrs-editor/operations', () => ({
   },
 }))
 
+import { setLocale } from '@/i18n'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 /** A file the store will take for a PDF; byte 10 tells the fake how many pages it has. */
@@ -1302,4 +1303,19 @@ describe('editor store', () => {
     expect(mergeOptions[0]).toEqual({ applyPending: true, titles: ['manuale', 'note'] })
     expect(notes.outline).toBeNull()
   })
+
+  it('speaks the language chosen: notices and the names of new documents', async () => {
+    setLocale('en')
+    try {
+      const store = useEditorStore()
+      await store.openFiles([pdfFile('a.pdf', 2), pdfFile('b.pdf', 2)])
+      store.toggleTool('merge')
+      await store.mergePicked()
+      expect(store.notice?.message).toBe('Merged 2 documents: the originals stay open')
+      expect(store.active?.name).toBe('Merge of 2 documents.pdf')
+    } finally {
+      setLocale('it')
+    }
+  })
 })
+

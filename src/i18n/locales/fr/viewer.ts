@@ -1,0 +1,116 @@
+/** French messages: viewer. */
+import type { Messages } from '../it'
+
+export default {
+  pageViewer: {
+    dialog: 'Aperçu de la page',
+    header: {
+      page: 'Page {page} sur {total}',
+      was: 'auparavant {page}',
+      markedForDeletion: 'À supprimer',
+      sign: 'Signer',
+      images: 'Images',
+      imagesTitle:
+        'Afficher les images déjà présentes sur la page, pour les retirer ou les télécharger',
+      close: 'Fermer l’aperçu',
+      closeTitle: 'Fermer (Échap)',
+    },
+    zoom: {
+      group: 'Zoom',
+      fit: 'Ajuster',
+      actual: '100 %',
+      title: '{label} ({key})',
+    },
+    pageAlt: 'Page {page}',
+    loading: 'Chargement',
+    photo: {
+      group: 'Page de la photo',
+      on: 'Photo sur',
+      page: 'Page',
+      a4: 'A4',
+      letter: 'Letter',
+      native: 'Taille réelle',
+      margin: 'Marge',
+      noMargin: 'Aucune',
+      marginCm: '{cm} cm',
+      useAsDefault: 'Utiliser pour les prochaines photos',
+      useAsDefaultTitle:
+        'Les prochaines photos que vous ouvrez ou insérez iront sur ce type de page, avec cette marge',
+      isDefault: 'par défaut pour les prochaines photos',
+    },
+    selected: {
+      image: 'Image sélectionnée',
+      text: 'Texte sélectionné',
+      signature: 'Signature sélectionnée',
+      onAllPages: 'Identique sur toutes les pages',
+      linked: 'Chaque modification s’applique à toutes les pages liées.',
+      unlinked:
+        'Modifications propres à cette page : recochez la case pour revenir à l’identique des autres copies.',
+      single: 'Sur cette page uniquement.',
+      editText: 'Modifier le texte',
+      editTextTitle: 'Changer le texte, la police ou la couleur (ou double-cliquez sur le texte)',
+      resetProportions: 'Proportions d’origine',
+      resetProportionsTitle: 'Annuler l’étirement : la hauteur suit de nouveau la largeur',
+      remove: 'Retirer',
+      removeLinked: 'Retirer de {count} pages',
+    },
+    pdfImage: {
+      group: 'Image du document sélectionnée',
+      title: 'Image',
+      details: '{width} × {height} px · {format} · {size} · {pages}',
+      removed: 'À retirer',
+      restore: 'Restaurer',
+      sharedTitle:
+        'Fait partie d’un contenu que d’autres pages dessinent aussi : elle disparaît là aussi',
+      removeShared: 'Retirer (aussi de {count} autres pages)',
+      removeHere: 'Retirer de cette page',
+      removeEverywhere: 'Retirer de toutes ({pages})',
+      download: 'Télécharger',
+    },
+    textEdit: {
+      panel: 'Modifier le texte',
+      apply: 'Appliquer',
+      cancel: 'Annuler',
+    },
+    previous: 'Page précédente',
+    previousTitle: 'Page précédente (←)',
+    next: 'Page suivante',
+    nextTitle: 'Page suivante (→)',
+  },
+  annotationLayer: {
+    image: 'Image sur la page',
+    imageSelected: 'Image sur la page (sélectionnée)',
+    text: 'Texte sur la page',
+    textSelected: 'Texte sur la page (sélectionné)',
+    signature: 'Signature sur la page',
+    signatureSelected: 'Signature sur la page (sélectionnée)',
+    remove: 'Retirer de la page',
+    removeTitle: 'Retirer (Suppr)',
+    rotate: 'Faire pivoter',
+    rotateTitle:
+      '{degrees}° - faites glisser pour faire pivoter (⇧ : par pas de 15°), double-cliquez pour redresser',
+    stretchX: 'Élargir ou rétrécir',
+    stretchXTitle: 'Faites glisser pour modifier uniquement la largeur (⇧ : depuis le centre)',
+    stretchY: 'Allonger ou raccourcir',
+    stretchYTitle: 'Faites glisser pour modifier uniquement la hauteur (⇧ : depuis le centre)',
+    resize: 'Redimensionner',
+    resizeTitle:
+      'Faites glisser pour agrandir ou réduire en conservant les proportions (⇧ : depuis le centre)',
+  },
+  imageLayer: {
+    removed: 'Image à retirer',
+    onPage: 'Image de la page',
+  },
+  signaturePanel: {
+    title: 'Signatures',
+    close: 'Fermer le panneau des signatures',
+    hint: 'Cliquez sur une signature pour la placer sur cette page, puis faites-la glisser à l’endroit voulu.',
+    place: 'Placer « {name} » sur la page',
+    remove: 'Retirer « {name} » de la bibliothèque',
+    removeTitle: 'Retirer de la bibliothèque (elle reste sur les pages où vous l’avez déjà placée)',
+    draw: 'Dessiner une signature',
+    upload: 'Importer une image',
+    privacy:
+      'Les signatures restent uniquement dans cet onglet du navigateur et ne sont enregistrées nulle part. Elles sont intégrées au PDF quand vous appliquez les modifications ou le téléchargez.',
+  },
+} satisfies Messages['viewer']

@@ -34,7 +34,14 @@ const browsers = {
   firefox: {
     ...base,
     background: { scripts: ['background.js'] },
-    browser_specific_settings: { gecko: { id: 'pdfrs@pdfrs.app', strict_min_version: '128.0' } },
+    browser_specific_settings: {
+      gecko: {
+        id: 'pdfrs@pdfrs.app',
+        strict_min_version: '128.0',
+        // Firefox asks every add-on to declare what it collects: nothing.
+        data_collection_permissions: { required: ['none'] },
+      },
+    },
   },
 }
 
