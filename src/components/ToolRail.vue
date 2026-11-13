@@ -38,6 +38,12 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
     hint: 'Libretto da stampare fronte e retro e piegare a metà',
   },
   {
+    id: 'outline',
+    icon: 'list-tree',
+    label: 'Indice',
+    hint: 'Indice del documento: i segnalibri, per andare alle pagine',
+  },
+  {
     id: 'images',
     icon: 'images',
     label: 'Immagini',
@@ -66,7 +72,7 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
 
 <template>
   <nav
-    class="flex flex-col items-center gap-1 border-l border-line bg-surface py-3"
+    class="flex min-h-0 flex-col items-center gap-1 overflow-y-auto border-l border-line bg-surface py-3"
     aria-label="Strumenti"
   >
     <button

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
-import { bigPdf } from './big-pdf'
+import { bigPdf, outlinedPdf } from './big-pdf'
 
 const fixture = (name: string) => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
 
@@ -1303,5 +1303,62 @@ test('the margin around a photo is chosen per photo, and can become the default'
   await expectAllThumbnails(page, 1)
   expect(await drawnHeight()).toBeCloseTo(595.28, 0)
   await page.evaluate(() => localStorage.clear())
+})
+
+test('outline: shown as a tree, an entry goes to its page, kept through edits and merges', async ({ page }) => {
+  await page.goto('/')
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Apri file' }).first().click()
+  await (await chooserPromise).setFiles({ name: 'manuale.pdf', mimeType: 'application/pdf', buffer: await outlinedPdf() })
+  await expectAllThumbnails(page, 10)
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Indice' }).click()
+  const tree = page.getByRole('tree', { name: 'Indice del documento' })
+  // "Capitolo 2" starts closed, as the PDF has it: its child doesn't show.
+  await expect(tree.getByRole('treeitem')).toHaveText([
+    /Introduzione\s*p\. 1/,
+    /Capitolo 1\s*p\. 2/,
+    /Il dettaglio\s*p\. 3/,
+    /Capitolo 2\s*p\. 6/,
+  ])
+  await tree.getByRole('button', { name: 'Apri Capitolo 2' }).click()
+  await expect(tree.getByRole('treeitem').last()).toHaveText(/Appendice nascosta\s*p\. 9/)
+
+  // An entry brings its page into view, selected.
+  await tree.getByRole('button', { name: /Appendice nascosta/ }).click()
+  const ninth = cards(page).nth(8)
+  await expect(ninth.getByRole('checkbox', { name: /Seleziona pagina/ })).toHaveAttribute('aria-checked', 'true')
+  await expect(ninth).toBeInViewport()
+
+  // Page 3 marked for deletion: its entry says so; once applied, it's gone from the file.
+  const third = cards(page).nth(2)
+  await third.scrollIntoViewIfNeeded()
+  await third.hover()
+  await third.getByRole('button', { name: 'Elimina pagina' }).click()
+  await expect(tree.getByRole('treeitem').nth(2)).toHaveText(/Il dettaglio\s*da eliminare/)
+  await page.getByRole('button', { name: 'Applica modifiche' }).click()
+  // Read again from the applied file: "Capitolo 2" closed as written, one page earlier.
+  await expect(tree.getByRole('treeitem')).toHaveText([
+    /Introduzione\s*p\. 1/,
+    /Capitolo 1\s*p\. 2/,
+    /Capitolo 2\s*p\. 5/,
+  ])
+  await tree.getByRole('button', { name: 'Apri Capitolo 2' }).click()
+  await expect(tree.getByRole('treeitem').last()).toHaveText(/Appendice nascosta\s*p\. 8/)
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica', exact: true }).click()
+  const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
+  expect(pdf).toContain('/Outlines')
+  expect(pdf).toMatch(/\/Title\s*\(Capitolo 1\)/)
+  expect(pdf).not.toContain('Il dettaglio')
+
+  // Merged with another document: one branch per document, named after it.
+  await openFiles(page, 'four_pages.pdf')
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Unisci' }).click()
+  await page.getByRole('complementary', { name: 'Unisci documenti' }).getByRole('button', { name: /^Unisci/ }).click()
+  await expect(page.getByRole('heading', { name: 'Unione di 2 documenti.pdf' })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Indice' }).click()
+  await expect(tree.getByRole('treeitem').first()).toHaveText(/manuale\s*p\. 1/)
+  await expect(tree.getByRole('treeitem', { name: /four_pages/ })).toHaveText(/four_pages\s*p\. 10/)
 })
 

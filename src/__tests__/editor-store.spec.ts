@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // undo/redo, and a baseline (`getBytes()`) that only a commit replaces.
 /** The page options every JPEG was converted with, by addImage or image_to_pdf. */
 const imageOptions: unknown[] = []
+/** The options of every merge. */
+const mergeOptions: unknown[] = []
 
 vi.mock('pdfrs-editor', () => {
   type Page = { id: number; pendingRotation: number; markedForDeletion: boolean }
@@ -77,6 +79,15 @@ vi.mock('pdfrs-editor', () => {
         height: 0.3,
         sharedPages: [],
       })),
+    }
+    /** Byte 12 set (see outlinedPdfFile()): a document with a small outline. */
+    async getOutline() {
+      return this.bytes[12] === 1
+        ? [
+            { title: 'Uno', level: 1, page: 1, open: true },
+            { title: 'Dentro', level: 2, page: 3, open: true },
+          ]
+        : []
     }
     async getImages() {
       return structuredClone(this.imageReport)
@@ -401,7 +412,8 @@ vi.mock('pdfrs-editor', () => {
       if (!doc) throw new Error(`nessun documento con id ${id}`)
       return doc
     }
-    async mergeDocuments(ids: number[]) {
+    async mergeDocuments(ids: number[], options?: unknown) {
+      mergeOptions.push(options)
       const shown = ids.map((id) =>
         this.getDocument(id)
           .pages()
@@ -490,6 +502,15 @@ function pdfFile(name: string, pages: number) {
 async function flushPreviews() {
   await new Promise((resolve) => setTimeout(resolve, 0))
   await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+/** Like pdfFile(), with an outline. */
+function outlinedPdfFile(name: string, pages: number) {
+  const bytes = new Uint8Array(16)
+  bytes.set(new TextEncoder().encode('%PDF-1.7\n'))
+  bytes[10] = pages
+  bytes[12] = 1
+  return new File([bytes], name, { type: 'application/pdf' })
 }
 
 /** Like pdfFile(), protected with the password "segreta". */
@@ -1253,5 +1274,25 @@ describe('editor store', () => {
     store.undo()
     store.undo()
     expect(doc.photoPages).toEqual({ [photo]: { page: 'a4', marginMm: 10 } })
+  })
+
+  it("reads the outline when asked, goes to an entry's page, and names the merge branches", async () => {
+    const store = useEditorStore()
+    await store.openFiles([outlinedPdfFile('manuale.pdf', 4), pdfFile('note.pdf', 2)])
+    const [manual, notes] = store.documents as [DocumentState, DocumentState]
+    expect(manual.outline).toBeNull()
+    await store.loadOutline(manual.id)
+    expect(manual.outline?.map((entry) => entry.title)).toEqual(['Uno', 'Dentro'])
+
+    // Going to an entry's page: selected, and the grid told to bring it into view.
+    store.revealPage(3)
+    expect([...manual.selection]).toEqual([3])
+    expect(store.revealedPage).toBe(3)
+
+    mergeOptions.length = 0
+    store.toggleTool('merge')
+    await store.mergePicked()
+    expect(mergeOptions[0]).toEqual({ applyPending: true, titles: ['manuale', 'note'] })
+    expect(notes.outline).toBeNull()
   })
 })

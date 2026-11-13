@@ -8,6 +8,7 @@ import HistoryTool from './HistoryTool.vue'
 import ImagesTool from './ImagesTool.vue'
 import MergeTool from './MergeTool.vue'
 import NupTool from './NupTool.vue'
+import OutlineTool from './OutlineTool.vue'
 import PropertiesTool from './PropertiesTool.vue'
 import ProtectTool from './ProtectTool.vue'
 import SignTool from './SignTool.vue'
@@ -29,6 +30,7 @@ const titles = {
   properties: 'Proprietà del documento',
   images: 'Immagini del documento',
   history: 'Cronologia delle modifiche',
+  outline: 'Indice del documento',
 } as const
 const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
 </script>
@@ -62,6 +64,7 @@ const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
       <PropertiesTool v-else-if="store.activeTool === 'properties'" />
       <ImagesTool v-else-if="store.activeTool === 'images'" />
       <HistoryTool v-else-if="store.activeTool === 'history'" />
+      <OutlineTool v-else-if="store.activeTool === 'outline'" />
     </div>
   </aside>
 </template>

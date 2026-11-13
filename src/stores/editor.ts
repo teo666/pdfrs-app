@@ -12,6 +12,7 @@ import {
   type ImageAsset,
   type MetadataField,
   type MetadataPatch,
+  type OutlineEntry,
   type PageAnnotation,
   type PdfMetadata,
   type PageId,
@@ -112,6 +113,7 @@ export type ToolId =
   | 'properties'
   | 'images'
   | 'history'
+  | 'outline'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -217,6 +219,11 @@ export interface DocumentState {
    * put on another (`setPhotoPage`). Updated entry by entry.
    */
   photoPages: Record<PageId, PhotoPage>
+  /**
+   * The document's outline (bookmarks), entries pointing at page ids: null
+   * until something asks (`loadOutline`), then kept current.
+   */
+  outline: OutlineEntry[] | null
 }
 
 /** An image of the document, with where it's drawn. */
@@ -429,6 +436,36 @@ export const useEditorStore = defineStore('editor', () => {
     // An undo, a redo or a commit may change them too.
     if (state.metadata !== null) void refreshMetadata(state.id)
     if (state.images !== null) void refreshImages(state.id)
+    if (state.outline !== null) void refreshOutline(state.id)
+  }
+
+  // --- Outline ------------------------------------------------------------------
+
+  async function refreshOutline(id: DocumentId) {
+    const state = stateOf(id)
+    const inner = internals.get(id)
+    if (!state || !inner || state.locked) return
+    try {
+      const outline = await inner.doc.getOutline()
+      if (JSON.stringify(outline) !== JSON.stringify(state.outline)) state.outline = outline
+    } catch (err) {
+      report(err)
+    }
+  }
+
+  /** Makes a document's outline available (`outline`), reading it the first time. */
+  async function loadOutline(id: DocumentId) {
+    if (stateOf(id)?.outline === null) await refreshOutline(id)
+  }
+
+  /** A page the grid should bring into view (and it's selected): set by `revealPage`, cleared by the grid. */
+  const revealedPage = ref<PageId | null>(null)
+
+  /** Selects a page of the active document and has the grid scroll to it. */
+  function revealPage(page: PageId) {
+    if (!active.value?.pages.some((p) => p.id === page)) return
+    selectPage(page, 'only')
+    revealedPage.value = page
   }
 
   function syncPhotoPages(state: DocumentState, inner: DocumentInternals) {
@@ -675,6 +712,7 @@ export const useEditorStore = defineStore('editor', () => {
       imagePlacements: {},
       history: [],
       photoPages: {},
+      outline: null,
     })
     sync(id)
   }
@@ -944,7 +982,9 @@ export const useEditorStore = defineStore('editor', () => {
     states.forEach((state) => (state.busy = true))
     loading.value += 1
     try {
-      const mergedId = await editor.mergeDocuments(ids, { applyPending: true })
+      // The merged outline gets one branch per document, under its name.
+      const titles = states.map((state) => state.name.replace(/\.(pdf|jpe?g)$/i, ''))
+      const mergedId = await editor.mergeDocuments(ids, { applyPending: true, titles })
       register(mergedId, `Unione di ${ids.length} documenti.pdf`)
       mergePicks.value = []
       if (activeTool.value === 'merge') activeTool.value = null
@@ -1476,6 +1516,9 @@ export const useEditorStore = defineStore('editor', () => {
     previewScale,
     imagePage,
     imageMargin,
+    loadOutline,
+    revealedPage,
+    revealPage,
     setPhotoPage,
     moveMergePick,
     pendingPlacement,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, reactive, useTemplateRef } from 'vue'
+import { nextTick, reactive, useTemplateRef, watch } from 'vue'
 import type { PageId } from 'pdfrs-editor'
 
 import DropIndicator, { type DropIndicatorState } from './DropIndicator.vue'
@@ -10,6 +10,19 @@ import { useEditorStore, type DocumentState } from '@/stores/editor'
 const props = defineProps<{ doc: DocumentState }>()
 const store = useEditorStore()
 const grid = useTemplateRef<HTMLElement>('grid')
+
+// A page asked for (an outline entry, say): brought into view, in the middle.
+watch(
+  () => store.revealedPage,
+  async (page) => {
+    if (page === null) return
+    await nextTick()
+    grid.value
+      ?.querySelector(`[data-page-id="${page}"]`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    store.revealedPage = null
+  },
+)
 
 /*
  * Drag & drop has to stay cheap on documents with a thousand pages:
