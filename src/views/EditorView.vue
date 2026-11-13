@@ -10,6 +10,7 @@ import IconButton from '@/components/IconButton.vue'
 import LockedDocument from '@/components/LockedDocument.vue'
 import PageGrid from '@/components/PageGrid.vue'
 import PageViewer from '@/components/PageViewer.vue'
+import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 import ToolPanel from '@/components/ToolPanel.vue'
 import ToolRail from '@/components/ToolRail.vue'
 import { useFileDrop } from '@/composables/useFileDrop'
@@ -91,6 +92,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           />
           <AppIcon name="image" :size="18" />
         </label>
+        <ThemeSwitcher class="max-md:hidden" />
         <AppButton icon="plus" @click="openPicker">Apri file</AppButton>
       </div>
     </header>

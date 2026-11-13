@@ -1368,3 +1368,23 @@ test('outline: shown as a tree, an entry goes to its page, kept through edits an
   await expect(tree.getByRole('treeitem', { name: /four_pages/ })).toHaveText(/four_pages\s*p\. 10/)
 })
 
+
+test('theme: follows the system until chosen, then stays as chosen', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.goto('/')
+  const html = page.locator('html')
+  const themes = page.getByRole('radiogroup', { name: 'Tema' })
+  await expect(themes.getByRole('radio', { name: /automatico/ })).toHaveAttribute('aria-checked', 'true')
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expect(html).toHaveAttribute('data-theme', 'light')
+
+  // Chosen: dark whatever the system says, and still so after a reload.
+  await themes.getByRole('radio', { name: 'Tema scuro' }).click()
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+  await page.reload()
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(20, 22, 26)')
+  await themes.getByRole('radio', { name: /automatico/ }).click()
+  await expect(html).toHaveAttribute('data-theme', 'light')
+})

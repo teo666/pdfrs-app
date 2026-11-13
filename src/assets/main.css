@@ -47,6 +47,9 @@
  * styles (lib/split.ts), which Tailwind doesn't see - it would drop them.
  */
 :root {
+  /* Native controls (and anything left to the browser) follow the theme in use, not the system. */
+  color-scheme: light;
+
   --color-part-1: #2f5bea;
   --color-part-2: #e07a2e;
   --color-part-3: #2e9e5b;
@@ -55,33 +58,36 @@
   --color-part-6: #1597a5;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-canvas: #14161a;
-    --color-surface: #1c1f24;
-    --color-surface-muted: #252930;
-    --color-line: #2f343c;
-    --color-fg: #e6e8eb;
-    --color-fg-muted: #9aa1ab;
-    --color-accent: #6f8fff;
-    --color-accent-soft: #6f8fff24;
-    --color-accent-fg: #0d1220;
-    --color-danger: #f06a6a;
-    --color-danger-soft: #f06a6a24;
-    --color-warning: #e2a93a;
+/*
+ * Dark: on <html data-theme="dark">, set by useTheme (and by
+ * public/theme-boot.js before the first paint) - from the choice made in
+ * the header, or from the system when it's left on automatic.
+ */
+:root[data-theme='dark'] {
+  --color-canvas: #14161a;
+  --color-surface: #1c1f24;
+  --color-surface-muted: #252930;
+  --color-line: #2f343c;
+  --color-fg: #e6e8eb;
+  --color-fg-muted: #9aa1ab;
+  --color-accent: #6f8fff;
+  --color-accent-soft: #6f8fff24;
+  --color-accent-fg: #0d1220;
+  --color-danger: #f06a6a;
+  --color-danger-soft: #f06a6a24;
+  --color-warning: #e2a93a;
 
-    --shadow-card: 0 1px 2px #00000040, 0 4px 12px #00000040;
-    --shadow-lift: 0 4px 10px #00000059, 0 12px 28px #00000066;
+  --shadow-card: 0 1px 2px #00000040, 0 4px 12px #00000040;
+  --shadow-lift: 0 4px 10px #00000059, 0 12px 28px #00000066;
 
-    --color-part-1: #6f8fff;
-    --color-part-2: #f0a060;
-    --color-part-3: #5cc78a;
-    --color-part-4: #b48cf0;
-    --color-part-5: #f07aa5;
-    --color-part-6: #4cc4d0;
+  --color-part-1: #6f8fff;
+  --color-part-2: #f0a060;
+  --color-part-3: #5cc78a;
+  --color-part-4: #b48cf0;
+  --color-part-5: #f07aa5;
+  --color-part-6: #4cc4d0;
 
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 @layer base {
