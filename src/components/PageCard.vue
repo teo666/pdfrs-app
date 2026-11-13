@@ -253,7 +253,11 @@ const label = computed(() =>
 
     <footer class="flex min-h-5 items-center gap-1.5 text-xs text-fg-muted">
       <span class="font-semibold text-fg">{{ position }}</span>
-      <span v-if="page.id !== position" title="Posizione originale">era {{ page.id }}</span>
+      <span
+        v-if="page.originalNumber != null && page.originalNumber !== position"
+        title="Posizione originale"
+        >era {{ page.originalNumber }}</span
+      >
       <span
         v-if="part"
         class="rounded-full px-1.5 font-semibold text-white"

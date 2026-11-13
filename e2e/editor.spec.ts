@@ -1227,28 +1227,42 @@ test('history panel: every step listed, a click goes back or forward to it', asy
   await expect(history.getByRole('button')).toHaveText(['Ruota pagina 1 di -90°', 'Documento aperto'])
 })
 
-test('a photo becomes an A4 page with a margin, or keeps its own size if chosen', async ({ page }) => {
+test('each photo is put on its own page, A4 by default, changed in the viewer', async ({ page }) => {
   await page.goto('/')
-  const choice = page.getByRole('combobox', { name: 'Pagina per le foto JPEG' })
-  await expect(choice).toHaveValue('a4')
   await openFiles(page, 'photo.jpg')
   await expectAllThumbnails(page, 1)
-
-  // A 400 x 300 photo: a landscape A4 (842 x 595 pt), the photo centred within 1 cm.
   const download = async () => {
     const downloadPromise = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Scarica', exact: true }).click()
     return (await readFile(await (await downloadPromise).path())).toString('latin1')
   }
-  const a4 = await download()
-  expect(a4).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+841\.89\d*\s+595\.28\d*\s*\]/)
+  // A 400 x 300 photo: a landscape A4 (842 x 595 pt) by default, the photo centred within 1 cm.
+  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+841\.89\d*\s+595\.28\d*\s*\]/)
 
-  // Kept for next time; "dimensione reale" makes a page as big as the photo.
-  await choice.selectOption('native')
+  // In the viewer: put on a page of its own size, made the default for the next photos.
+  await cards(page).first().getByRole('checkbox', { name: /Seleziona pagina/ }).dblclick()
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  const photo = viewer.getByRole('group', { name: 'Pagina della foto' })
+  await expect(photo.getByRole('button', { name: 'A4' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(photo).toContainText('predefinita per le prossime foto')
+  await photo.getByRole('button', { name: 'Dimensione reale' }).click()
+  await expect(photo.getByRole('button', { name: 'Dimensione reale' })).toHaveAttribute('aria-pressed', 'true')
+  // Still the same page, not one moved from elsewhere.
+  await expect(viewer.locator('header')).not.toContainText('era')
+  await photo.getByRole('button', { name: 'Usa per le prossime foto' }).click()
+  await expect(photo).toContainText('predefinita per le prossime foto')
+  await page.keyboard.press('Escape')
+  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+400\s+300\s*\]/)
+
+  // The next photo, after a reload, gets the new default; undo takes the change back.
   await page.reload()
-  await expect(choice).toHaveValue('native')
   await openFiles(page, 'photo.jpg')
   await expectAllThumbnails(page, 1)
   expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+400\s+300\s*\]/)
-  await choice.selectOption('a4')
+  await cards(page).first().getByRole('checkbox', { name: /Seleziona pagina/ }).dblclick()
+  await photo.getByRole('button', { name: 'A4' }).click()
+  await expect(photo).toContainText('Usa per le prossime foto')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+400\s+300\s*\]/)
 })

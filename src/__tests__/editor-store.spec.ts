@@ -16,6 +16,8 @@ vi.mock('pdfrs-editor', () => {
     pending: Record<string, string | null>
     /** Image draws waiting to be removed (lives here so undo snapshots carry it). */
     removedImages?: string[]
+    /** Pages made from a photo → the page size they're on (same reason). */
+    photos?: Record<number, string>
   }
 
   class FakeDocument {
@@ -265,6 +267,29 @@ vi.mock('pdfrs-editor', () => {
       this.save()
       this.annotationList = this.annotationList.filter((a) => a.id !== id)
     }
+    photoPages() {
+      return new Map(
+        Object.entries(this.meta.photos ?? {}).map(([page, pageSize]) => [
+          Number(page),
+          { pageSize },
+        ]),
+      )
+    }
+    async insertImage(_jpeg: Uint8Array, options: { pageSize: string }, at?: number) {
+      imageOptions.push(options)
+      const [page] = await this.insertPages(new Uint8Array([1]), at)
+      this.meta.photos = { ...this.meta.photos, [page!]: options.pageSize }
+      return page!
+    }
+    async setPhotoPage(page: number, options: { pageSize: string }) {
+      if (this.meta.photos?.[page] === options.pageSize) return page
+      this.save()
+      const replacement = Math.max(0, ...this.pageList.map((p) => p.id)) + 1
+      this.pageList = this.pageList.map((p) => (p.id === page ? { ...p, id: replacement } : p))
+      const { [page]: _old, ...others } = this.meta.photos ?? {}
+      this.meta.photos = { ...others, [replacement]: options.pageSize }
+      return replacement
+    }
     async insertPages(bytes: Uint8Array, at?: number) {
       this.save()
       const added = bytes[10] ?? bytes[0] ?? 1
@@ -362,10 +387,12 @@ vi.mock('pdfrs-editor', () => {
       this.docs.set(newId, new FakeDocument(new Uint8Array([201]), lock.pages))
       return newId
     }
-    async addImage(_bytes: Uint8Array, options?: unknown) {
+    async addImage(_bytes: Uint8Array, options?: { pageSize: string }) {
       imageOptions.push(options)
       const id = this.nextId++
-      this.docs.set(id, new FakeDocument(new Uint8Array([1]), 1))
+      const doc = new FakeDocument(new Uint8Array([1]), 1)
+      doc.meta.photos = { 1: options?.pageSize ?? 'native' }
+      this.docs.set(id, doc)
       return id
     }
     getDocument(id: number) {
@@ -1182,7 +1209,11 @@ describe('editor store', () => {
     expect(store.imagePage).toBe('a4')
 
     await store.openFiles([jpeg()])
-    expect(imageOptions[imageOptions.length - 1]).toEqual({ pageSize: 'a4', orientation: 'auto', margin: 28.35 })
+    expect(imageOptions[imageOptions.length - 1]).toEqual({
+      pageSize: 'a4',
+      orientation: 'auto',
+      margin: 28.35,
+    })
 
     store.imagePage = 'native'
     await nextTick()
@@ -1193,5 +1224,27 @@ describe('editor store', () => {
     setActivePinia(createPinia())
     expect(useEditorStore().imagePage).toBe('native')
     localStorage.removeItem('pdfrs.imagePage')
+  })
+
+  it('puts a photo page on another page, and the viewer and the selection follow it', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 2)])
+    const doc = store.active!
+    await store.insertFiles([new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'foto.jpg')])
+    const photo = doc.pages[doc.pages.length - 1]!.id
+    expect(doc.photoPages).toEqual({ [photo]: 'a4' })
+
+    store.selectPage(photo, 'only')
+    store.openViewer(photo)
+    await store.setPhotoPage(photo, 'letter')
+
+    const replacement = doc.pages[doc.pages.length - 1]!.id
+    expect(replacement).not.toBe(photo)
+    expect(doc.photoPages).toEqual({ [replacement]: 'letter' })
+    expect(store.viewerPageId).toBe(replacement)
+    expect([...doc.selection]).toEqual([replacement])
+
+    store.undo()
+    expect(doc.photoPages).toEqual({ [photo]: 'a4' })
   })
 })

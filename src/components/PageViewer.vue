@@ -9,7 +9,12 @@ import SignaturePanel from './SignaturePanel.vue'
 import TextEditor from './TextEditor.vue'
 import { layoutText, type TextContent } from 'pdfrs-editor'
 import { formatBytes, pagesLabel } from '@/lib/format'
-import { useEditorStore, type DocumentState, type ViewerZoom } from '@/stores/editor'
+import {
+  useEditorStore,
+  type DocumentState,
+  type ImagePage,
+  type ViewerZoom,
+} from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState; pageId: PageId }>()
 const store = useEditorStore()
@@ -74,6 +79,15 @@ watch(
 watch(pageAnnotations, (list) => {
   if (!list.some((a) => a.id === selectedAnnotation.value)) selectedAnnotation.value = null
 })
+
+// --- A page made from a photo: which page it's on --------------------------
+
+const photoPage = computed(() => props.doc.photoPages[props.pageId])
+const photoPageOptions: { value: ImagePage; label: string }[] = [
+  { value: 'a4', label: 'A4' },
+  { value: 'letter', label: 'Letter' },
+  { value: 'native', label: 'Dimensione reale' },
+]
 
 // --- Images already in the PDF -------------------------------------------
 
@@ -396,8 +410,11 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
     <div class="flex h-full flex-col">
       <header class="flex items-center gap-3 bg-black/50 px-4 py-2.5 backdrop-blur">
         <span class="font-semibold whitespace-nowrap">Pagina {{ index + 1 }} di {{ total }}</span>
-        <span v-if="page && page.id !== index + 1" class="text-white/60 whitespace-nowrap">
-          era {{ page.id }}
+        <span
+          v-if="page && page.originalNumber != null && page.originalNumber !== index + 1"
+          class="text-white/60 whitespace-nowrap"
+        >
+          era {{ page.originalNumber }}
         </span>
         <span v-if="rotation" class="rounded-full bg-white/15 px-2 text-xs font-semibold">
           {{ rotation }}°
@@ -530,6 +547,42 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                 aria-label="Caricamento"
               />
             </div>
+          </div>
+
+          <!-- A photo's page: A4, Letter or its own size; and the default for the next ones. -->
+          <div
+            v-if="photoPage"
+            class="absolute top-3 left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-card bg-black/80 px-3 py-2 text-xs shadow-lift backdrop-blur"
+            role="group"
+            aria-label="Pagina della foto"
+          >
+            <span class="font-semibold">Foto su</span>
+            <div class="flex rounded-md bg-white/10 p-0.5">
+              <button
+                v-for="option in photoPageOptions"
+                :key="option.value"
+                class="cursor-pointer rounded px-2.5 py-1 font-semibold transition-colors disabled:cursor-default"
+                :class="
+                  photoPage === option.value
+                    ? 'bg-white text-black'
+                    : 'text-white/75 hover:text-white'
+                "
+                :aria-pressed="photoPage === option.value"
+                :disabled="doc.busy"
+                @click="store.setPhotoPage(pageId, option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <button
+              v-if="photoPage !== store.imagePage"
+              class="cursor-pointer rounded-md px-2 py-1 font-semibold text-white/80 hover:bg-white/10 hover:text-white"
+              title="Le prossime foto che apri o inserisci andranno su questa pagina"
+              @click="store.imagePage = photoPage"
+            >
+              Usa per le prossime foto
+            </button>
+            <span v-else class="text-white/50">predefinita per le prossime foto</span>
           </div>
 
           <!-- What applies to the selected signature: this page, or all of them. -->

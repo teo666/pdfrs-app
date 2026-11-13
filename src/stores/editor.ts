@@ -22,7 +22,6 @@ import {
 } from 'pdfrs-editor'
 import {
   booklet_pdf,
-  image_to_pdf,
   is_password_protected,
   nup_pdf,
   type BookletOptions,
@@ -192,6 +191,11 @@ export interface DocumentState {
   imagePlacements: Record<PageId, PlacementView[]>
   /** Every step that can be undone or redone, oldest first, the current one marked. */
   history: HistoryEntry[]
+  /**
+   * The pages made from a photo, with the page each is on: those can be
+   * put on another (`setPhotoPage`). Updated entry by entry.
+   */
+  photoPages: Record<PageId, ImagePage>
 }
 
 /** An image of the document, with where it's drawn. */
@@ -282,7 +286,11 @@ export const useEditorStore = defineStore('editor', () => {
   const mergePicks = ref<DocumentId[]>([])
 
   /** Card width chosen with the header's slider, in CSS pixels. */
-  /** What a JPEG becomes when opened or inserted (see `ImagePage`), remembered. */
+  /**
+   * The page a JPEG gets when opened or inserted (see `ImagePage`): the
+   * default, remembered. Each photo page can then be put on another one
+   * (`setPhotoPage`), and that choice made the new default.
+   */
   const imagePage = ref<ImagePage>(savedImagePage())
   watch(imagePage, (page) => {
     try {
@@ -291,10 +299,10 @@ export const useEditorStore = defineStore('editor', () => {
       /* not kept: fine */
     }
   })
-  const imagePageOptions = () =>
-    imagePage.value === 'native'
+  const imagePageOptions = (page: ImagePage = imagePage.value) =>
+    page === 'native'
       ? { pageSize: 'native' as const }
-      : { pageSize: imagePage.value, orientation: 'auto' as const, margin: IMAGE_MARGIN }
+      : { pageSize: page, orientation: 'auto' as const, margin: IMAGE_MARGIN }
 
   const thumbSize = ref(savedThumbSize())
   const previewScale = computed(() => previewScaleFor(thumbSize.value))
@@ -372,7 +380,8 @@ export const useEditorStore = defineStore('editor', () => {
       const old = previous.get(page.id)
       return old &&
         old.pendingRotation === page.pendingRotation &&
-        old.markedForDeletion === page.markedForDeletion
+        old.markedForDeletion === page.markedForDeletion &&
+        old.originalNumber === page.originalNumber
         ? old
         : page
     })
@@ -381,6 +390,7 @@ export const useEditorStore = defineStore('editor', () => {
     state.history = doc.history()
     state.hasPendingChanges = doc.hasPendingChanges()
     syncAnnotations(state, inner)
+    syncPhotoPages(state, inner)
     if (doc.getBytes() !== inner.baseline) {
       inner.baseline = doc.getBytes()
       dropPreviews(state, inner)
@@ -396,6 +406,32 @@ export const useEditorStore = defineStore('editor', () => {
     if (state.metadata !== null) void refreshMetadata(state.id)
     if (state.images !== null) void refreshImages(state.id)
   }
+
+  function syncPhotoPages(state: DocumentState, inner: DocumentInternals) {
+    const photos = inner.doc.photoPages()
+    const current = state.photoPages
+    for (const key of Object.keys(current)) {
+      if (!photos.has(Number(key))) delete current[Number(key)]
+    }
+    for (const [page, options] of photos) {
+      const kind = (options.pageSize ?? 'native') as ImagePage
+      if (current[page] !== kind) current[page] = kind
+    }
+  }
+
+  /**
+   * Puts a photo page of the active document on another page (A4, Letter,
+   * the photo's own size): made again from its JPEG, in the same place,
+   * with its pending edits. One undo step. The page gets a new id; the
+   * viewer and the selection follow it.
+   */
+  const setPhotoPage = (page: PageId, kind: ImagePage) =>
+    runBusy(async (doc, state) => {
+      const replacement = await doc.setPhotoPage(page, imagePageOptions(kind))
+      if (replacement === page) return
+      if (viewerPageId.value === page) viewerPageId.value = replacement
+      if (state.selection.delete(page)) state.selection.add(replacement)
+    })
 
   // --- Images already in the document ---------------------------------------
 
@@ -606,6 +642,7 @@ export const useEditorStore = defineStore('editor', () => {
       images: null,
       imagePlacements: {},
       history: [],
+      photoPages: {},
     })
     sync(id)
   }
@@ -910,10 +947,13 @@ export const useEditorStore = defineStore('editor', () => {
             `${file.name} è protetto da password: aprilo e sbloccalo, poi inserisci la copia sbloccata`,
           )
         }
-        const pdf = kind === 'pdf' ? bytes : await image_to_pdf(bytes, imagePageOptions())
-        const ids = await doc.insertPages(pdf, at)
-        at += ids.length
-        added += ids.length
+        // A photo is inserted as one, so its page can be changed later.
+        const count =
+          kind === 'pdf'
+            ? (await doc.insertPages(bytes, at)).length
+            : (await doc.insertImage(bytes, imagePageOptions(), at), 1)
+        at += count
+        added += count
       }
       if (added > 0) notify(added === 1 ? 'Inserita 1 pagina' : `Inserite ${added} pagine`)
     })
@@ -1403,6 +1443,7 @@ export const useEditorStore = defineStore('editor', () => {
     thumbSize,
     previewScale,
     imagePage,
+    setPhotoPage,
     moveMergePick,
     pendingPlacement,
     placeSignatureFromPanel,
