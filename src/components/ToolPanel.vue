@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import IconButton from './IconButton.vue'
 import BookletTool from './BookletTool.vue'
 import ImageTool from './ImageTool.vue'
+import HistoryTool from './HistoryTool.vue'
 import ImagesTool from './ImagesTool.vue'
 import MergeTool from './MergeTool.vue'
 import NupTool from './NupTool.vue'
@@ -27,6 +28,7 @@ const titles = {
   protect: 'Proteggi con password',
   properties: 'Proprietà del documento',
   images: 'Immagini del documento',
+  history: 'Cronologia delle modifiche',
 } as const
 const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
 </script>
@@ -59,6 +61,7 @@ const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
       <ProtectTool v-else-if="store.activeTool === 'protect'" />
       <PropertiesTool v-else-if="store.activeTool === 'properties'" />
       <ImagesTool v-else-if="store.activeTool === 'images'" />
+      <HistoryTool v-else-if="store.activeTool === 'history'" />
     </div>
   </aside>
 </template>

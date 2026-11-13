@@ -55,6 +55,12 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
     label: 'Proprietà',
     hint: 'Proprietà del documento: titolo, autore, oggetto, parole chiave',
   },
+  {
+    id: 'history',
+    icon: 'history',
+    label: 'Cronologia',
+    hint: 'Cronologia delle modifiche: torna a qualsiasi passo',
+  },
 ]
 </script>
 

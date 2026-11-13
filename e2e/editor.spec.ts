@@ -1186,3 +1186,43 @@ test('images already in the PDF: listed, downloaded, removed from the viewer, un
   await expect(cards(page).first().locator('.hatch-removed')).toHaveCount(0)
   await expect(panel.getByTestId('images-summary')).not.toContainText('da rimuovere')
 })
+
+test('history panel: every step listed, a click goes back or forward to it', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+  const first = cards(page).nth(0)
+  await first.hover()
+  await first.getByRole('button', { name: 'Ruota a destra' }).click()
+  const second = cards(page).nth(1)
+  await second.hover()
+  await second.getByRole('button', { name: 'Elimina pagina' }).click()
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Cronologia' }).click()
+  const history = page.getByRole('list', { name: 'Cronologia delle modifiche' })
+  // Newest on top, the current step marked.
+  await expect(history.getByRole('button')).toHaveText([
+    'Elimina pagina 2',
+    'Ruota pagina 1 di +90°',
+    'Documento aperto',
+  ])
+  await expect(history.locator('[aria-current="step"]')).toHaveText('Elimina pagina 2')
+
+  // Straight back to the start: both edits undone, still listed.
+  await history.getByRole('button', { name: 'Documento aperto' }).click()
+  await expect(page.getByText('modifiche non applicate')).toBeHidden()
+  await expect(first.getByText('90°')).toBeHidden()
+  await expect(history.locator('[aria-current="step"]')).toHaveText('Documento aperto')
+  await expect(history.getByText('annullato')).toHaveCount(2)
+
+  // And forward to the last step in one click.
+  await history.getByRole('button', { name: /Elimina pagina 2/ }).click()
+  await expect(second.getByText('Da eliminare')).toBeVisible()
+  await expect(first.getByText('90°')).toBeVisible()
+
+  // A new edit drops what was undone.
+  await history.getByRole('button', { name: 'Documento aperto' }).click()
+  await first.hover()
+  await first.getByRole('button', { name: 'Ruota a sinistra' }).click()
+  await expect(history.getByRole('button')).toHaveText(['Ruota pagina 1 di -90°', 'Documento aperto'])
+})

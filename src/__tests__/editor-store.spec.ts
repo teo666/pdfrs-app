@@ -142,6 +142,19 @@ vi.mock('pdfrs-editor', () => {
     canUndo() {
       return this.undoStack.length > 0
     }
+    history() {
+      const total = this.undoStack.length + 1 + this.redoStack.length
+      return Array.from({ length: total }, (_, index) => ({
+        index,
+        label: index === 0 ? 'Documento aperto' : `Passo ${index}`,
+        current: index === this.undoStack.length,
+      }))
+    }
+    goToHistoryIndex(index: number) {
+      while (this.undoStack.length > index && this.undo()) {}
+      while (this.undoStack.length < index && this.redo()) {}
+      return true
+    }
     canRedo() {
       return this.redoStack.length > 0
     }
@@ -1125,5 +1138,32 @@ describe('editor store', () => {
     store.focusImage('5 0')
     expect(store.viewerPageId).toBe(1)
     expect(store.focusedImage).toBe('5 0')
+  })
+
+  it('mirrors the history and goes to any step of it in one go', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 3)])
+    const doc = store.active!
+    expect(doc.history).toEqual([{ index: 0, label: 'Documento aperto', current: true }])
+
+    store.rotate(1, 90)
+    store.toggleDelete(2)
+    store.move(3, 0)
+    expect(doc.history.map((step) => step.current)).toEqual([false, false, false, true])
+
+    // Back to just after the rotation: the deletion and the move are undone, still redoable.
+    store.goToHistory(1)
+    expect(doc.history.find((step) => step.current)?.index).toBe(1)
+    expect(doc.pages.map((p) => [p.id, p.pendingRotation, p.markedForDeletion])).toEqual([
+      [1, 90, false],
+      [2, 0, false],
+      [3, 0, false],
+    ])
+    expect(doc.canRedo).toBe(true)
+
+    // And forward again, all the way.
+    store.goToHistory(3)
+    expect(doc.pages.map((p) => p.id)).toEqual([3, 1, 2])
+    expect(doc.canRedo).toBe(false)
   })
 })

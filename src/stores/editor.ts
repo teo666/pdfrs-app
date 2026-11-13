@@ -8,6 +8,7 @@ import {
   type TextContent,
   type AssetId,
   type DocumentId,
+  type HistoryEntry,
   type ImageAsset,
   type MetadataField,
   type MetadataPatch,
@@ -72,6 +73,7 @@ export type ToolId =
   | 'protect'
   | 'properties'
   | 'images'
+  | 'history'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -170,6 +172,8 @@ export interface DocumentState {
    * entry by entry, like `annotations`, so a card reads only its own page.
    */
   imagePlacements: Record<PageId, PlacementView[]>
+  /** Every step that can be undone or redone, oldest first, the current one marked. */
+  history: HistoryEntry[]
 }
 
 /** An image of the document, with where it's drawn. */
@@ -342,6 +346,7 @@ export const useEditorStore = defineStore('editor', () => {
     })
     state.canUndo = doc.canUndo()
     state.canRedo = doc.canRedo()
+    state.history = doc.history()
     state.hasPendingChanges = doc.hasPendingChanges()
     syncAnnotations(state, inner)
     if (doc.getBytes() !== inner.baseline) {
@@ -568,6 +573,7 @@ export const useEditorStore = defineStore('editor', () => {
       pendingMetadata: [],
       images: null,
       imagePlacements: {},
+      history: [],
     })
     sync(id)
   }
@@ -652,6 +658,8 @@ export const useEditorStore = defineStore('editor', () => {
     edit((doc) => doc.movePages(pages, toIndex))
   const undo = () => edit((doc) => doc.undo())
   const redo = () => edit((doc) => doc.redo())
+  /** Goes back (or forward) to any step of the active document's history in one go. */
+  const goToHistory = (index: number) => edit((doc) => doc.goToHistoryIndex(index))
 
   function toggleDelete(page: PageId) {
     edit((doc) => {
@@ -1401,6 +1409,7 @@ export const useEditorStore = defineStore('editor', () => {
     previewSplit,
     undo,
     redo,
+    goToHistory,
     commit,
     download,
     requestPreview,
