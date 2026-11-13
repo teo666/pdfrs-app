@@ -1237,7 +1237,7 @@ test('each photo is put on its own page, A4 by default, changed in the viewer', 
     return (await readFile(await (await downloadPromise).path())).toString('latin1')
   }
   // A 400 x 300 photo: a landscape A4 (842 x 595 pt) by default, the photo centred within 1 cm.
-  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+841\.89\d*\s+595\.28\d*\s*\]/)
+  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+841\.89\d*\s+595\.28\d*\s*\]/)
 
   // In the viewer: put on a page of its own size, made the default for the next photos.
   await cards(page).first().getByRole('checkbox', { name: /Seleziona pagina/ }).dblclick()
@@ -1254,19 +1254,19 @@ test('each photo is put on its own page, A4 by default, changed in the viewer', 
   await photo.getByRole('button', { name: 'Usa per le prossime foto' }).click()
   await expect(photo).toContainText('predefinita per le prossime foto')
   await page.keyboard.press('Escape')
-  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+400\s+300\s*\]/)
+  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+400(?:\.0+)?\s+300(?:\.0+)?\s*\]/)
 
   // The next photo, after a reload, gets the new default; undo takes the change back.
   await page.reload()
   await openFiles(page, 'photo.jpg')
   await expectAllThumbnails(page, 1)
-  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+400\s+300\s*\]/)
+  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+400(?:\.0+)?\s+300(?:\.0+)?\s*\]/)
   await cards(page).first().getByRole('checkbox', { name: /Seleziona pagina/ }).dblclick()
   await photo.getByRole('button', { name: 'A4' }).click()
   await expect(photo).toContainText('Usa per le prossime foto')
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Annulla' }).click()
-  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+400\s+300\s*\]/)
+  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+400(?:\.0+)?\s+300(?:\.0+)?\s*\]/)
 })
 
 test('the margin around a photo is chosen per photo, and can become the default', async ({ page }) => {
@@ -1279,7 +1279,7 @@ test('the margin around a photo is chosen per photo, and can become the default'
     await page.getByRole('button', { name: 'Scarica', exact: true }).click()
     const pdf = await readFile(await (await downloadPromise).path())
     const content = inflatedStreams(pdf).find((stream) => /\/Im0\s+Do/.test(stream))!
-    const [, , height] = /([\d.]+)\s+0\s+0\s+([\d.]+)\s+[\d.]+\s+[\d.]+\s+cm/.exec(content)!
+    const [, , height] = /([\d.]+)\s+0(?:\.0+)?\s+0(?:\.0+)?\s+([\d.]+)\s+[\d.]+\s+[\d.]+\s+cm/.exec(content)!
     return Number(height)
   }
   // Landscape A4 (595.28 pt tall), 1 cm (28.35 pt) above and below by default.
