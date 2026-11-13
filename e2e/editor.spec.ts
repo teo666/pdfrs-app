@@ -1330,6 +1330,12 @@ test('outline: shown as a tree, an entry goes to its page, kept through edits an
   await expect(ninth.getByRole('checkbox', { name: /Seleziona pagina/ })).toHaveAttribute('aria-checked', 'true')
   await expect(ninth).toBeInViewport()
 
+  // Shift picks every page from the last entry clicked to this one, as on the cards.
+  await tree.getByRole('button', { name: /^Capitolo 1/ }).click()
+  await tree.getByRole('button', { name: /^Capitolo 2/ }).click({ modifiers: ['Shift'] })
+  await expect(page.getByText('5 pagine selezionate')).toBeVisible()
+  await page.getByRole('button', { name: 'Deseleziona' }).click()
+
   // Page 3 marked for deletion: its entry says so; once applied, it's gone from the file.
   const third = cards(page).nth(2)
   await third.scrollIntoViewIfNeeded()

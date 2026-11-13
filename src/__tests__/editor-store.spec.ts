@@ -1289,6 +1289,13 @@ describe('editor store', () => {
     expect([...manual.selection]).toEqual([3])
     expect(store.revealedPage).toBe(3)
 
+    // With Shift, the range from the last page picked; with ⌘/Ctrl, one more.
+    store.revealPage(1)
+    store.revealPage(3, 'range')
+    expect([...manual.selection].sort()).toEqual([1, 2, 3])
+    store.revealPage(4, 'toggle')
+    expect([...manual.selection].sort()).toEqual([1, 2, 3, 4])
+
     mergeOptions.length = 0
     store.toggleTool('merge')
     await store.mergePicked()

@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 
 import AppIcon from './AppIcon.vue'
-import { useEditorStore } from '@/stores/editor'
+import { useEditorStore, type SelectMode } from '@/stores/editor'
 
 /**
  * The document's outline (bookmarks) as a tree: branches open and close,
@@ -38,6 +38,10 @@ function hasChildren(index: number) {
   const list = entries.value ?? []
   return (list[index + 1]?.level ?? 0) > (list[index]?.level ?? 0)
 }
+
+/** As on the cards: Shift picks the range from the last page picked, ⌘/Ctrl adds or takes away. */
+const modeOf = (event: MouseEvent): SelectMode =>
+  event.shiftKey ? 'range' : event.metaKey || event.ctrlKey ? 'toggle' : 'only'
 
 function toggle(index: number) {
   const next = new Set(closed.value)
@@ -88,7 +92,8 @@ const rows = computed<Row[]>(() => {
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    I segnalibri del documento. Fai clic su una voce per andare alla sua pagina. L’indice resta
+    I segnalibri del documento. Fai clic su una voce per andare alla sua pagina; con Maiusc
+    selezioni tutte le pagine fino a quella, con ⌘/Ctrl la aggiungi alla selezione. L’indice resta
     anche quando elimini, riordini, estrai o unisci pagine.
   </p>
 
@@ -103,7 +108,12 @@ const rows = computed<Row[]>(() => {
     Questo documento non ha un indice.
   </p>
 
-  <ul v-else class="flex flex-col gap-0.5" role="tree" aria-label="Indice del documento">
+  <ul
+    v-else
+    class="flex flex-col gap-0.5 select-none"
+    role="tree"
+    aria-label="Indice del documento"
+  >
     <li
       v-for="row in rows"
       :key="row.index"
@@ -132,7 +142,7 @@ const rows = computed<Row[]>(() => {
         :class="{ 'text-fg-muted': row.page === null || row.deleted }"
         :disabled="row.page === null"
         :title="row.page === null ? 'Non porta a una pagina di questo documento' : undefined"
-        @click="row.page !== null && store.revealPage(row.page)"
+        @click="row.page !== null && store.revealPage(row.page, modeOf($event))"
       >
         <span class="min-w-0 flex-1 truncate" :class="{ 'line-through': row.deleted }">
           {{ row.title }}

@@ -461,10 +461,14 @@ export const useEditorStore = defineStore('editor', () => {
   /** A page the grid should bring into view (and it's selected): set by `revealPage`, cleared by the grid. */
   const revealedPage = ref<PageId | null>(null)
 
-  /** Selects a page of the active document and has the grid scroll to it. */
-  function revealPage(page: PageId) {
+  /**
+   * Selects a page of the active document and has the grid scroll to it.
+   * `mode` as for a click on a card: only it, toggled (⌘/Ctrl), or the
+   * range from the last page picked (Shift).
+   */
+  function revealPage(page: PageId, mode: SelectMode = 'only') {
     if (!active.value?.pages.some((p) => p.id === page)) return
-    selectPage(page, 'only')
+    selectPage(page, mode)
     revealedPage.value = page
   }
 
