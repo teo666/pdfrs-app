@@ -4,10 +4,11 @@ import type { PageId, PageInfo } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
+import ImageLayer from './ImageLayer.vue'
 import TextStamp from './TextStamp.vue'
 import { useVisibility } from '@/composables/useVisibility'
 import { partColor } from '@/lib/split'
-import type { AnnotationView } from '@/stores/editor'
+import type { AnnotationView, PlacementView } from '@/stores/editor'
 
 const props = defineProps<{
   page: PageInfo
@@ -25,6 +26,8 @@ const props = defineProps<{
   annotations: Record<PageId, AnnotationView[]>
   /** While the Dividi tool is open, the part each page goes into (0: left out). */
   splitParts: Record<PageId, number>
+  /** Images drawn on each page, read here for the same reason as `previews`. */
+  imagePlacements: Record<PageId, PlacementView[]>
   disabled?: boolean
 }>()
 
@@ -46,6 +49,10 @@ const visible = useVisibility(root)
 const previewUrl = computed(() => props.previews[props.page.id])
 const selected = computed(() => props.selection.has(props.page.id))
 const stamps = computed(() => props.annotations[props.page.id] ?? [])
+/** Images on this page waiting to be removed: struck through on the thumbnail. */
+const removedImages = computed(() =>
+  (props.imagePlacements[props.page.id] ?? []).filter((placement) => placement.removed),
+)
 /** undefined: not splitting; 0: left out of every part; n: part n. */
 const part = computed(() => props.splitParts[props.page.id])
 const tint = computed(() =>
@@ -118,6 +125,7 @@ const label = computed(() =>
           class="block max-h-[calc(100cqw-20px)] max-w-[calc(100cqw-20px)] bg-white shadow-[0_0_0_1px_var(--color-line),0_2px_6px_#0000001a]"
           draggable="false"
         />
+        <ImageLayer v-if="removedImages.length" :placements="removedImages" />
         <template v-for="stamp in stamps" :key="stamp.id">
           <!-- Text: its box takes the laid out text's proportions (or the stretched height). -->
           <div

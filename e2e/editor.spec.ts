@@ -1144,3 +1144,45 @@ test('edits the document properties, written into the PDF with the download', as
   await expect(panel.getByLabel('Autore')).toHaveValue('')
   await expect(panel.getByRole('button', { name: 'Togli tutte le proprietà' })).toBeDisabled()
 })
+
+test('images already in the PDF: listed, downloaded, removed from the viewer, undone', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'photo.jpg')
+  await expectAllThumbnails(page, 1)
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagini' }).click()
+  const panel = page.getByRole('complementary', { name: 'Immagini del documento' })
+  await expect(panel.getByTestId('images-summary')).toContainText('1 immagine')
+  await expect(panel).toContainText('400 × 300 px')
+  await expect(panel).toContainText('JPEG')
+
+  // Downloaded as it's stored in the PDF: the very JPEG that was opened.
+  const imagePromise = page.waitForEvent('download')
+  await panel.getByRole('button', { name: 'Scarica l’immagine di pagina 1' }).click()
+  const image = await imagePromise
+  expect(image.suggestedFilename()).toBe('photo - immagine 1.jpg')
+  expect(await readFile(await image.path())).toEqual(await readFile(fixture('photo.jpg')))
+
+  // Opened from the list: the viewer shows it selected, and takes it away.
+  await panel.getByRole('button', { name: /400 × 300 px/ }).click()
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  const bar = viewer.getByRole('group', { name: 'Immagine del documento selezionata' })
+  await expect(bar).toContainText('pagina 1')
+  await bar.getByRole('button', { name: 'Rimuovi da questa pagina' }).click()
+  await expect(bar).toContainText('Da rimuovere')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(viewer).toBeHidden()
+
+  // Struck through on the thumbnail, pending until applied.
+  await expect(cards(page).first().locator('[data-image-layer="card"] .hatch-removed')).toHaveCount(1)
+  await expect(page.getByText('modifiche non applicate')).toBeVisible()
+  const pdfPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica', exact: true }).click()
+  const pdf = (await readFile(await (await pdfPromise).path())).toString('latin1')
+  expect(pdf).not.toMatch(/\/Subtype\s*\/Image/)
+
+  // Undone like any other edit.
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  await expect(cards(page).first().locator('.hatch-removed')).toHaveCount(0)
+  await expect(panel.getByTestId('images-summary')).not.toContainText('da rimuovere')
+})

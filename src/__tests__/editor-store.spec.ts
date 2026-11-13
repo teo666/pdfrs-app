@@ -8,7 +8,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // undo/redo, and a baseline (`getBytes()`) that only a commit replaces.
 vi.mock('pdfrs-editor', () => {
   type Page = { id: number; pendingRotation: number; markedForDeletion: boolean }
-  type Meta = { base: Record<string, string>; pending: Record<string, string | null> }
+  type Meta = {
+    base: Record<string, string>
+    pending: Record<string, string | null>
+    /** Image draws waiting to be removed (lives here so undo snapshots carry it). */
+    removedImages?: string[]
+  }
 
   class FakeDocument {
     bytes: Uint8Array
@@ -37,6 +42,55 @@ vi.mock('pdfrs-editor', () => {
         meta: structuredClone(this.meta),
       })
       this.redoStack = []
+    }
+    /** One image (key "5 0"), drawn on pages 1 and 2. */
+    imageReport = {
+      images: [
+        {
+          key: '5 0',
+          width: 400,
+          height: 300,
+          format: 'jpeg',
+          bytes: 2048,
+          hasMask: false,
+          inline: false,
+        },
+      ],
+      placements: [1, 2].map((page) => ({
+        id: `p${page}#0`,
+        page,
+        image: '5 0',
+        corners: [
+          [0.1, 0.1],
+          [0.5, 0.1],
+          [0.5, 0.4],
+          [0.1, 0.4],
+        ],
+        x: 0.1,
+        y: 0.1,
+        width: 0.4,
+        height: 0.3,
+        sharedPages: [],
+      })),
+    }
+    async getImages() {
+      return structuredClone(this.imageReport)
+    }
+    pendingImageRemovals() {
+      return new Set(this.meta.removedImages ?? [])
+    }
+    removeImages(ids: string[]) {
+      const fresh = ids.filter((id) => !(this.meta.removedImages ?? []).includes(id))
+      if (fresh.length === 0) return
+      this.save()
+      this.meta.removedImages = [...(this.meta.removedImages ?? []), ...fresh]
+    }
+    restoreImages(ids: string[]) {
+      this.save()
+      this.meta.removedImages = (this.meta.removedImages ?? []).filter((id) => !ids.includes(id))
+    }
+    async extractImage() {
+      return { mime: 'image/jpeg', width: 400, height: 300, bytes: new Uint8Array([0xff, 0xd8]) }
     }
     async getMetadata() {
       const merged: Record<string, string> = { ...this.meta.base }
@@ -79,6 +133,7 @@ vi.mock('pdfrs-editor', () => {
       return (
         this.annotationList.length > 0 ||
         Object.keys(this.meta.pending).length > 0 ||
+        (this.meta.removedImages ?? []).length > 0 ||
         this.pageList.some(
           (p, i) => p.pendingRotation !== 0 || p.markedForDeletion || p.id !== i + 1,
         )
@@ -1025,5 +1080,50 @@ describe('editor store', () => {
     await flushPreviews()
     expect(doc.metadata).toEqual({ title: 'Relazione finale' })
     expect(doc.pendingMetadata).toEqual([])
+  })
+
+  it('lists the images in the document and removes them as pending changes', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('foto.pdf', 3)])
+    const doc = store.active!
+    // Not looked for until asked.
+    expect(doc.images).toBeNull()
+    await store.loadImages(doc.id)
+    expect(doc.images).toHaveLength(1)
+    const [image] = doc.images!
+    expect(image).toMatchObject({
+      key: '5 0',
+      pages: [1, 2],
+      placements: ['p1#0', 'p2#0'],
+      removed: false,
+    })
+    expect(doc.imagePlacements[1]).toHaveLength(1)
+    expect(doc.imagePlacements[3]).toBeUndefined()
+
+    // From one page only: the image itself is still there, on page 2.
+    store.removeImages(['p1#0'])
+    await flushPreviews()
+    expect(doc.imagePlacements[1]![0]!.removed).toBe(true)
+    expect(doc.imagePlacements[2]![0]!.removed).toBe(false)
+    expect(doc.images![0]!.removed).toBe(false)
+    expect(doc.hasPendingChanges).toBe(true)
+
+    store.undo()
+    await flushPreviews()
+    expect(doc.imagePlacements[1]![0]!.removed).toBe(false)
+    expect(doc.hasPendingChanges).toBe(false)
+
+    // From every page, then put back.
+    store.removeImages(image!.placements)
+    await flushPreviews()
+    expect(doc.images![0]!.removed).toBe(true)
+    store.restoreImages(image!.placements)
+    await flushPreviews()
+    expect(doc.images![0]!.removed).toBe(false)
+
+    // Opened from the list: the viewer on its first page, the image to select.
+    store.focusImage('5 0')
+    expect(store.viewerPageId).toBe(1)
+    expect(store.focusedImage).toBe('5 0')
   })
 })

@@ -38,6 +38,12 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
     hint: 'Libretto da stampare fronte e retro e piegare a metà',
   },
   {
+    id: 'images',
+    icon: 'images',
+    label: 'Immagini',
+    hint: 'Le immagini già nel PDF: vedile, scaricale o rimuovile',
+  },
+  {
     id: 'protect',
     icon: 'lock',
     label: 'Proteggi',

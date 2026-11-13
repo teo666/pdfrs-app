@@ -15,6 +15,8 @@ import {
   type PdfMetadata,
   type PageId,
   type PageInfo,
+  type PdfImageInfo,
+  type PdfImagePlacement,
   type PdfDocument,
 } from 'pdfrs-editor'
 import {
@@ -69,6 +71,7 @@ export type ToolId =
   | 'booklet'
   | 'protect'
   | 'properties'
+  | 'images'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -156,6 +159,32 @@ export interface DocumentState {
   metadata: PdfMetadata | null
   /** Fields edited and not yet applied. */
   pendingMetadata: MetadataField[]
+  /**
+   * The images already in the document, with the pages each is drawn on:
+   * null until something asks (`loadImages`), since finding them costs a
+   * pass over the file. Then kept current with every edit.
+   */
+  images: ImageItem[] | null
+  /**
+   * Where images are drawn, by page (empty until `loadImages`). Updated
+   * entry by entry, like `annotations`, so a card reads only its own page.
+   */
+  imagePlacements: Record<PageId, PlacementView[]>
+}
+
+/** An image of the document, with where it's drawn. */
+export interface ImageItem extends PdfImageInfo {
+  /** Pages it's drawn on, in page order. */
+  pages: PageId[]
+  /** Its placement ids. */
+  placements: string[]
+  /** Every one of its draws is waiting to be removed. */
+  removed: boolean
+}
+
+/** One place an image is drawn, and whether it's waiting to be removed. */
+export interface PlacementView extends PdfImagePlacement {
+  removed: boolean
 }
 
 /** How a click extends the selection: only this page, toggle it, or everything from the last clicked page to it. */
@@ -196,6 +225,8 @@ interface DocumentInternals {
   /** Each library signature is registered with the document once, as an asset. */
   assetBySignature: Map<number, AssetId>
   signatureByAsset: Map<AssetId, Signature>
+  /** Thumbnails of the document's images, by image key; dropped with the baseline. */
+  thumbnails: Map<string, Promise<string>>
 }
 
 export const useEditorStore = defineStore('editor', () => {
@@ -319,11 +350,114 @@ export const useEditorStore = defineStore('editor', () => {
       // Page ids are renumbered by a commit: the old selection means nothing.
       state.selection.clear()
       inner.anchor = null
+      // An image key names an object of this baseline: another one, another image.
+      inner.thumbnails.clear()
     }
     // New pages (opened, inserted, moved in) have no thumbnail yet.
     scheduleBackground()
     // An undo, a redo or a commit may change them too.
     if (state.metadata !== null) void refreshMetadata(state.id)
+    if (state.images !== null) void refreshImages(state.id)
+  }
+
+  // --- Images already in the document ---------------------------------------
+
+  /** Reads where the document's images are and which are waiting to be removed. */
+  async function refreshImages(id: DocumentId) {
+    const state = stateOf(id)
+    const inner = internals.get(id)
+    if (!state || !inner || state.locked) return
+    try {
+      const { images, placements } = await inner.doc.getImages()
+      const removed = inner.doc.pendingImageRemovals()
+      const byPage = new Map<PageId, PlacementView[]>()
+      for (const placement of placements) {
+        const view = { ...placement, removed: removed.has(placement.id) }
+        byPage.set(placement.page, [...(byPage.get(placement.page) ?? []), view])
+      }
+      state.images = images.map((image) => {
+        const own = placements.filter((p) => p.image === image.key)
+        return {
+          ...image,
+          pages: [...new Set(own.map((p) => p.page))].sort((a, b) => a - b),
+          placements: [...new Set(own.map((p) => p.id))],
+          removed: own.length > 0 && own.every((p) => removed.has(p.id)),
+        }
+      })
+      const current = state.imagePlacements
+      for (const key of Object.keys(current)) {
+        if (!byPage.has(Number(key))) delete current[Number(key)]
+      }
+      for (const [page, views] of byPage) {
+        if (JSON.stringify(current[page]) !== JSON.stringify(views)) current[page] = views
+      }
+    } catch (err) {
+      report(err)
+    }
+  }
+
+  /** Makes a document's images available (`images`, `imagePlacements`), finding them the first time. */
+  async function loadImages(id: DocumentId) {
+    if (stateOf(id)?.images === null) await refreshImages(id)
+  }
+
+  /** Takes these image draws away from the active document: a pending edit, one undo step. */
+  const removeImages = (ids: string[]) => edit((doc) => doc.removeImages(ids))
+  /** Puts back image draws taken away and not applied yet. */
+  const restoreImages = (ids: string[]) => edit((doc) => doc.restoreImages(ids))
+
+  /** The active document's image, by key. */
+  const imageOf = (key: string) => active.value?.images?.find((image) => image.key === key)
+
+  /** Downloads an image of the active document as a file: the JPEG as stored, or a PNG. */
+  async function downloadImage(key: string) {
+    const state = active.value
+    const inner = state ? internals.get(state.id) : undefined
+    if (!state || !inner) return
+    try {
+      const image = await inner.doc.extractImage(key)
+      const number = (state.images?.findIndex((item) => item.key === key) ?? 0) + 1
+      const extension = image.mime === 'image/jpeg' ? 'jpg' : 'png'
+      const base = state.name.replace(/\.(pdf|jpe?g)$/i, '')
+      downloadBytes(image.bytes, `${base} - immagine ${number}.${extension}`, image.mime)
+    } catch (err) {
+      report(err)
+    }
+  }
+
+  /** Longest side of the images' thumbnails, in pixels. */
+  const THUMBNAIL_SIZE = 192
+
+  /** A small picture of one of the active document's images, made once. */
+  function imageThumbnail(key: string): Promise<string> {
+    const state = active.value
+    const inner = state ? internals.get(state.id) : undefined
+    if (!inner) return Promise.reject(new Error('nessun documento'))
+    let url = inner.thumbnails.get(key)
+    if (!url) {
+      url = inner.doc.extractImage(key, THUMBNAIL_SIZE).then((image) => {
+        const made = URL.createObjectURL(
+          new Blob([image.bytes as Uint8Array<ArrayBuffer>], { type: image.mime }),
+        )
+        inner.urls.add(made)
+        return made
+      })
+      // A failed one is tried again next time.
+      url.catch(() => inner.thumbnails.delete(key))
+      inner.thumbnails.set(key, url)
+    }
+    return url
+  }
+
+  /** An image the viewer should show selected when it opens on its page. */
+  const focusedImage = ref<string | null>(null)
+
+  /** Opens the viewer on the first page drawing the image, with the image selected. */
+  function focusImage(key: string) {
+    const page = imageOf(key)?.pages[0]
+    if (page === undefined) return
+    focusedImage.value = key
+    openViewer(page)
   }
 
   /** Reads the document's properties as they'd be written (pending edits included). */
@@ -415,6 +549,7 @@ export const useEditorStore = defineStore('editor', () => {
       anchor: null,
       assetBySignature: new Map(),
       signatureByAsset: new Map(),
+      thumbnails: new Map(),
     })
     documents.value.push({
       id,
@@ -431,6 +566,8 @@ export const useEditorStore = defineStore('editor', () => {
       locked: doc.isLocked(),
       metadata: null,
       pendingMetadata: [],
+      images: null,
+      imagePlacements: {},
     })
     sync(id)
   }
@@ -1238,6 +1375,13 @@ export const useEditorStore = defineStore('editor', () => {
     unlock,
     loadMetadata,
     setMetadata,
+    loadImages,
+    removeImages,
+    restoreImages,
+    downloadImage,
+    imageThumbnail,
+    focusedImage,
+    focusImage,
     openFiles,
     select,
     rename,

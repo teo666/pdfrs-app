@@ -4,9 +4,11 @@ import type { AnnotationId, PageId } from 'pdfrs-editor'
 
 import AnnotationLayer from './AnnotationLayer.vue'
 import AppIcon from './AppIcon.vue'
+import ImageLayer from './ImageLayer.vue'
 import SignaturePanel from './SignaturePanel.vue'
 import TextEditor from './TextEditor.vue'
 import { layoutText, type TextContent } from 'pdfrs-editor'
+import { formatBytes, pagesLabel } from '@/lib/format'
 import { useEditorStore, type DocumentState, type ViewerZoom } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState; pageId: PageId }>()
@@ -72,6 +74,57 @@ watch(
 watch(pageAnnotations, (list) => {
   if (!list.some((a) => a.id === selectedAnnotation.value)) selectedAnnotation.value = null
 })
+
+// --- Images already in the PDF -------------------------------------------
+
+/** Outlines of the page's images, clickable; on with the Immagini tool, or from its list. */
+const showingImages = ref(store.activeTool === 'images' || store.focusedImage !== null)
+const selectedPlacement = ref<string | null>(null)
+const pagePlacements = computed(() => props.doc.imagePlacements[props.pageId] ?? [])
+const placement = computed(() => pagePlacements.value.find((p) => p.id === selectedPlacement.value))
+const placementImage = computed(() =>
+  placement.value
+    ? props.doc.images?.find((image) => image.key === placement.value!.image)
+    : undefined,
+)
+
+watch(
+  showingImages,
+  (on) => {
+    if (on) void store.loadImages(props.doc.id)
+    else selectedPlacement.value = null
+  },
+  { immediate: true },
+)
+// Opened from the Immagini list: that image selected, once its page's images are known.
+watch(
+  [pagePlacements, () => store.focusedImage],
+  ([placements, key]) => {
+    if (key === null) return
+    const match = placements.find((p) => p.image === key)
+    if (match) {
+      selectedPlacement.value = match.id
+      store.focusedImage = null
+    }
+  },
+  { immediate: true },
+)
+watch(
+  () => props.pageId,
+  () => (selectedPlacement.value = null),
+)
+watch(selectedAnnotation, (id) => {
+  if (id !== null) selectedPlacement.value = null
+})
+
+function selectPlacement(id: string) {
+  selectedPlacement.value = id
+  selectedAnnotation.value = null
+}
+
+function removeSelectedImage() {
+  if (placement.value && !placement.value.removed) store.removeImages([placement.value.id])
+}
 
 interface Shown {
   url: string
@@ -273,6 +326,11 @@ function onKeyDown(event: KeyboardEvent) {
     removeSelectedAnnotation()
     return
   }
+  if ((event.key === 'Delete' || event.key === 'Backspace') && placement.value) {
+    event.preventDefault()
+    removeSelectedImage()
+    return
+  }
   const steps: Record<string, number> = {
     ArrowRight: 1,
     ArrowLeft: -1,
@@ -297,6 +355,7 @@ function onCancel(event: Event) {
   event.preventDefault()
   if (editingText.value) editingText.value = false
   else if (selectedAnnotation.value !== null) selectedAnnotation.value = null
+  else if (selectedPlacement.value !== null) selectedPlacement.value = null
   else store.closeViewer()
 }
 
@@ -359,6 +418,16 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
         >
           <AppIcon name="pen" :size="14" />
           Firma
+        </button>
+        <button
+          class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors"
+          :class="showingImages ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20'"
+          :aria-pressed="showingImages"
+          title="Mostra le immagini già presenti nella pagina, per rimuoverle o scaricarle"
+          @click="showingImages = !showingImages"
+        >
+          <AppIcon name="images" :size="14" />
+          Immagini
         </button>
 
         <div
@@ -445,6 +514,12 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                     @remove="(id) => (store.removeAnnotation(id), (selectedAnnotation = null))"
                     @edit="(id) => ((selectedAnnotation = id), startEditingText())"
                   />
+                  <ImageLayer
+                    :placements="pagePlacements"
+                    :interactive="showingImages"
+                    :selected-id="selectedPlacement"
+                    @select="selectPlacement"
+                  />
                 </div>
               </div>
               <p v-else-if="error" class="text-white/80">{{ error }}</p>
@@ -525,6 +600,61 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
               }}
             </button>
           </div>
+        </div>
+
+        <!-- The selected image of the PDF: remove it here or everywhere, put it back, download it. -->
+        <div
+          v-if="placement && placementImage && !selected"
+          class="absolute bottom-4 left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-card bg-black/80 px-4 py-2.5 text-sm shadow-lift backdrop-blur"
+          role="group"
+          aria-label="Immagine del documento selezionata"
+        >
+          <span class="font-semibold">Immagine</span>
+          <span class="text-xs text-white/60">
+            {{ placementImage.width }} × {{ placementImage.height }} px ·
+            {{ placementImage.format.toUpperCase() }} · {{ formatBytes(placementImage.bytes) }} ·
+            {{ pagesLabel(placementImage.pages) }}
+          </span>
+          <template v-if="placement.removed">
+            <span class="rounded-full bg-danger px-2 text-xs font-semibold">Da rimuovere</span>
+            <button
+              class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10"
+              @click="store.restoreImages([placement.id])"
+            >
+              Ripristina
+            </button>
+          </template>
+          <template v-else>
+            <button
+              class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-white/10"
+              :title="
+                placement.sharedPages.length
+                  ? 'Fa parte di un contenuto che anche altre pagine disegnano: sparisce anche lì'
+                  : undefined
+              "
+              @click="removeSelectedImage"
+            >
+              {{
+                placement.sharedPages.length
+                  ? `Rimuovi (anche da altre ${placement.sharedPages.length} pagine)`
+                  : 'Rimuovi da questa pagina'
+              }}
+            </button>
+            <button
+              v-if="placementImage.placements.length > 1"
+              class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-white/10"
+              @click="store.removeImages(placementImage.placements)"
+            >
+              Rimuovi da tutte ({{ pagesLabel(placementImage.pages) }})
+            </button>
+          </template>
+          <button
+            class="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10"
+            @click="store.downloadImage(placementImage.key)"
+          >
+            <AppIcon name="download" :size="14" />
+            Scarica
+          </button>
         </div>
 
         <SignaturePanel v-if="signing" @place="placeSignature" @close="signing = false" />
