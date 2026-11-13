@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "pdfrs — éditeur PDF"
+  },
+  "extDescription": {
+    "message": "Modifiez vos PDF dans le navigateur : réorganiser, pivoter, signer, fusionner, diviser, protéger. Les fichiers ne quittent jamais votre ordinateur."
+  },
+  "actionTitle": {
+    "message": "Ouvrir l'éditeur PDF"
+  }
+}

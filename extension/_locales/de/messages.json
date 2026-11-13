@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "pdfrs — PDF-Editor"
+  },
+  "extDescription": {
+    "message": "PDFs im Browser bearbeiten: sortieren, drehen, unterschreiben, zusammenführen, teilen, schützen. Die Dateien verlassen nie deinen Computer."
+  },
+  "actionTitle": {
+    "message": "PDF-Editor öffnen"
+  }
+}
