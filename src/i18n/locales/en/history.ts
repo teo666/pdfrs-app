@@ -41,6 +41,11 @@ export default {
     manyPages: 'Restore image on {pages} pages | Restore {count} images on {pages} pages',
     noPage: 'Restore image | Restore {count} images',
   },
+  replaceImage: {
+    onePage: 'Replace image (page {page})',
+    manyPages: 'Replace image on {pages} pages',
+    noPage: 'Replace image',
+  },
   metadata: 'Edit properties ({fields})',
   commit: 'Apply changes ({pages} pages)',
   encrypt: 'Encrypt document',

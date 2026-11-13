@@ -43,6 +43,11 @@ export default {
     manyPages: 'Restaurer l’image sur {pages} pages | Restaurer {count} images sur {pages} pages',
     noPage: 'Restaurer l’image | Restaurer {count} images',
   },
+  replaceImage: {
+    onePage: 'Remplacer l’image (page {page})',
+    manyPages: 'Remplacer l’image sur {pages} pages',
+    noPage: 'Remplacer l’image',
+  },
   metadata: 'Modifier les métadonnées ({fields})',
   commit: 'Appliquer les modifications ({pages} pages)',
   encrypt: 'Chiffrer le document',

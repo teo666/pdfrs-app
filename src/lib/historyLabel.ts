@@ -95,6 +95,10 @@ export function historyLabel(entry: { label: string; action?: HistoryAction }): 
       const where = pages === 1 ? 'onePage' : pages > 1 ? 'manyPages' : 'noPage'
       return t(`history.${type}.${where}`, { count, page, pages }, count)
     }
+    case 'replaceImage': {
+      const where = pages === 1 ? 'onePage' : pages > 1 ? 'manyPages' : 'noPage'
+      return t(`history.replaceImage.${where}`, { page, pages })
+    }
     case 'metadata': {
       const fields = String(params.fields ?? '')
         .split(',')

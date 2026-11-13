@@ -41,6 +41,11 @@ export default {
       'Ripristina immagine da {pages} pagine | Ripristina {count} immagini da {pages} pagine',
     noPage: 'Ripristina immagine | Ripristina {count} immagini',
   },
+  replaceImage: {
+    onePage: 'Sostituisci immagine (pagina {page})',
+    manyPages: 'Sostituisci immagine su {pages} pagine',
+    noPage: 'Sostituisci immagine',
+  },
   metadata: 'Modifica metadati ({fields})',
   commit: 'Applica modifiche ({pages} pagine)',
   encrypt: 'Cifra documento',

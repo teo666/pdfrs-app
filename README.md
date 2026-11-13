@@ -54,7 +54,7 @@
 - **Unisci** più documenti; **dividi** ogni N pagine o per intervalli.
 - **N per foglio** e **libretto** da stampare fronte e retro.
 - **Indice** del PDF: lo vedi, lo modifichi, e non si perde quando sposti le pagine.
-- **Immagini** già presenti nel PDF: le vedi dove sono, le togli o le scarichi.
+- **Immagini** già presenti nel PDF: le vedi dove sono, le togli, le scarichi o ne sostituisci una con un’altra figura, in tutte le pagine in cui compare. E alleggerisci il file: una copia con le immagini ricompresse, in tre livelli di qualità.
 - **Proteggi** con password (AES-256) e sblocca.
 - **Proprietà**: titolo, autore, date…
 - **Cronologia** di ogni modifica, con annulla e ripeti (⌘Z / ⇧⌘Z), anche dopo aver applicato.
