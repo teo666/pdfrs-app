@@ -1,0 +1,65 @@
+/** Italian messages: editing. */
+export default {
+  signaturePad: {
+    canvas: 'Area per disegnare la firma',
+    placeholder: 'Firma qui con il mouse o con il dito',
+    ink: 'Inchiostro',
+    clear: 'Cancella',
+    use: 'Usa questa firma',
+    cancel: 'Annulla',
+  },
+  textEditor: {
+    text: 'Testo',
+    placeholder: 'Scrivi qui (Invio per andare a capo)',
+    unsupported:
+      'Alcuni caratteri non esistono nei font standard del PDF e appariranno come «?» (vanno bene le lettere latine, gli accenti, € e «»).',
+    font: 'Carattere',
+    sansSerif: 'Senza grazie',
+    serif: 'Con grazie',
+    monospace: 'Da macchina da scrivere',
+    size: 'Dimensione (pt)',
+    sizeLabel: 'Dimensione in punti',
+    style: 'Stile',
+    bold: 'Grassetto',
+    boldShort: 'G',
+    italic: 'Corsivo',
+    italicShort: 'C',
+    align: 'Allineamento',
+    left: 'Sinistra',
+    center: 'Centro',
+    right: 'Destra',
+  },
+  colorPicker: {
+    color: 'Colore',
+    black: 'Nero',
+    blue: 'Blu',
+    red: 'Rosso',
+    green: 'Verde',
+    custom: 'Scegli un altro colore',
+  },
+  lockedDocument: {
+    section: '{name}, protetto da password',
+    explanation:
+      'È protetto da password. Per vederlo o modificarlo, sbloccalo: ne nasce una copia senza password, accanto a questo.',
+    password: 'Password',
+    passwordLabel: 'Password del documento',
+    wrong: 'Password errata: riprova.',
+    unlock: 'Sblocca',
+    downloadTitle: 'Scarica il PDF protetto, così com’è',
+    download: 'Scarica protetto',
+  },
+  emptyState: {
+    drop: 'Trascina qui i tuoi PDF o JPEG',
+    click: 'oppure clicca per sceglierli',
+    local: 'I file restano sul tuo computer: vengono elaborati nel browser.',
+  },
+  themeSwitcher: {
+    group: 'Tema',
+    auto: 'Tema automatico (come il sistema)',
+    light: 'Tema chiaro',
+    dark: 'Tema scuro',
+  },
+  locale: {
+    label: 'Lingua',
+  },
+}

@@ -1,0 +1,63 @@
+# What every build of the app needs, as in development: the pdfrs
+# repository next to this one ("link:../pdfrs/..." in package.json), its wasm
+# package compiled, and the dependencies installed.
+#
+# Expects this repository checked out in `pdfrs-app/`; puts pdfrs in `pdfrs/`.
+name: pdfrs engine
+description: Checks out pdfrs, builds its wasm package, installs pdfrs-editor and the app
+
+inputs:
+  pdfrs-ref:
+    description: Branch, tag or commit of teo666/pdfrs
+    default: main
+
+runs:
+  using: composite
+  steps:
+    - name: Check out the engine
+      uses: actions/checkout@v6
+      with:
+        repository: teo666/pdfrs
+        ref: ${{ inputs.pdfrs-ref }}
+        path: pdfrs
+
+    - name: Rust with the wasm target
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-unknown-unknown
+
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: pdfrs
+
+    - name: wasm-pack
+      uses: taiki-e/install-action@v2
+      with:
+        tool: wasm-pack
+
+    - name: Build the wasm package (core and full)
+      shell: bash
+      working-directory: pdfrs
+      run: ./scripts/build-npm-package.sh
+
+    - uses: pnpm/action-setup@v4
+      with:
+        package_json_file: pdfrs-app/package.json
+
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+        cache: pnpm
+        cache-dependency-path: |
+          pdfrs-app/pnpm-lock.yaml
+          pdfrs/packages/pdfrs-editor/pnpm-lock.yaml
+
+    - name: Install pdfrs-editor
+      shell: bash
+      working-directory: pdfrs/packages/pdfrs-editor
+      run: pnpm install --frozen-lockfile
+
+    - name: Install the app
+      shell: bash
+      working-directory: pdfrs-app
+      run: pnpm install --frozen-lockfile

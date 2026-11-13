@@ -1,0 +1,91 @@
+# Makes a release: the browser extensions and the built app, as zips
+# attached to a GitHub release.
+#
+#   pdfrs-chrome-<version>.zip    Chrome, Edge, Brave… (the Chrome Web Store / Edge Add-ons upload)
+#   pdfrs-firefox-<version>.zip   Firefox (the addons.mozilla.org upload)
+#   pdfrs-web-<version>.zip       the app, to put on any static web server, in any folder
+#
+# To release: set "version" in package.json (it is the extensions' version
+# too), commit, then tag and push:  git tag v0.1.0 && git push origin v0.1.0
+# The tag must match package.json.
+#
+# Run by hand (Actions → Release → Run workflow) it builds the same zips as
+# the run's artifacts, without making a release: a dry run.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      pdfrs_ref:
+        description: Branch, tag or commit of teo666/pdfrs to build the engine from
+        default: main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: pdfrs-app
+
+      - name: Version
+        id: version
+        working-directory: pdfrs-app
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::The tag is $GITHUB_REF_NAME, but package.json says $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: ./pdfrs-app/.github/actions/engine
+        with:
+          pdfrs-ref: ${{ inputs.pdfrs_ref || 'main' }}
+
+      - name: Unit tests
+        working-directory: pdfrs-app
+        run: pnpm test:unit --run
+
+      - name: Extensions
+        working-directory: pdfrs-app
+        run: pnpm build:extension
+
+      # Relative paths and routes in the hash (src/router/index.ts): the copy
+      # works from any folder of any server.
+      - name: Web app
+        working-directory: pdfrs-app
+        run: pnpm build --base ./ --outDir dist-web
+
+      - name: Zips
+        working-directory: pdfrs-app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir release
+          cp dist-extension/pdfrs-chrome.zip "release/pdfrs-chrome-$VERSION.zip"
+          cp dist-extension/pdfrs-firefox.zip "release/pdfrs-firefox-$VERSION.zip"
+          (cd dist-web && zip -qr "../release/pdfrs-web-$VERSION.zip" .)
+          ls -l release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdfrs-${{ steps.version.outputs.version }}
+          path: pdfrs-app/release/*.zip
+
+      - name: GitHub release
+        if: github.ref_type == 'tag'
+        working-directory: pdfrs-app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/*.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "pdfrs $VERSION" \
+            --generate-notes

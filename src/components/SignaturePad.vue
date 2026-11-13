@@ -1,0 +1,186 @@
+<script setup lang="ts">
+import { onMounted, ref, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { ImageAsset } from 'pdfrs-editor'
+
+import ColorPicker from './ColorPicker.vue'
+import { cropToInk } from '@/lib/images'
+
+/** "dark" on the viewer's black backdrop, "light" in the app's tool panel. */
+const { tone = 'dark' } = defineProps<{ tone?: 'dark' | 'light' }>()
+const emit = defineEmits<{ done: [image: ImageAsset]; cancel: [] }>()
+const { t } = useI18n()
+
+const styles = {
+  dark: {
+    muted: 'text-white/60',
+    chosen: 'border-white',
+    quiet: 'text-white/75 hover:text-white',
+    primary: 'bg-white text-black',
+    secondary: 'text-white/80 hover:bg-white/10',
+  },
+  light: {
+    muted: 'text-fg-muted',
+    chosen: 'border-fg',
+    quiet: 'text-fg-muted hover:text-fg',
+    primary: 'bg-accent text-accent-fg',
+    secondary: 'text-fg-muted hover:bg-surface-muted',
+  },
+}[tone]
+
+const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
+const ink = ref('#1c2026')
+
+// A new ink colours what's already drawn too: every inked pixel takes the
+// new colour, its alpha (the antialiased edge) kept.
+watch(ink, (color) => {
+  const el = canvas.value
+  const ctx = el?.getContext('2d', { willReadFrequently: true })
+  if (!el || !ctx || empty.value) return
+  const image = ctx.getImageData(0, 0, el.width, el.height)
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16))
+  for (let i = 0; i < image.data.length; i += 4) {
+    if (image.data[i + 3]! > 0) {
+      image.data[i] = r!
+      image.data[i + 1] = g!
+      image.data[i + 2] = b!
+    }
+  }
+  ctx.putImageData(image, 0, 0)
+})
+const empty = ref(true)
+
+/** Drawn at twice the screen density, so the signature stays sharp when enlarged on the page. */
+const DENSITY = Math.max(2, window.devicePixelRatio || 1)
+const LINE_WIDTH = 2.6
+
+let drawing = false
+let last: { x: number; y: number } | null = null
+let mid: { x: number; y: number } | null = null
+
+function point(event: PointerEvent) {
+  const rect = canvas.value!.getBoundingClientRect()
+  return { x: (event.clientX - rect.left) * DENSITY, y: (event.clientY - rect.top) * DENSITY }
+}
+
+function context() {
+  const ctx = canvas.value!.getContext('2d')!
+  ctx.lineWidth = LINE_WIDTH * DENSITY
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = ink.value
+  return ctx
+}
+
+function onDown(event: PointerEvent) {
+  event.preventDefault()
+  try {
+    canvas.value!.setPointerCapture(event.pointerId)
+  } catch {
+    /* not capturable (synthetic pointer): drawing works without it */
+  }
+  drawing = true
+  last = point(event)
+  mid = last
+  // A dot, so a single tap leaves a mark (e.g. the dot of an "i").
+  const ctx = context()
+  ctx.beginPath()
+  ctx.arc(last.x, last.y, (LINE_WIDTH * DENSITY) / 2, 0, Math.PI * 2)
+  ctx.fillStyle = ink.value
+  ctx.fill()
+  empty.value = false
+}
+
+// Smooth strokes: each segment is a quadratic curve through the midpoints
+// of consecutive samples, instead of a polyline with visible corners.
+function onMove(event: PointerEvent) {
+  if (!drawing || !last || !mid) return
+  const ctx = context()
+  // Coalesced samples give smoother lines on fast moves; synthetic events
+  // have none, so fall back to the event itself.
+  const coalesced = event.getCoalescedEvents?.() ?? []
+  for (const sample of coalesced.length > 0 ? coalesced : [event]) {
+    const p = point(sample)
+    const nextMid = { x: (last.x + p.x) / 2, y: (last.y + p.y) / 2 }
+    ctx.beginPath()
+    ctx.moveTo(mid.x, mid.y)
+    ctx.quadraticCurveTo(last.x, last.y, nextMid.x, nextMid.y)
+    ctx.stroke()
+    last = p
+    mid = nextMid
+  }
+}
+
+function onUp() {
+  drawing = false
+  last = mid = null
+}
+
+function clear() {
+  const el = canvas.value!
+  el.getContext('2d')!.clearRect(0, 0, el.width, el.height)
+  empty.value = true
+}
+
+function save() {
+  const image = cropToInk(canvas.value!)
+  if (image) emit('done', image)
+}
+
+onMounted(() => {
+  const el = canvas.value!
+  const rect = el.getBoundingClientRect()
+  el.width = Math.round(rect.width * DENSITY)
+  el.height = Math.round(rect.height * DENSITY)
+})
+</script>
+
+<template>
+  <div class="flex flex-col gap-2">
+    <div class="relative">
+      <canvas
+        ref="canvas"
+        class="block h-36 w-full cursor-crosshair touch-none rounded-md bg-white"
+        :class="{ 'ring-1 ring-line': tone === 'light' }"
+        :aria-label="t('editing.signaturePad.canvas')"
+        @pointerdown="onDown"
+        @pointermove="onMove"
+        @pointerup="onUp"
+        @pointercancel="onUp"
+      />
+      <!-- The line to sign on: only a guide, it's not part of the image. -->
+      <div
+        class="pointer-events-none absolute inset-x-4 bottom-8 border-b border-dashed border-black/25"
+      />
+      <p
+        v-if="empty"
+        class="pointer-events-none absolute inset-0 grid place-items-center text-sm text-black/40"
+      >
+        {{ t('editing.signaturePad.placeholder') }}
+      </p>
+    </div>
+    <div class="flex items-end gap-1.5 text-xs">
+      <ColorPicker v-model="ink" :label="t('editing.signaturePad.ink')" :tone="tone" />
+      <button class="ml-auto cursor-pointer px-2 py-1" :class="styles.quiet" @click="clear">
+        {{ t('editing.signaturePad.clear') }}
+      </button>
+    </div>
+    <div class="flex gap-1.5">
+      <button
+        class="flex-1 cursor-pointer rounded-md px-3 py-1.5 text-sm font-semibold disabled:cursor-default disabled:opacity-40"
+        :class="styles.primary"
+        :disabled="empty"
+        @click="save"
+      >
+        {{ t('editing.signaturePad.use') }}
+      </button>
+      <button
+        class="cursor-pointer rounded-md px-3 py-1.5 text-sm"
+        :class="styles.secondary"
+        @click="emit('cancel')"
+      >
+        {{ t('editing.signaturePad.cancel') }}
+      </button>
+    </div>
+  </div>
+</template>

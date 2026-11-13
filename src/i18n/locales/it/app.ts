@@ -1,0 +1,93 @@
+/** Italian messages: app. */
+export default {
+  /** The bar at the top, and what floats over the whole window. */
+  header: {
+    tagline: 'Editor PDF nel browser',
+    thumbSize: 'Dimensione delle anteprime',
+    openFiles: 'Apri file',
+    dropToOpen: 'Rilascia per aprire',
+    closeNotice: 'Chiudi avviso',
+    closeError: 'Chiudi',
+  },
+  /** The open documents, on the left. */
+  documents: {
+    title: 'Documenti',
+    openFiles: 'Apri file',
+    newName: 'Nuovo nome per {name}',
+    locked: 'Protetto da password',
+    lockedTitle: '{name} (protetto da password)',
+    pending: 'Modifiche non applicate',
+    rename: 'Rinomina {name}',
+    renameHint: 'Rinomina (anche con doppio clic sul nome)',
+    close: 'Chiudi {name}',
+    thumbnails: 'Anteprime di {name}',
+    empty: 'Nessun documento aperto.',
+    loading: 'Elaborazione in corso…',
+    dropHint:
+      'Rilascia su un altro documento per spostare le pagine (tieni premuto ⌥/Alt per copiarle)',
+  },
+  /** The bar above the pages. */
+  toolbar: {
+    newName: 'Nuovo nome per {name}',
+    rename: 'Rinomina {name}',
+    renameHint: 'Rinomina (anche con doppio clic sul nome)',
+    summary: '1 pagina | {n} pagine',
+    summaryDeleted: '1 pagina · {deleted} da eliminare | {n} pagine · {deleted} da eliminare',
+    pending: '· modifiche non applicate',
+    undo: 'Annulla',
+    undoTitle: 'Annulla ({shortcut})',
+    redo: 'Ripeti',
+    redoTitle: 'Ripeti ({shortcut})',
+    insert: 'Inserisci pagine',
+    insertAfterSelection: 'Aggiungi le pagine di un PDF o JPEG dopo l’ultima pagina selezionata',
+    insertAtEnd: 'Aggiungi le pagine di un PDF o JPEG in fondo al documento',
+    apply: 'Applica modifiche',
+    applyTitle: 'Applica rotazioni, eliminazioni e riordino al documento',
+    download: 'Scarica',
+    downloadTitle: 'Scarica il PDF con le modifiche, anche quelle non ancora applicate',
+    selectionActions: 'Azioni sulle pagine selezionate',
+    selected: '1 pagina selezionata | {n} pagine selezionate',
+    selectAll: 'Seleziona tutte',
+    deselect: 'Deseleziona',
+    deselectTitle: 'Deseleziona (Esc)',
+    rotateLeft: 'Ruota a sinistra le pagine selezionate',
+    rotateRight: 'Ruota a destra le pagine selezionate',
+    delete: 'Elimina',
+    deleteTitle: 'Segna per l’eliminazione (Canc)',
+    restore: 'Ripristina',
+    extract: 'Estrai in un nuovo documento',
+    extractTitle: 'Copia le pagine selezionate, così come appaiono, in un nuovo documento',
+  },
+  /** The grid of pages. */
+  grid: {
+    /** Follows the pointer while several pages are dragged. */
+    dragCount: '{n} pagine',
+  },
+  /** One page's card in the grid. */
+  card: {
+    page: 'Pagina {n}',
+    pageMoved: 'Pagina {n} (era {was})',
+    /** The same, inside a sentence. */
+    pageInline: 'pagina {n}',
+    pageInlineMoved: 'pagina {n} (era {was})',
+    select: 'Seleziona {page}',
+    open: 'Apri {page} a grandezza reale',
+    openTitle: 'Vedi la pagina in dettaglio (Invio, o doppio clic)',
+    toDelete: 'Da eliminare',
+    rotateLeft: 'Ruota a sinistra',
+    rotateRight: 'Ruota a destra',
+    delete: 'Elimina pagina',
+    restore: 'Ripristina pagina',
+    originalPosition: 'Posizione originale',
+    was: 'era {n}',
+    part: 'Parte {n}',
+    excluded: 'esclusa',
+  },
+  /** Sizes and page lists (lib/format.ts). */
+  format: {
+    bytes: '{n} byte',
+    kilobytes: '{n} KB',
+    megabytes: '{n} MB',
+    pages: 'pagina {ranges} | pagine {ranges}',
+  },
+}

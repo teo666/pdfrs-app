@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "pdfrs — editor de PDF"
+  },
+  "extDescription": {
+    "message": "Edita PDF en el navegador: reordena, gira, firma, une, divide, protege. Los archivos nunca salen de tu ordenador."
+  },
+  "actionTitle": {
+    "message": "Abrir el editor de PDF"
+  }
+}

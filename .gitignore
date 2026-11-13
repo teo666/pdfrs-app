@@ -11,6 +11,7 @@ node_modules
 .DS_Store
 dist
 dist-ssr
+dist-extension
 coverage
 *.local
 
@@ -40,3 +41,5 @@ __screenshots__/
 
 test-results/
 playwright-report/
+dist-web
+release
