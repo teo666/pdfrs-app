@@ -26,13 +26,13 @@ const tools: { id: ToolId; icon: IconName }[] = [
 
 <template>
   <nav
-    class="flex min-h-0 flex-col items-center gap-1 overflow-y-auto border-l border-line bg-surface py-3"
+    class="flex min-h-0 flex-col items-center gap-1 overflow-y-auto border-l border-line bg-surface px-2 py-3"
     :aria-label="t('tools.rail.navLabel')"
   >
     <button
       v-for="tool in tools"
       :key="tool.id"
-      class="flex w-14 cursor-pointer flex-col items-center gap-1 rounded-md py-2 text-[11px] font-medium transition-colors"
+      class="flex w-19 shrink-0 cursor-pointer flex-col items-center gap-1 rounded-md px-1 py-2 text-center text-[11px]/tight font-medium transition-colors"
       :class="
         store.activeTool === tool.id
           ? 'bg-accent-soft text-accent'
