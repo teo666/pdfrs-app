@@ -91,6 +91,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           />
           <AppIcon name="image" :size="18" />
         </label>
+        <!-- What a JPEG becomes when opened or inserted: remembered for next time. -->
+        <label
+          class="flex items-center gap-1.5 text-xs text-fg-muted"
+          title="La pagina su cui finisce una foto JPEG quando la apri o la inserisci"
+        >
+          <AppIcon name="image" :size="14" />
+          <span class="max-md:hidden">Foto su</span>
+          <select
+            v-model="store.imagePage"
+            class="cursor-pointer rounded-md border border-line bg-surface px-1.5 py-1 text-xs text-fg"
+            aria-label="Pagina per le foto JPEG"
+          >
+            <option value="a4">A4</option>
+            <option value="letter">Letter</option>
+            <option value="native">dimensione reale</option>
+          </select>
+        </label>
         <AppButton icon="plus" @click="openPicker">Apri file</AppButton>
       </div>
     </header>

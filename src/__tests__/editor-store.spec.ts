@@ -6,6 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // equivalent for. This fake keeps the parts of the PdfDocument contract the
 // store relies on: pages in display order, pending rotations/deletions,
 // undo/redo, and a baseline (`getBytes()`) that only a commit replaces.
+/** The page options every JPEG was converted with, by addImage or image_to_pdf. */
+const imageOptions: unknown[] = []
+
 vi.mock('pdfrs-editor', () => {
   type Page = { id: number; pendingRotation: number; markedForDeletion: boolean }
   type Meta = {
@@ -359,7 +362,8 @@ vi.mock('pdfrs-editor', () => {
       this.docs.set(newId, new FakeDocument(new Uint8Array([201]), lock.pages))
       return newId
     }
-    async addImage() {
+    async addImage(_bytes: Uint8Array, options?: unknown) {
+      imageOptions.push(options)
       const id = this.nextId++
       this.docs.set(id, new FakeDocument(new Uint8Array([1]), 1))
       return id
@@ -426,7 +430,10 @@ vi.mock('pdfrs-editor', () => {
 
 vi.mock('pdfrs-editor/operations', () => ({
   // A JPEG becomes a one-page PDF.
-  image_to_pdf: async () => new Uint8Array([1]),
+  image_to_pdf: async (_bytes: Uint8Array, options?: unknown) => {
+    imageOptions.push(options)
+    return new Uint8Array([1])
+  },
   is_password_protected: async (bytes: Uint8Array) => bytes[11] === 1,
   // Imposition: the fake document's page count lives in byte 10, see pdfFile().
   nup_pdf: async (bytes: Uint8Array, options: { layout: number }) => {
@@ -1165,5 +1172,26 @@ describe('editor store', () => {
     store.goToHistory(3)
     expect(doc.pages.map((p) => p.id)).toEqual([3, 1, 2])
     expect(doc.canRedo).toBe(false)
+  })
+
+  it('puts photos on the remembered page: A4 with a margin by default, or their own size', async () => {
+    localStorage.removeItem('pdfrs.imagePage')
+    imageOptions.length = 0
+    const store = useEditorStore()
+    const jpeg = () => new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'foto.jpg')
+    expect(store.imagePage).toBe('a4')
+
+    await store.openFiles([jpeg()])
+    expect(imageOptions[imageOptions.length - 1]).toEqual({ pageSize: 'a4', orientation: 'auto', margin: 28.35 })
+
+    store.imagePage = 'native'
+    await nextTick()
+    await store.insertFiles([jpeg()])
+    expect(imageOptions[imageOptions.length - 1]).toEqual({ pageSize: 'native' })
+    // Remembered for the next visit.
+    expect(localStorage.getItem('pdfrs.imagePage')).toBe('native')
+    setActivePinia(createPinia())
+    expect(useEditorStore().imagePage).toBe('native')
+    localStorage.removeItem('pdfrs.imagePage')
   })
 })

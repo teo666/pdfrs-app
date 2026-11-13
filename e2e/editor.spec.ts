@@ -1226,3 +1226,29 @@ test('history panel: every step listed, a click goes back or forward to it', asy
   await first.getByRole('button', { name: 'Ruota a sinistra' }).click()
   await expect(history.getByRole('button')).toHaveText(['Ruota pagina 1 di -90°', 'Documento aperto'])
 })
+
+test('a photo becomes an A4 page with a margin, or keeps its own size if chosen', async ({ page }) => {
+  await page.goto('/')
+  const choice = page.getByRole('combobox', { name: 'Pagina per le foto JPEG' })
+  await expect(choice).toHaveValue('a4')
+  await openFiles(page, 'photo.jpg')
+  await expectAllThumbnails(page, 1)
+
+  // A 400 x 300 photo: a landscape A4 (842 x 595 pt), the photo centred within 1 cm.
+  const download = async () => {
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Scarica', exact: true }).click()
+    return (await readFile(await (await downloadPromise).path())).toString('latin1')
+  }
+  const a4 = await download()
+  expect(a4).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+841\.89\d*\s+595\.28\d*\s*\]/)
+
+  // Kept for next time; "dimensione reale" makes a page as big as the photo.
+  await choice.selectOption('native')
+  await page.reload()
+  await expect(choice).toHaveValue('native')
+  await openFiles(page, 'photo.jpg')
+  await expectAllThumbnails(page, 1)
+  expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+400\s+300\s*\]/)
+  await choice.selectOption('a4')
+})

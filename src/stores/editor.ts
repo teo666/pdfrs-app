@@ -48,6 +48,24 @@ export function previewScaleFor(cardWidth: number): number {
 
 const THUMB_SIZE_KEY = 'pdfrs.thumbSize'
 
+/** The page a JPEG becomes when opened or inserted: A4 or Letter (photo centred), or the photo's own size. */
+export type ImagePage = 'a4' | 'letter' | 'native'
+const IMAGE_PAGES: ImagePage[] = ['a4', 'letter', 'native']
+const IMAGE_PAGE_KEY = 'pdfrs.imagePage'
+/** White around a photo on an A4/Letter page: 1 cm, in PDF points. */
+const IMAGE_MARGIN = 28.35
+
+/** The last choice of page for photos, if this browser kept it; A4 otherwise. */
+function savedImagePage(): ImagePage {
+  try {
+    const saved = localStorage.getItem(IMAGE_PAGE_KEY) as ImagePage | null
+    if (saved && IMAGE_PAGES.includes(saved)) return saved
+  } catch {
+    /* no storage: the default */
+  }
+  return 'a4'
+}
+
 /** The last slider position, if this browser kept it (storage may be unavailable). */
 function savedThumbSize(): number {
   try {
@@ -264,6 +282,20 @@ export const useEditorStore = defineStore('editor', () => {
   const mergePicks = ref<DocumentId[]>([])
 
   /** Card width chosen with the header's slider, in CSS pixels. */
+  /** What a JPEG becomes when opened or inserted (see `ImagePage`), remembered. */
+  const imagePage = ref<ImagePage>(savedImagePage())
+  watch(imagePage, (page) => {
+    try {
+      localStorage.setItem(IMAGE_PAGE_KEY, page)
+    } catch {
+      /* not kept: fine */
+    }
+  })
+  const imagePageOptions = () =>
+    imagePage.value === 'native'
+      ? { pageSize: 'native' as const }
+      : { pageSize: imagePage.value, orientation: 'auto' as const, margin: IMAGE_MARGIN }
+
   const thumbSize = ref(savedThumbSize())
   const previewScale = computed(() => previewScaleFor(thumbSize.value))
   watch(thumbSize, (size) => {
@@ -585,7 +617,10 @@ export const useEditorStore = defineStore('editor', () => {
         const bytes = await readFile(file)
         const kind = detectKind(bytes)
         if (!kind) throw new Error(`${file.name}: non è un PDF né un'immagine JPEG`)
-        const id = kind === 'pdf' ? await editor.addDocument(bytes) : await editor.addImage(bytes)
+        const id =
+          kind === 'pdf'
+            ? await editor.addDocument(bytes)
+            : await editor.addImage(bytes, imagePageOptions())
         register(id, file.name)
         activeId.value ??= id
       } catch (err) {
@@ -875,7 +910,7 @@ export const useEditorStore = defineStore('editor', () => {
             `${file.name} è protetto da password: aprilo e sbloccalo, poi inserisci la copia sbloccata`,
           )
         }
-        const pdf = kind === 'pdf' ? bytes : await image_to_pdf(bytes)
+        const pdf = kind === 'pdf' ? bytes : await image_to_pdf(bytes, imagePageOptions())
         const ids = await doc.insertPages(pdf, at)
         at += ids.length
         added += ids.length
@@ -1367,6 +1402,7 @@ export const useEditorStore = defineStore('editor', () => {
     toggleTool,
     thumbSize,
     previewScale,
+    imagePage,
     moveMergePick,
     pendingPlacement,
     placeSignatureFromPanel,
