@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AnnotationId } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
@@ -25,6 +26,16 @@ const emit = defineEmits<{
   /** Double-click on a text: edit it. */
   edit: [id: AnnotationId]
 }>()
+
+const { t } = useI18n()
+
+/** What a screen reader hears for an annotation: its kind, and whether it's selected. */
+function labelOf(annotation: AnnotationView) {
+  const kind =
+    annotation.kind === 'image' ? 'image' : annotation.kind === 'text' ? 'text' : 'signature'
+  const selected = props.selectedId === annotation.id ? 'Selected' : ''
+  return t(`viewer.annotationLayer.${kind}${selected}`)
+}
 
 /** While turning, angles this close to a right angle snap onto it. */
 const SNAP_DEGREES = 6
@@ -177,7 +188,7 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
       }"
       role="button"
       tabindex="0"
-      :aria-label="`${annotation.kind === 'image' ? 'Immagine' : annotation.kind === 'text' ? 'Testo' : 'Firma'} sulla pagina${selectedId === annotation.id ? (annotation.kind === 'text' ? ' (selezionato)' : ' (selezionata)') : ''}`"
+      :aria-label="labelOf(annotation)"
       :aria-pressed="selectedId === annotation.id"
       data-annotation
       @pointerdown="startDrag($event, annotation, 'move')"
@@ -196,8 +207,8 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
       <template v-if="selectedId === annotation.id">
         <button
           class="absolute -top-3 -right-3 grid size-6 cursor-pointer place-items-center rounded-full bg-danger text-white shadow-lift"
-          aria-label="Rimuovi dalla pagina"
-          title="Rimuovi (Canc)"
+          :aria-label="t('viewer.annotationLayer.remove')"
+          :title="t('viewer.annotationLayer.removeTitle')"
           @pointerdown.stop
           @click.stop="emit('remove', annotation.id)"
         >
@@ -207,11 +218,11 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
         <div
           class="absolute -top-7 left-1/2 flex -translate-x-1/2 cursor-grab flex-col items-center active:cursor-grabbing"
           role="slider"
-          aria-label="Ruota"
+          :aria-label="t('viewer.annotationLayer.rotate')"
           :aria-valuenow="boxOf(annotation).rotation"
           aria-valuemin="-179"
           aria-valuemax="180"
-          :title="`${boxOf(annotation).rotation}° - trascina per ruotare (⇧: a passi di 15°), doppio clic per raddrizzare`"
+          :title="t('viewer.annotationLayer.rotateTitle', { degrees: boxOf(annotation).rotation })"
           data-rotate
           @pointerdown="startDrag($event, annotation, 'rotate')"
           @dblclick.stop="emit('change', annotation.id, { ...boxOf(annotation), rotation: 0 })"
@@ -229,30 +240,30 @@ function startDrag(event: PointerEvent, annotation: AnnotationView, mode: DragMo
         <div
           class="absolute top-1/2 -right-2 h-7 w-2.5 -translate-y-1/2 cursor-ew-resize rounded-full border-2 border-white bg-accent shadow-lift"
           role="slider"
-          aria-label="Allarga o stringi"
+          :aria-label="t('viewer.annotationLayer.stretchX')"
           :aria-valuenow="Math.round(boxOf(annotation).width * 100)"
           aria-valuemin="3"
           aria-valuemax="100"
-          title="Trascina per cambiare solo la larghezza (⇧: dal centro)"
+          :title="t('viewer.annotationLayer.stretchXTitle')"
           data-stretch-x
           @pointerdown="startDrag($event, annotation, 'stretch-x')"
         />
         <div
           class="absolute -bottom-2 left-1/2 h-2.5 w-7 -translate-x-1/2 cursor-ns-resize rounded-full border-2 border-white bg-accent shadow-lift"
           role="slider"
-          aria-label="Allunga o accorcia"
+          :aria-label="t('viewer.annotationLayer.stretchY')"
           :aria-valuenow="Math.round(heightOf(annotation, boxOf(annotation)) * 100)"
           aria-valuemin="1"
           aria-valuemax="100"
-          title="Trascina per cambiare solo l’altezza (⇧: dal centro)"
+          :title="t('viewer.annotationLayer.stretchYTitle')"
           data-stretch-y
           @pointerdown="startDrag($event, annotation, 'stretch-y')"
         />
         <div
           class="absolute -right-2 -bottom-2 size-4 cursor-nwse-resize rounded-sm border-2 border-white bg-accent shadow-lift"
           role="slider"
-          aria-label="Ridimensiona"
-          title="Trascina per ingrandire o rimpicciolire, mantenendo le proporzioni (⇧: dal centro)"
+          :aria-label="t('viewer.annotationLayer.resize')"
+          :title="t('viewer.annotationLayer.resizeTitle')"
           :aria-valuenow="Math.round(boxOf(annotation).width * 100)"
           aria-valuemin="3"
           aria-valuemax="100"

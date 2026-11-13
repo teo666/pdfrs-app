@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 import type { PlacementView } from '@/stores/editor'
 
 /**
@@ -18,6 +20,7 @@ const {
   selectedId?: string | null
 }>()
 const emit = defineEmits<{ select: [id: string] }>()
+const { t } = useI18n()
 
 const percent = (value: number) => `${value * 100}%`
 
@@ -63,8 +66,8 @@ function clip(placement: PlacementView) {
         :aria-label="
           interactive
             ? placement.removed
-              ? 'Immagine da rimuovere'
-              : 'Immagine nella pagina'
+              ? t('viewer.imageLayer.removed')
+              : t('viewer.imageLayer.onPage')
             : undefined
         "
         :aria-pressed="interactive ? placement.id === selectedId : undefined"

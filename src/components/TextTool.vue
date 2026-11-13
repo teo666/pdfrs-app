@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { layoutText, type TextContent } from 'pdfrs-editor'
+import { useI18n } from 'vue-i18n'
 
 import AppButton from './AppButton.vue'
 import TextEditor from './TextEditor.vue'
@@ -8,6 +9,7 @@ import TextStamp from './TextStamp.vue'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
+const { t } = useI18n()
 
 const content = ref<TextContent>({
   text: '',
@@ -47,13 +49,11 @@ const placed = computed(() => {
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    Testo vero sopra le pagine, selezionabile e ricercabile nel PDF. Scrivilo qui, poi mettilo su
-    una pagina: si apre la pagina in grande, dove lo sposti, lo ridimensioni, lo ruoti e, se vuoi,
-    lo metti uguale su tutte le pagine. Con un doppio clic lo modifichi.
+    {{ t('tools.text.intro') }}
   </p>
 
   <p v-if="!store.active" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per scriverci sopra.
+    {{ t('tools.text.noDocument') }}
   </p>
 
   <template v-else>
@@ -62,7 +62,7 @@ const placed = computed(() => {
     <figure
       v-if="!blank"
       class="flex max-h-48 items-center justify-center overflow-hidden rounded-md bg-white p-3 ring-1 ring-line"
-      aria-label="Anteprima del testo"
+      :aria-label="t('tools.text.preview')"
     >
       <div
         class="max-w-full"
@@ -81,18 +81,20 @@ const placed = computed(() => {
       :disabled="blank || store.active.busy"
       @click="store.placeTextFromPanel(content, size)"
     >
-      Metti su pagina {{ target }}
+      {{ t('tools.common.placeOnPage', { page: target ?? '' }) }}
     </AppButton>
 
     <p v-if="placed.count" class="rounded-md bg-accent-soft p-3 text-[13px] text-accent">
-      {{ placed.count === 1 ? '1 testo' : `${placed.count} testi` }} su
-      {{ placed.pages === 1 ? '1 pagina' : `${placed.pages} pagine` }}: finiscono nel PDF quando
-      applichi le modifiche o lo scarichi.
+      {{
+        t('tools.common.placed', {
+          items: t('tools.text.placedCount', placed.count),
+          pages: t('tools.common.pages', placed.pages),
+        })
+      }}
     </p>
 
     <p class="mt-auto text-[11px] leading-snug text-fg-muted">
-      Font standard del PDF (Helvetica, Times, Courier): nessun font viene incorporato, e i
-      caratteri sono quelli delle lingue dell’Europa occidentale.
+      {{ t('tools.text.fonts') }}
     </p>
   </template>
 </template>

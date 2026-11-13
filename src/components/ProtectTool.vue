@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppButton from './AppButton.vue'
 import { useEditorStore } from '@/stores/editor'
@@ -10,6 +11,7 @@ import { useEditorStore } from '@/stores/editor'
  * the engine: nothing keeps it.
  */
 const store = useEditorStore()
+const { t } = useI18n()
 
 const password = ref('')
 const confirm = ref('')
@@ -27,17 +29,16 @@ async function make() {
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    Crea una copia del documento che si apre solo con la password (cifratura AES-256). La copia
-    compare nell’elenco con un lucchetto; l’originale resta com’è, modificabile.
+    {{ t('tools.protect.intro') }}
   </p>
 
   <p v-if="!store.active" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per proteggerlo.
+    {{ t('tools.protect.noDocument') }}
   </p>
 
   <form v-else class="flex flex-col gap-3" @submit.prevent="make">
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-semibold text-fg-muted">Password</span>
+      <span class="text-xs font-semibold text-fg-muted">{{ t('tools.protect.password') }}</span>
       <input
         v-model="password"
         :type="visible ? 'text' : 'password'"
@@ -46,7 +47,7 @@ async function make() {
       />
     </label>
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-semibold text-fg-muted">Ripeti la password</span>
+      <span class="text-xs font-semibold text-fg-muted">{{ t('tools.protect.repeat') }}</span>
       <input
         v-model="confirm"
         :type="visible ? 'text' : 'password'"
@@ -56,15 +57,16 @@ async function make() {
         :aria-invalid="mismatch"
       />
     </label>
-    <p v-if="mismatch" class="text-xs text-danger" role="alert">Le due password non coincidono.</p>
+    <p v-if="mismatch" class="text-xs text-danger" role="alert">
+      {{ t('tools.protect.mismatch') }}
+    </p>
     <label class="flex cursor-pointer items-center gap-2 text-[13px]">
       <input v-model="visible" type="checkbox" class="size-4 accent-accent" />
-      Mostra la password
+      {{ t('tools.protect.show') }}
     </label>
 
     <p class="rounded-md bg-surface-muted p-3 text-xs text-fg-muted">
-      Le modifiche non ancora applicate sono comprese. Conserva la password: se la perdi, la copia
-      protetta non si può più aprire.
+      {{ t('tools.protect.note') }}
     </p>
 
     <AppButton
@@ -73,7 +75,7 @@ async function make() {
       class="justify-center"
       :disabled="store.active.busy || !ready"
     >
-      Crea copia protetta
+      {{ t('tools.protect.submit') }}
     </AppButton>
   </form>
 </template>

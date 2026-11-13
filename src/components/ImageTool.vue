@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppButton from './AppButton.vue'
 import IconButton from './IconButton.vue'
@@ -7,6 +8,7 @@ import { useSignatureImport } from '@/composables/useSignatureImport'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
+const { t } = useI18n()
 const { message, fromFile } = useSignatureImport()
 
 /** Where an image goes: the first selected page, or the first page. */
@@ -35,24 +37,26 @@ async function upload() {
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    Un logo, un timbro o una foto sopra le pagine: caricala, poi mettila su una pagina. Si apre la
-    pagina in grande, dove la sposti, la ridimensioni, la ruoti e, se vuoi, la metti uguale su tutte
-    le pagine.
+    {{ t('tools.image.intro') }}
   </p>
 
   <p v-if="!store.active" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per inserirci delle immagini.
+    {{ t('tools.image.noDocument') }}
   </p>
 
   <template v-else>
     <section v-if="store.images.length" class="flex flex-col gap-2">
-      <h3 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">Le tue immagini</h3>
+      <h3 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">
+        {{ t('tools.image.yours') }}
+      </h3>
       <ul class="grid grid-cols-2 gap-2">
         <!-- min-w-0: a cell never grows to a picture's own width (a photo is wider than the panel). -->
         <li v-for="image in store.images" :key="image.id" class="group relative min-w-0">
           <button
             class="flex w-full cursor-pointer flex-col items-stretch gap-1.5 rounded-card border border-line p-2 text-left hover:border-accent"
-            :aria-label="`Metti «${image.name}» sulla pagina ${target}`"
+            :aria-label="
+              t('tools.common.placeNamedOnPage', { name: image.name, page: target ?? '' })
+            "
             @click="store.placeSignatureFromPanel(image.id)"
           >
             <!-- A checkerboard behind the picture shows where it's transparent. -->
@@ -62,14 +66,16 @@ async function upload() {
               <img :src="image.url" alt="" class="size-full object-contain p-1" />
             </span>
             <span class="truncate text-xs" :title="image.name">{{ image.name }}</span>
-            <span class="text-xs text-fg-muted">Metti su pagina {{ target }}</span>
+            <span class="text-xs text-fg-muted">{{
+              t('tools.common.placeOnPage', { page: target ?? '' })
+            }}</span>
           </button>
           <IconButton
             icon="close"
             size="sm"
-            :label="`Togli «${image.name}» dalla libreria`"
+            :label="t('tools.common.removeFromLibrary', { name: image.name })"
             class="absolute top-1 right-1 bg-surface opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-            title="Togli dalla libreria (resta sulle pagine dove l’hai già messa)"
+            :title="t('tools.common.removeFromLibraryHint')"
             @click="store.removeSignature(image.id)"
           />
         </li>
@@ -82,19 +88,21 @@ async function upload() {
       class="justify-center"
       @click="upload"
     >
-      Carica un’immagine
+      {{ t('tools.common.uploadImage') }}
     </AppButton>
     <p class="text-xs text-fg-muted">
-      PNG, JPEG, WebP o GIF. La trasparenza dei PNG resta; le immagini più grandi di 1600 pixel
-      vengono ridotte.
+      {{ t('tools.image.formats') }}
     </p>
 
     <p v-if="message" class="text-xs text-fg-muted">{{ message }}</p>
 
     <p v-if="placed.count" class="rounded-md bg-accent-soft p-3 text-[13px] text-accent">
-      {{ placed.count === 1 ? '1 immagine' : `${placed.count} immagini` }} su
-      {{ placed.pages === 1 ? '1 pagina' : `${placed.pages} pagine` }}: finiscono nel PDF quando
-      applichi le modifiche o lo scarichi.
+      {{
+        t('tools.common.placed', {
+          items: t('tools.image.placedCount', placed.count),
+          pages: t('tools.common.pages', placed.pages),
+        })
+      }}
     </p>
   </template>
 </template>

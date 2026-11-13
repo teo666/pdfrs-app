@@ -4,6 +4,8 @@
  * are left out of the parts afterwards, not renumbered away).
  */
 
+import { t } from '@/i18n'
+
 export interface Part {
   start: number
   end: number
@@ -40,13 +42,13 @@ export function parseRanges(text: string, total: number): { parts: Part[]; error
   const parts: Part[] = []
   for (const token of tokens) {
     const match = /^(\d+)(?:-(\d+))?$/.exec(token)
-    if (!match) return { parts: [], error: `«${token}» non è un intervallo (es. 1-3 oppure 5)` }
+    if (!match) return { parts: [], error: t('tools.split.errors.notRange', { token }) }
     const start = Number(match[1])
     const end = Number(match[2] ?? match[1])
     if (start < 1 || end > total) {
-      return { parts: [], error: `«${token}»: il documento ha le pagine da 1 a ${total}` }
+      return { parts: [], error: t('tools.split.errors.outOfRange', { token, total }) }
     }
-    if (start > end) return { parts: [], error: `«${token}»: la prima pagina viene dopo l’ultima` }
+    if (start > end) return { parts: [], error: t('tools.split.errors.reversed', { token }) }
     parts.push({ start, end })
   }
   return { parts, error: null }

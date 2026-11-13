@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppButton from '@/components/AppButton.vue'
 import AppIcon from '@/components/AppIcon.vue'
@@ -10,6 +11,7 @@ import IconButton from '@/components/IconButton.vue'
 import LockedDocument from '@/components/LockedDocument.vue'
 import PageGrid from '@/components/PageGrid.vue'
 import PageViewer from '@/components/PageViewer.vue'
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 import ToolPanel from '@/components/ToolPanel.vue'
 import ToolRail from '@/components/ToolRail.vue'
@@ -17,6 +19,7 @@ import { useFileDrop } from '@/composables/useFileDrop'
 import { pickFiles } from '@/lib/files'
 import { THUMB_SIZE, useEditorStore } from '@/stores/editor'
 
+const { t } = useI18n()
 const store = useEditorStore()
 const { dragging } = useFileDrop((files) => store.openFiles(files))
 
@@ -72,13 +75,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
     >
       <div class="flex items-baseline gap-3">
         <span class="text-[19px] font-medium tracking-tight">pdf<b class="text-accent">rs</b></span>
-        <span class="text-[13px] text-fg-muted max-md:hidden">Editor PDF nel browser</span>
+        <span class="text-[13px] text-fg-muted max-md:hidden">{{ t('app.header.tagline') }}</span>
       </div>
       <div class="flex items-center gap-4">
         <!-- Card size: smaller to see more pages at once, bigger to read them. -->
         <label
           class="flex items-center gap-2 text-xs text-fg-muted"
-          title="Dimensione delle anteprime"
+          :title="t('app.header.thumbSize')"
         >
           <AppIcon name="layout-grid" :size="14" />
           <input
@@ -88,12 +91,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
             :max="THUMB_SIZE.max"
             step="10"
             class="w-28 cursor-pointer accent-accent max-md:w-20"
-            aria-label="Dimensione delle anteprime"
+            :aria-label="t('app.header.thumbSize')"
           />
           <AppIcon name="image" :size="18" />
         </label>
+        <LocaleSwitcher />
         <ThemeSwitcher class="max-md:hidden" />
-        <AppButton icon="plus" @click="openPicker">Apri file</AppButton>
+        <AppButton icon="plus" @click="openPicker">{{ t('app.header.openFiles') }}</AppButton>
       </div>
     </header>
 
@@ -140,7 +144,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           class="flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed border-accent bg-surface px-12 py-8 text-base font-semibold shadow-lift"
         >
           <AppIcon name="upload" :size="32" class="text-accent" />
-          Rilascia per aprire
+          {{ t('app.header.dropToOpen') }}
         </div>
       </div>
     </Transition>
@@ -165,7 +169,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
         >
           {{ store.notice.action.label }}
         </AppButton>
-        <IconButton icon="close" label="Chiudi avviso" @click="store.dismissNotice()" />
+        <IconButton
+          icon="close"
+          :label="t('app.header.closeNotice')"
+          @click="store.dismissNotice()"
+        />
       </div>
     </Transition>
 
@@ -182,7 +190,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       >
         <AppIcon name="alert" />
         <span class="text-fg">{{ store.error }}</span>
-        <IconButton icon="close" label="Chiudi" @click="store.dismissError()" />
+        <IconButton
+          icon="close"
+          :label="t('app.header.closeError')"
+          @click="store.dismissError()"
+        />
       </div>
     </Transition>
   </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, reactive, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { PageId } from 'pdfrs-editor'
 
 import DropIndicator, { type DropIndicatorState } from './DropIndicator.vue'
@@ -8,6 +9,7 @@ import { blockDropIndex, PAGE_DRAG_TYPE, type DropSide } from '@/lib/reorder'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState }>()
+const { t } = useI18n()
 const store = useEditorStore()
 const grid = useTemplateRef<HTMLElement>('grid')
 
@@ -67,7 +69,7 @@ function onDragStart(event: DragEvent, id: PageId) {
 /** For a multi-page drag, a "12 pagine" label follows the pointer instead of one card's picture. */
 function setCountDragImage(transfer: DataTransfer, count: number) {
   const label = document.createElement('div')
-  label.textContent = `${count} pagine`
+  label.textContent = t('app.grid.dragCount', count)
   label.className =
     'fixed -top-96 left-0 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg shadow-lift'
   document.body.append(label)

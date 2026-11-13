@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import type { ImageAsset } from 'pdfrs-editor'
 
+import { t } from '@/i18n'
 import { pickFiles } from '@/lib/files'
 import {
   assetToUrl,
@@ -25,7 +26,7 @@ export function useSignatureImport() {
     return store.addSignature(
       image,
       await assetToUrl(image),
-      `Firma ${store.signatures.length + 1}`,
+      t('store.names.signature', { n: store.signatures.length + 1 }),
     )
   }
 
@@ -43,7 +44,7 @@ export function useSignatureImport() {
       message.value = null
       if (kind === 'signature' && !hasTransparency(image)) {
         image = removeWhiteBackground(image)
-        message.value = 'Lo sfondo bianco dell’immagine è stato reso trasparente.'
+        message.value = t('store.library.whiteBackground')
       }
       const url = await assetToUrl(image)
       const name = file.name.replace(/\.[^.]+$/, '')
@@ -51,7 +52,9 @@ export function useSignatureImport() {
         ? store.addImage(image, url, name)
         : store.addSignature(image, url, name)
     } catch (err) {
-      message.value = `Immagine non leggibile: ${err instanceof Error ? err.message : String(err)}`
+      message.value = t('store.library.unreadable', {
+        reason: err instanceof Error ? err.message : String(err),
+      })
       return null
     }
   }

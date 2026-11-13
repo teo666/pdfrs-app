@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppButton from './AppButton.vue'
 import AppIcon from './AppIcon.vue'
@@ -11,6 +12,7 @@ import { useEditorStore, type DocumentState } from '@/stores/editor'
  */
 const props = defineProps<{ doc: DocumentState }>()
 const store = useEditorStore()
+const { t } = useI18n()
 
 const password = ref('')
 const wrong = ref(false)
@@ -43,15 +45,14 @@ async function unlock() {
   <div class="flex h-full items-center justify-center p-6">
     <section
       class="flex w-full max-w-105 flex-col items-center gap-3 rounded-2xl border border-line bg-surface px-6 py-8 text-center"
-      :aria-label="`${doc.name}, protetto da password`"
+      :aria-label="t('editing.lockedDocument.section', { name: doc.name })"
     >
       <span class="grid size-14 place-items-center rounded-full bg-accent-soft text-accent">
         <AppIcon name="lock" :size="28" />
       </span>
       <h1 class="max-w-full truncate text-base font-semibold" :title="doc.name">{{ doc.name }}</h1>
       <p class="text-[13px] text-fg-muted">
-        È protetto da password. Per vederlo o modificarlo, sbloccalo: ne nasce una copia senza
-        password, accanto a questo.
+        {{ t('editing.lockedDocument.explanation') }}
       </p>
 
       <form class="mt-2 flex w-full flex-col gap-2" @submit.prevent="unlock">
@@ -60,15 +61,15 @@ async function unlock() {
           v-model="password"
           type="password"
           autocomplete="current-password"
-          placeholder="Password"
-          aria-label="Password del documento"
+          :placeholder="t('editing.lockedDocument.password')"
+          :aria-label="t('editing.lockedDocument.passwordLabel')"
           class="rounded-md border bg-surface px-3 py-2 text-sm"
           :class="wrong ? 'border-danger' : 'border-line'"
           :aria-invalid="wrong"
           @input="wrong = false"
         />
         <p v-if="wrong" class="text-left text-xs text-danger" role="alert">
-          Password errata: riprova.
+          {{ t('editing.lockedDocument.wrong') }}
         </p>
         <AppButton
           variant="primary"
@@ -76,18 +77,18 @@ async function unlock() {
           class="justify-center"
           :disabled="doc.busy || !password"
         >
-          Sblocca
+          {{ t('editing.lockedDocument.unlock') }}
         </AppButton>
       </form>
       <AppButton
         type="button"
         icon="download"
         class="w-full justify-center"
-        title="Scarica il PDF protetto, così com’è"
+        :title="t('editing.lockedDocument.downloadTitle')"
         :disabled="doc.busy"
         @click="store.download()"
       >
-        Scarica protetto
+        {{ t('editing.lockedDocument.download') }}
       </AppButton>
     </section>
   </div>

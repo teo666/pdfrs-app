@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
+import { I18nT, useI18n } from 'vue-i18n'
 
 import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
@@ -13,6 +14,7 @@ import { useEditorStore } from '@/stores/editor'
  * them. A click on one opens it in the viewer, selected.
  */
 const store = useEditorStore()
+const { t } = useI18n()
 const doc = computed(() => store.active)
 
 watch(
@@ -31,32 +33,41 @@ const removingBytes = computed(() => removing.value.reduce((sum, image) => sum +
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    Le immagini che il PDF contiene già: foto, loghi, scansioni. Rimuoverle è una modifica come le
-    altre: si annulla, e si applica con «Applica modifiche» o scaricando.
+    {{ t('tools.images.intro') }}
   </p>
 
   <p v-if="!doc" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per vederne le immagini.
+    {{ t('tools.images.noDocument') }}
   </p>
-  <p v-else-if="images === null" class="text-[13px] text-fg-muted">Ricerca delle immagini…</p>
+  <p v-else-if="images === null" class="text-[13px] text-fg-muted">
+    {{ t('tools.images.searching') }}
+  </p>
   <p
     v-else-if="images.length === 0"
     class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted"
   >
-    Nessuna immagine in questo documento. Loghi e grafiche disegnati come forme vettoriali non sono
-    immagini e non compaiono qui.
+    {{ t('tools.images.none') }}
   </p>
 
   <template v-else>
     <p class="text-[13px]" data-testid="images-summary">
-      <strong>{{ images.length === 1 ? '1 immagine' : `${images.length} immagini` }}</strong>,
-      {{ formatBytes(totalBytes) }} in tutto
+      <I18nT keypath="tools.images.summary" scope="global">
+        <template #count>
+          <strong>{{ t('tools.images.count', images.length) }}</strong>
+        </template>
+        <template #size>{{ formatBytes(totalBytes) }}</template>
+      </I18nT>
       <span v-if="removing.length" class="text-warning">
-        · {{ removing.length }} da rimuovere ({{ formatBytes(removingBytes) }})
+        {{
+          t('tools.images.removing', {
+            count: removing.length,
+            size: formatBytes(removingBytes),
+          })
+        }}
       </span>
     </p>
 
-    <ul class="flex flex-col gap-2" aria-label="Immagini del documento">
+    <ul class="flex flex-col gap-2" :aria-label="t('tools.images.list')">
       <li
         v-for="image in images"
         :key="image.key"
@@ -65,7 +76,7 @@ const removingBytes = computed(() => removing.value.reduce((sum, image) => sum +
       >
         <button
           class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
-          :title="`Mostra nella pagina ${image.pages[0]}`"
+          :title="t('tools.images.showOnPage', { page: image.pages[0] })"
           @click="store.focusImage(image.key)"
         >
           <ImageThumb :image-key="image.key" :class="{ 'opacity-40': image.removed }" />
@@ -77,23 +88,25 @@ const removingBytes = computed(() => removing.value.reduce((sum, image) => sum +
               {{ image.format.toUpperCase() }} · {{ formatBytes(image.bytes) }}
             </span>
             <span class="truncate text-xs text-fg-muted">{{ pagesLabel(image.pages) }}</span>
-            <span v-if="image.removed" class="text-xs font-semibold text-danger">Da rimuovere</span>
+            <span v-if="image.removed" class="text-xs font-semibold text-danger">
+              {{ t('tools.images.toRemove') }}
+            </span>
           </span>
         </button>
         <div class="flex shrink-0 flex-col gap-1">
           <IconButton
             icon="download"
             size="sm"
-            :label="`Scarica l’immagine di ${pagesLabel(image.pages)}`"
-            title="Scarica l’immagine"
+            :label="t('tools.images.downloadOf', { pages: pagesLabel(image.pages) })"
+            :title="t('tools.images.download')"
             @click="store.downloadImage(image.key)"
           />
           <IconButton
             v-if="image.removed"
             icon="restore"
             size="sm"
-            :label="`Ripristina l’immagine di ${pagesLabel(image.pages)}`"
-            title="Ripristina"
+            :label="t('tools.images.restoreOf', { pages: pagesLabel(image.pages) })"
+            :title="t('tools.images.restore')"
             :disabled="doc.busy"
             @click="store.restoreImages(image.placements)"
           />
@@ -102,8 +115,10 @@ const removingBytes = computed(() => removing.value.reduce((sum, image) => sum +
             icon="trash"
             size="sm"
             variant="danger"
-            :label="`Rimuovi l’immagine da ${pagesLabel(image.pages)}`"
-            :title="image.pages.length > 1 ? 'Rimuovi da tutte le pagine' : 'Rimuovi'"
+            :label="t('tools.images.removeFrom', { pages: pagesLabel(image.pages) })"
+            :title="
+              image.pages.length > 1 ? t('tools.images.removeEverywhere') : t('tools.images.remove')
+            "
             :disabled="doc.busy"
             @click="store.removeImages(image.placements)"
           />
@@ -113,8 +128,7 @@ const removingBytes = computed(() => removing.value.reduce((sum, image) => sum +
 
     <p class="flex items-start gap-1.5 text-xs text-fg-muted">
       <AppIcon name="info" :size="14" class="mt-px" />
-      Per togliere un’immagine solo da alcune pagine, aprila: nella pagina si sceglie se toglierla
-      lì o ovunque.
+      {{ t('tools.images.someOnly') }}
     </p>
   </template>
 </template>

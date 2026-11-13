@@ -1,5 +1,7 @@
 import type { ImageAsset } from 'pdfrs-editor'
 
+import { t } from '@/i18n'
+
 /**
  * Images are decoded by the browser (canvas), not by the wasm engine: that's
  * what keeps `annotate_pdf` in the small "core" build.
@@ -30,7 +32,7 @@ export async function imageFileToAsset(
     const height = Math.max(1, Math.round(bitmap.height * scale))
     const canvas = new OffscreenCanvas(width, height)
     const context = canvas.getContext('2d', { willReadFrequently: true })
-    if (!context) throw new Error('impossibile decodificare l’immagine')
+    if (!context) throw new Error(t('store.errors.imageDecode'))
     context.drawImage(bitmap, 0, 0, width, height)
     // getImageData is un-premultiplied: exactly what the PDF's /SMask wants.
     return { pixels: new Uint8Array(context.getImageData(0, 0, width, height).data), width, height }
@@ -67,7 +69,7 @@ export function removeWhiteBackground(image: ImageAsset): ImageAsset {
 export async function assetToUrl(image: ImageAsset): Promise<string> {
   const canvas = new OffscreenCanvas(image.width, image.height)
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('impossibile disegnare l’immagine')
+  if (!context) throw new Error(t('store.errors.imageDraw'))
   context.putImageData(
     new ImageData(new Uint8ClampedArray(image.pixels), image.width, image.height),
     0,

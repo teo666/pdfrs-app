@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppIcon from './AppIcon.vue'
+import { historyLabel } from '@/lib/historyLabel'
 import { useEditorStore } from '@/stores/editor'
 
 /**
@@ -9,6 +11,7 @@ import { useEditorStore } from '@/stores/editor'
  * what an undo would take back, what was undone and can still come back.
  * A click goes straight to that step, however many away.
  */
+const { t } = useI18n()
 const store = useEditorStore()
 const doc = computed(() => store.active)
 
@@ -29,20 +32,18 @@ watch(currentIndex, async () => {
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    Ogni modifica fatta al documento, dalla più recente. Fai clic su un passo per tornare a quel
-    punto; i passi annullati restano qui finché non fai una nuova modifica.
+    {{ t('history.panel.intro') }}
   </p>
 
   <p v-if="!doc" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per vederne la cronologia.
+    {{ t('history.panel.noDocument') }}
   </p>
 
   <template v-else>
     <p v-if="undone" class="text-xs text-fg-muted">
-      {{ undone === 1 ? '1 passo annullato' : `${undone} passi annullati` }}: si possono ancora
-      ripetere.
+      {{ t('history.panel.undone', undone) }}
     </p>
-    <ol ref="list" class="flex flex-col gap-0.5" aria-label="Cronologia delle modifiche">
+    <ol ref="list" class="flex flex-col gap-0.5" :aria-label="t('history.panel.list')">
       <li v-for="step in steps" :key="step.index">
         <button
           class="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors disabled:cursor-default"
@@ -57,10 +58,10 @@ watch(currentIndex, async () => {
           :disabled="step.current || doc.busy"
           :title="
             step.current
-              ? 'Il documento è a questo punto'
+              ? t('history.panel.current')
               : step.index > currentIndex
-                ? 'Ripeti fino a qui'
-                : 'Torna a questo punto'
+                ? t('history.panel.redoTo')
+                : t('history.panel.goTo')
           "
           @click="store.goToHistory(step.index)"
         >
@@ -75,9 +76,9 @@ watch(currentIndex, async () => {
             "
             aria-hidden="true"
           />
-          <span class="min-w-0 flex-1 truncate">{{ step.label }}</span>
+          <span class="min-w-0 flex-1 truncate">{{ historyLabel(step) }}</span>
           <span v-if="step.index > currentIndex" class="text-xs font-normal not-italic">
-            annullato
+            {{ t('history.panel.undoneTag') }}
           </span>
         </button>
       </li>
@@ -85,7 +86,7 @@ watch(currentIndex, async () => {
 
     <p class="flex items-start gap-1.5 text-xs text-fg-muted">
       <AppIcon name="info" :size="14" class="mt-px" />
-      Annulla e ripeti anche con {{ shortcuts }}. Si tengono gli ultimi 50 passi.
+      {{ t('history.panel.shortcuts', { shortcuts }) }}
     </p>
   </template>
 </template>

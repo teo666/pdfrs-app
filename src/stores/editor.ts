@@ -29,6 +29,8 @@ import {
   type NUpOptions,
 } from 'pdfrs-editor/operations'
 
+import { t } from '@/i18n'
+import { describeError } from '@/lib/errors'
 import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
 
 /** Card width range of the thumbnail-size slider, in CSS pixels. */
@@ -384,7 +386,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function report(err: unknown) {
-    error.value = err instanceof Error ? err.message : String(err)
+    error.value = describeError(err)
   }
 
   function notify(message: string, action?: Notice['action']) {
@@ -565,7 +567,7 @@ export const useEditorStore = defineStore('editor', () => {
       const number = (state.images?.findIndex((item) => item.key === key) ?? 0) + 1
       const extension = image.mime === 'image/jpeg' ? 'jpg' : 'png'
       const base = state.name.replace(/\.(pdf|jpe?g)$/i, '')
-      downloadBytes(image.bytes, `${base} - immagine ${number}.${extension}`, image.mime)
+      downloadBytes(image.bytes, t('store.names.image', { base, n: number, extension }), image.mime)
     } catch (err) {
       report(err)
     }
@@ -578,7 +580,7 @@ export const useEditorStore = defineStore('editor', () => {
   function imageThumbnail(key: string): Promise<string> {
     const state = active.value
     const inner = state ? internals.get(state.id) : undefined
-    if (!inner) return Promise.reject(new Error('nessun documento'))
+    if (!inner) return Promise.reject(new Error(t('store.errors.noDocument')))
     let url = inner.thumbnails.get(key)
     if (!url) {
       url = inner.doc.extractImage(key, THUMBNAIL_SIZE).then((image) => {
@@ -727,7 +729,7 @@ export const useEditorStore = defineStore('editor', () => {
       try {
         const bytes = await readFile(file)
         const kind = detectKind(bytes)
-        if (!kind) throw new Error(`${file.name}: non è un PDF né un'immagine JPEG`)
+        if (!kind) throw new Error(t('store.errors.notPdfOrJpeg', { name: file.name }))
         const id =
           kind === 'pdf'
             ? await editor.addDocument(bytes)
@@ -989,11 +991,11 @@ export const useEditorStore = defineStore('editor', () => {
       // The merged outline gets one branch per document, under its name.
       const titles = states.map((state) => state.name.replace(/\.(pdf|jpe?g)$/i, ''))
       const mergedId = await editor.mergeDocuments(ids, { applyPending: true, titles })
-      register(mergedId, `Unione di ${ids.length} documenti.pdf`)
+      register(mergedId, t('store.names.merged', { n: ids.length }))
       mergePicks.value = []
       if (activeTool.value === 'merge') activeTool.value = null
       select(mergedId)
-      notify(`Uniti ${ids.length} documenti: gli originali restano aperti`)
+      notify(t('store.notices.merged', { n: ids.length }))
     } catch (err) {
       report(err)
     } finally {
@@ -1017,11 +1019,9 @@ export const useEditorStore = defineStore('editor', () => {
       for (const file of files) {
         const bytes = await readFile(file)
         const kind = detectKind(bytes)
-        if (!kind) throw new Error(`${file.name}: non è un PDF né un'immagine JPEG`)
+        if (!kind) throw new Error(t('store.errors.notPdfOrJpeg', { name: file.name }))
         if (kind === 'pdf' && (await is_password_protected(bytes))) {
-          throw new Error(
-            `${file.name} è protetto da password: aprilo e sbloccalo, poi inserisci la copia sbloccata`,
-          )
+          throw new Error(t('store.errors.insertProtected', { name: file.name }))
         }
         // A photo is inserted as one, so its page can be changed later.
         const count =
@@ -1031,7 +1031,7 @@ export const useEditorStore = defineStore('editor', () => {
         at += count
         added += count
       }
-      if (added > 0) notify(added === 1 ? 'Inserita 1 pagina' : `Inserite ${added} pagine`)
+      if (added > 0) notify(t('store.notices.inserted', added))
     })
 
   /**
@@ -1049,12 +1049,9 @@ export const useEditorStore = defineStore('editor', () => {
     try {
       await editor.transferPages(source.id, pages, targetId, { move: !copy })
       if (!copy) clearSelection()
-      const what =
-        pages.length === 1
-          ? `${copy ? 'Copiata' : 'Spostata'} 1 pagina`
-          : `${copy ? 'Copiate' : 'Spostate'} ${pages.length} pagine`
-      notify(`${what} in «${target.name}»`, {
-        label: 'Apri',
+      const message = copy ? 'store.notices.copied' : 'store.notices.moved'
+      notify(t(message, { target: target.name }, pages.length), {
+        label: t('store.actions.open'),
         run: () => select(targetId),
       })
     } catch (err) {
@@ -1141,14 +1138,15 @@ export const useEditorStore = defineStore('editor', () => {
           : await booklet_pdf(source, imposition.options)
       const id = await editor.addDocument(result)
       const base = state.name.replace(/\.(pdf|jpe?g)$/i, '')
-      const suffix =
-        imposition.kind === 'nup' ? `${perSheet(imposition.options.layout)} per foglio` : 'libretto'
-      const name = `${base} (${suffix}).pdf`
+      const name =
+        imposition.kind === 'nup'
+          ? t('store.names.nup', { base, n: perSheet(imposition.options.layout) })
+          : t('store.names.booklet', { base })
       register(id, name)
       activeTool.value = null
       select(id)
-      notify(`Creato «${name}»: l’originale resta com’era`, {
-        label: 'Torna all’originale',
+      notify(t('store.notices.created', { name }), {
+        label: t('store.actions.backToOriginal'),
         run: () => select(state.id),
       })
     })
@@ -1201,17 +1199,15 @@ export const useEditorStore = defineStore('editor', () => {
       const ids: DocumentId[] = []
       for (const [index, pages] of pageParts.entries()) {
         const id = await editor.extractPages(state.id, pages)
-        register(id, `${base} (parte ${index + 1} di ${pageParts.length}).pdf`)
+        register(id, t('store.names.part', { base, index: index + 1, total: pageParts.length }))
         ids.push(id)
       }
       activeTool.value = null
       select(ids[0]!)
-      notify(
-        ids.length === 1
-          ? 'Creato 1 documento'
-          : `Creati ${ids.length} documenti: l’originale resta com’era`,
-        { label: 'Torna all’originale', run: () => select(state.id) },
-      )
+      notify(t('store.notices.split', ids.length), {
+        label: t('store.actions.backToOriginal'),
+        run: () => select(state.id),
+      })
     })
 
   /** Copies the selected pages, as they look now, into a new document. */
@@ -1220,10 +1216,12 @@ export const useEditorStore = defineStore('editor', () => {
       const pages = selectedPages()
       if (pages.length === 0) return
       const id = await editor.extractPages(state.id, pages)
-      const name = `${state.name.replace(/\.(pdf|jpe?g)$/i, '')} (estratto).pdf`
+      const name = t('store.names.extracted', { base: state.name.replace(/\.(pdf|jpe?g)$/i, '') })
       register(id, name)
-      const count = pages.length === 1 ? '1 pagina' : `${pages.length} pagine`
-      notify(`${count} in «${name}»`, { label: 'Apri', run: () => select(id) })
+      notify(t('store.notices.extracted', { name }, pages.length), {
+        label: t('store.actions.open'),
+        run: () => select(id),
+      })
     })
 
   // --- Passwords ---------------------------------------------------------------
@@ -1233,8 +1231,13 @@ export const useEditorStore = defineStore('editor', () => {
   // other. Passwords go straight to the engine; nothing keeps them.
 
   /** The name without its extension, or the " (protetto)" a protected copy got. */
-  const baseName = (name: string) =>
-    name.replace(/\.(pdf|jpe?g)$/i, '').replace(/ \(protetto\)$/, '')
+  const baseName = (name: string) => {
+    const base = name.replace(/\.(pdf|jpe?g)$/i, '')
+    // What a protected copy's name adds to the original's (" (protetto)"),
+    // in the current language: its message, around an empty name.
+    const suffix = t('store.names.protected', { base: '' }).replace(/\.pdf$/i, '')
+    return suffix && base.endsWith(suffix) ? base.slice(0, -suffix.length) : base
+  }
 
   /**
    * A copy of the active document, as it looks now, that needs `password`
@@ -1243,12 +1246,12 @@ export const useEditorStore = defineStore('editor', () => {
   const protect = (password: string) =>
     runBusy(async (_doc, state) => {
       const id = await editor.protectDocument(state.id, password)
-      const name = `${baseName(state.name)} (protetto).pdf`
+      const name = t('store.names.protected', { base: baseName(state.name) })
       register(id, name)
       activeTool.value = null
       select(id)
-      notify(`Creato «${name}», protetto da password: l’originale resta com’era`, {
-        label: 'Torna all’originale',
+      notify(t('store.notices.protected', { name }), {
+        label: t('store.actions.backToOriginal'),
         run: () => select(state.id),
       })
     })
@@ -1263,11 +1266,11 @@ export const useEditorStore = defineStore('editor', () => {
     await runBusy(async (_doc, state) => {
       try {
         const id = await editor.unlockDocument(state.id, password)
-        const name = `${baseName(state.name)} (sbloccato).pdf`
+        const name = t('store.names.unlocked', { base: baseName(state.name) })
         register(id, name)
         select(id)
-        notify(`Creato «${name}», senza password`, {
-          label: 'Torna al protetto',
+        notify(t('store.notices.unlocked', { name }), {
+          label: t('store.actions.backToProtected'),
           run: () => select(state.id),
         })
       } catch (err) {
@@ -1484,7 +1487,7 @@ export const useEditorStore = defineStore('editor', () => {
   async function renderPage(page: PageId, scale: number): Promise<string> {
     const state = active.value
     const inner = state ? internals.get(state.id) : undefined
-    if (!inner) throw new Error('nessun documento attivo')
+    if (!inner) throw new Error(t('store.errors.noActiveDocument'))
     const preview = await inner.doc.getPreview(page, scale)
     return urlFor(inner, preview.png)
   }

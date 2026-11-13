@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppIcon from './AppIcon.vue'
 import { useEditorStore, type SelectMode } from '@/stores/editor'
@@ -10,6 +11,7 @@ import { useEditorStore, type SelectMode } from '@/stores/editor'
  * and a click brings that page into view in the grid, selected.
  */
 const store = useEditorStore()
+const { t } = useI18n()
 const doc = computed(() => store.active)
 
 watch(
@@ -75,13 +77,13 @@ const rows = computed<Row[]>(() => {
     const found = entry.page == null ? undefined : positions.value.get(entry.page)
     shown.push({
       index,
-      title: entry.title || 'Senza titolo',
+      title: entry.title || t('tools.outline.untitled'),
       level: entry.level,
       page: found ? found.page.id : null,
       where: found
         ? found.page.markedForDeletion
-          ? 'da eliminare'
-          : `p. ${found.index + 1}`
+          ? t('tools.outline.deleted')
+          : t('tools.outline.page', { page: found.index + 1 })
         : null,
       deleted: found?.page.markedForDeletion ?? false,
     })
@@ -92,27 +94,27 @@ const rows = computed<Row[]>(() => {
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    I segnalibri del documento. Fai clic su una voce per andare alla sua pagina; con Maiusc
-    selezioni tutte le pagine fino a quella, con ⌘/Ctrl la aggiungi alla selezione. L’indice resta
-    anche quando elimini, riordini, estrai o unisci pagine.
+    {{ t('tools.outline.intro') }}
   </p>
 
   <p v-if="!doc" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per vederne l’indice.
+    {{ t('tools.outline.noDocument') }}
   </p>
-  <p v-else-if="entries === null" class="text-[13px] text-fg-muted">Lettura dell’indice…</p>
+  <p v-else-if="entries === null" class="text-[13px] text-fg-muted">
+    {{ t('tools.outline.loading') }}
+  </p>
   <p
     v-else-if="entries.length === 0"
     class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted"
   >
-    Questo documento non ha un indice.
+    {{ t('tools.outline.none') }}
   </p>
 
   <ul
     v-else
     class="flex flex-col gap-0.5 select-none"
     role="tree"
-    aria-label="Indice del documento"
+    :aria-label="t('tools.outline.tree')"
   >
     <li
       v-for="row in rows"
@@ -126,7 +128,11 @@ const rows = computed<Row[]>(() => {
       <button
         v-if="hasChildren(row.index)"
         class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-fg-muted hover:bg-surface-muted"
-        :aria-label="closed.has(row.index) ? `Apri ${row.title}` : `Chiudi ${row.title}`"
+        :aria-label="
+          t(closed.has(row.index) ? 'tools.outline.open' : 'tools.outline.close', {
+            title: row.title,
+          })
+        "
         @click="toggle(row.index)"
       >
         <AppIcon
@@ -141,7 +147,7 @@ const rows = computed<Row[]>(() => {
         class="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2 rounded-md px-1.5 py-1 text-left text-[13px] hover:bg-surface-muted disabled:cursor-default disabled:hover:bg-transparent"
         :class="{ 'text-fg-muted': row.page === null || row.deleted }"
         :disabled="row.page === null"
-        :title="row.page === null ? 'Non porta a una pagina di questo documento' : undefined"
+        :title="row.page === null ? t('tools.outline.nowhere') : undefined"
         @click="row.page !== null && store.revealPage(row.page, modeOf($event))"
       >
         <span class="min-w-0 flex-1 truncate" :class="{ 'line-through': row.deleted }">

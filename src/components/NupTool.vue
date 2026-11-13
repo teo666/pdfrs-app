@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { PageSize } from 'pdfrs-editor'
 
 import AppButton from './AppButton.vue'
@@ -9,6 +10,7 @@ import { mmToPt, nupGrid, nupOrder, type NupCount, type SheetOrientation } from 
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
+const { t } = useI18n()
 
 const count = ref<NupCount>(2)
 const pageSize = ref<PageSize>('a4')
@@ -45,32 +47,32 @@ function make() {
 }
 
 const counts: NupCount[] = [2, 4, 6, 8, 9, 16]
-const sizes: { value: PageSize; label: string }[] = [
+// Paper names stay as they are; only "as the original" is words.
+const sizes = computed<{ value: PageSize; label: string }[]>(() => [
   { value: 'a4', label: 'A4' },
   { value: 'a3', label: 'A3' },
   { value: 'a5', label: 'A5' },
   { value: 'letter', label: 'Letter' },
   { value: 'legal', label: 'Legal' },
-  { value: 'native', label: 'Come l’originale' },
-]
+  { value: 'native', label: t('tools.nup.native') },
+])
 </script>
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    Più pagine su ogni foglio, rimpicciolite: per stampare un documento lungo con meno carta. Il
-    risultato è un nuovo documento; l’originale non cambia.
+    {{ t('tools.nup.intro') }}
   </p>
 
   <p v-if="!store.active" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per impaginarlo.
+    {{ t('tools.nup.noDocument') }}
   </p>
 
   <template v-else>
     <ToolScope ref="scope" />
 
     <div class="flex flex-col gap-1.5">
-      <span class="text-xs font-semibold text-fg-muted">Pagine per foglio</span>
-      <div class="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Pagine per foglio">
+      <span class="text-xs font-semibold text-fg-muted">{{ t('tools.nup.perSheet') }}</span>
+      <div class="grid grid-cols-3 gap-1.5" role="radiogroup" :aria-label="t('tools.nup.perSheet')">
         <button
           v-for="n in counts"
           :key="n"
@@ -90,7 +92,7 @@ const sizes: { value: PageSize; label: string }[] = [
     </div>
 
     <!-- The sheet as it will come out: its shape and where each page goes. -->
-    <figure class="flex flex-col items-center gap-2" aria-label="Schema del foglio">
+    <figure class="flex flex-col items-center gap-2" :aria-label="t('tools.nup.schema')">
       <div
         class="grid gap-1 rounded-sm bg-white p-1.5 shadow-card ring-1 ring-line"
         :class="grid.landscape ? 'h-28 w-40' : 'h-40 w-28'"
@@ -110,12 +112,17 @@ const sizes: { value: PageSize; label: string }[] = [
         </span>
       </div>
       <figcaption class="text-xs text-fg-muted">
-        {{ grid.cols }} × {{ grid.rows }}, foglio {{ grid.landscape ? 'orizzontale' : 'verticale' }}
+        {{
+          t(grid.landscape ? 'tools.nup.gridLandscape' : 'tools.nup.gridPortrait', {
+            cols: grid.cols,
+            rows: grid.rows,
+          })
+        }}
       </figcaption>
     </figure>
 
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-semibold text-fg-muted">Formato del foglio</span>
+      <span class="text-xs font-semibold text-fg-muted">{{ t('tools.nup.sheetSize') }}</span>
       <select
         v-model="pageSize"
         class="rounded-md border border-line bg-surface px-2 py-1.5 text-[13px]"
@@ -128,33 +135,37 @@ const sizes: { value: PageSize; label: string }[] = [
 
     <SegmentedControl
       v-model="orientation"
-      label="Orientamento"
+      :label="t('tools.nup.orientation')"
       :options="[
-        { value: 'auto', label: 'Automatico', title: 'Quello che sfrutta meglio il foglio' },
-        { value: 'portrait', label: 'Verticale' },
-        { value: 'landscape', label: 'Orizzontale' },
+        {
+          value: 'auto',
+          label: t('tools.nup.orientations.auto.label'),
+          title: t('tools.nup.orientations.auto.title'),
+        },
+        { value: 'portrait', label: t('tools.nup.orientations.portrait') },
+        { value: 'landscape', label: t('tools.nup.orientations.landscape') },
       ]"
     />
 
     <SegmentedControl
       v-model="direction"
-      label="Ordine delle pagine"
+      :label="t('tools.nup.order')"
       :options="[
-        { value: 'horizontal', label: 'Per righe', title: '1 2 / 3 4' },
-        { value: 'vertical', label: 'Per colonne', title: '1 3 / 2 4' },
+        { value: 'horizontal', label: t('tools.nup.byRows'), title: '1 2 / 3 4' },
+        { value: 'vertical', label: t('tools.nup.byColumns'), title: '1 3 / 2 4' },
       ]"
     />
 
     <label class="flex cursor-pointer items-center gap-2 text-[13px]">
       <input v-model="borders" type="checkbox" class="size-4 accent-accent" />
-      Bordo attorno a ogni pagina
+      {{ t('tools.common.borders') }}
     </label>
 
     <details class="text-[13px]">
-      <summary class="cursor-pointer text-fg-muted">Margini e altre opzioni</summary>
+      <summary class="cursor-pointer text-fg-muted">{{ t('tools.nup.moreOptions') }}</summary>
       <div class="mt-2 grid grid-cols-2 gap-2">
         <label class="flex flex-col gap-1">
-          <span class="text-xs text-fg-muted">Margine (mm)</span>
+          <span class="text-xs text-fg-muted">{{ t('tools.common.margin') }}</span>
           <input
             v-model.number="marginMm"
             type="number"
@@ -164,7 +175,7 @@ const sizes: { value: PageSize; label: string }[] = [
           />
         </label>
         <label class="flex flex-col gap-1">
-          <span class="text-xs text-fg-muted">Spazio tra pagine (mm)</span>
+          <span class="text-xs text-fg-muted">{{ t('tools.nup.spacing') }}</span>
           <input
             v-model.number="spacingMm"
             type="number"
@@ -175,7 +186,7 @@ const sizes: { value: PageSize; label: string }[] = [
         </label>
         <label class="col-span-2 flex cursor-pointer items-center gap-2">
           <input v-model="autoRotate" type="checkbox" class="size-4 accent-accent" />
-          Ruota le pagine se così stanno più grandi
+          {{ t('tools.nup.autoRotate') }}
         </label>
       </div>
     </details>
@@ -186,7 +197,7 @@ const sizes: { value: PageSize; label: string }[] = [
       :disabled="store.active.busy || sheets === 0"
       @click="make"
     >
-      Crea documento ({{ sheets === 1 ? '1 foglio' : `${sheets} fogli` }})
+      {{ t('tools.nup.submit', sheets) }}
     </AppButton>
   </template>
 </template>

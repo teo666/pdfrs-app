@@ -1,79 +1,33 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 import AppIcon, { type IconName } from './AppIcon.vue'
 import { useEditorStore, type ToolId } from '@/stores/editor'
 
 const store = useEditorStore()
+const { t } = useI18n()
 
-const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
-  {
-    id: 'sign',
-    icon: 'pen',
-    label: 'Firma',
-    hint: 'Firma: disegna o carica una firma e mettila sulle pagine',
-  },
-  {
-    id: 'image',
-    icon: 'image',
-    label: 'Immagine',
-    hint: 'Immagine: un logo, un timbro o una foto sopra le pagine',
-  },
-  {
-    id: 'text',
-    icon: 'type',
-    label: 'Testo',
-    hint: 'Testo: scrivi sopra le pagine, con testo vero e selezionabile',
-  },
-  { id: 'merge', icon: 'merge-arrows', label: 'Unisci', hint: 'Unisci più documenti in uno' },
-  { id: 'split', icon: 'scissors', label: 'Dividi', hint: 'Dividi il documento in più parti' },
-  {
-    id: 'nup',
-    icon: 'layout-grid',
-    label: 'N per foglio',
-    hint: 'Più pagine su ogni foglio, per stampare con meno carta',
-  },
-  {
-    id: 'booklet',
-    icon: 'book',
-    label: 'Libretto',
-    hint: 'Libretto da stampare fronte e retro e piegare a metà',
-  },
-  {
-    id: 'outline',
-    icon: 'list-tree',
-    label: 'Indice',
-    hint: 'Indice del documento: i segnalibri, per andare alle pagine',
-  },
-  {
-    id: 'images',
-    icon: 'images',
-    label: 'Immagini',
-    hint: 'Le immagini già nel PDF: vedile, scaricale o rimuovile',
-  },
-  {
-    id: 'protect',
-    icon: 'lock',
-    label: 'Proteggi',
-    hint: 'Proteggi con password: una copia che si apre solo con la password',
-  },
-  {
-    id: 'properties',
-    icon: 'info',
-    label: 'Proprietà',
-    hint: 'Proprietà del documento: titolo, autore, oggetto, parole chiave',
-  },
-  {
-    id: 'history',
-    icon: 'history',
-    label: 'Cronologia',
-    hint: 'Cronologia delle modifiche: torna a qualsiasi passo',
-  },
+// Labels and hints come from the messages (tools.rail.<id>), so they follow the language.
+const tools: { id: ToolId; icon: IconName }[] = [
+  { id: 'sign', icon: 'pen' },
+  { id: 'image', icon: 'image' },
+  { id: 'text', icon: 'type' },
+  { id: 'merge', icon: 'merge-arrows' },
+  { id: 'split', icon: 'scissors' },
+  { id: 'nup', icon: 'layout-grid' },
+  { id: 'booklet', icon: 'book' },
+  { id: 'outline', icon: 'list-tree' },
+  { id: 'images', icon: 'images' },
+  { id: 'protect', icon: 'lock' },
+  { id: 'properties', icon: 'info' },
+  { id: 'history', icon: 'history' },
 ]
 </script>
 
 <template>
   <nav
     class="flex min-h-0 flex-col items-center gap-1 overflow-y-auto border-l border-line bg-surface py-3"
-    aria-label="Strumenti"
+    :aria-label="t('tools.rail.navLabel')"
   >
     <button
       v-for="tool in tools"
@@ -85,11 +39,11 @@ const tools: { id: ToolId; icon: IconName; label: string; hint: string }[] = [
           : 'text-fg-muted hover:bg-surface-muted hover:text-fg'
       "
       :aria-pressed="store.activeTool === tool.id"
-      :title="tool.hint"
+      :title="t(`tools.rail.${tool.id}.hint`)"
       @click="store.toggleTool(tool.id)"
     >
       <AppIcon :name="tool.icon" :size="20" />
-      {{ tool.label }}
+      {{ t(`tools.rail.${tool.id}.label`) }}
     </button>
   </nav>
 </template>

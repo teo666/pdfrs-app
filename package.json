@@ -10,6 +10,7 @@
     "test:unit": "vitest",
     "test:e2e": "playwright test",
     "build-only": "vite build",
+    "build:extension": "node scripts/build-extension.mjs",
     "type-check": "vue-tsc --build",
     "lint": "run-s \"lint:*\"",
     "lint:oxlint": "oxlint . --fix",
@@ -20,6 +21,7 @@
     "pdfrs-editor": "link:../pdfrs/packages/pdfrs-editor",
     "pinia": "^4.1.0",
     "vue": "^3.5.45",
+    "vue-i18n": "^11.4.18",
     "vue-router": "^5.5.0"
   },
   "devDependencies": {

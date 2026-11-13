@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { PageId, PageInfo } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
@@ -44,6 +45,7 @@ const emit = defineEmits<{
   check: [range: boolean]
 }>()
 
+const { t } = useI18n()
 const root = useTemplateRef<HTMLElement>('root')
 const visible = useVisibility(root)
 const previewUrl = computed(() => props.previews[props.page.id])
@@ -69,8 +71,14 @@ watch([visible, previewUrl], () => {
 
 const label = computed(() =>
   props.page.id === props.position
-    ? `Pagina ${props.position}`
-    : `Pagina ${props.position} (era ${props.page.id})`,
+    ? t('app.card.page', { n: props.position })
+    : t('app.card.pageMoved', { n: props.position, was: props.page.id }),
+)
+/** The same, inside a sentence ("Seleziona pagina 3"). */
+const inlineLabel = computed(() =>
+  props.page.id === props.position
+    ? t('app.card.pageInline', { n: props.position })
+    : t('app.card.pageInlineMoved', { n: props.position, was: props.page.id }),
 )
 </script>
 
@@ -171,7 +179,7 @@ const label = computed(() =>
         v-if="page.markedForDeletion"
         class="absolute top-1/2 left-1/2 -translate-1/2 rounded-full bg-danger px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-white"
       >
-        Da eliminare
+        {{ t('app.card.toDelete') }}
       </div>
 
       <!--
@@ -187,7 +195,7 @@ const label = computed(() =>
         role="checkbox"
         tabindex="0"
         :aria-checked="selected"
-        :aria-label="`Seleziona ${label.toLowerCase()}`"
+        :aria-label="t('app.card.select', { page: inlineLabel })"
         @click="emit('pick', $event)"
         @dblclick="emit('open')"
         @keydown.enter.prevent="emit('open')"
@@ -205,8 +213,8 @@ const label = computed(() =>
 
       <button
         class="absolute top-1.5 right-1.5 grid size-8 cursor-zoom-in place-items-center rounded-full bg-surface/95 opacity-0 shadow-card transition group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-surface hover:text-accent pointer-coarse:opacity-100"
-        :aria-label="`Apri ${label.toLowerCase()} a grandezza reale`"
-        title="Vedi la pagina in dettaglio (Invio, o doppio clic)"
+        :aria-label="t('app.card.open', { page: inlineLabel })"
+        :title="t('app.card.openTitle')"
         @click="emit('open')"
       >
         <AppIcon name="zoom-in" :size="18" />
@@ -223,19 +231,19 @@ const label = computed(() =>
         <template v-if="!page.markedForDeletion">
           <IconButton
             icon="rotate-left"
-            label="Ruota a sinistra"
+            :label="t('app.card.rotateLeft')"
             :disabled="disabled"
             @click="emit('rotate', -90)"
           />
           <IconButton
             icon="rotate-right"
-            label="Ruota a destra"
+            :label="t('app.card.rotateRight')"
             :disabled="disabled"
             @click="emit('rotate', 90)"
           />
           <IconButton
             icon="trash"
-            label="Elimina pagina"
+            :label="t('app.card.delete')"
             variant="danger"
             :disabled="disabled"
             @click="emit('toggleDelete')"
@@ -244,7 +252,7 @@ const label = computed(() =>
         <IconButton
           v-else
           icon="restore"
-          label="Ripristina pagina"
+          :label="t('app.card.restore')"
           :disabled="disabled"
           @click="emit('toggleDelete')"
         />
@@ -255,17 +263,17 @@ const label = computed(() =>
       <span class="font-semibold text-fg">{{ position }}</span>
       <span
         v-if="page.originalNumber != null && page.originalNumber !== position"
-        title="Posizione originale"
-        >era {{ page.originalNumber }}</span
+        :title="t('app.card.originalPosition')"
+        >{{ t('app.card.was', { n: page.originalNumber }) }}</span
       >
       <span
         v-if="part"
         class="rounded-full px-1.5 font-semibold text-white"
         :style="{ backgroundColor: partColor(part) }"
       >
-        Parte {{ part }}
+        {{ t('app.card.part', { n: part }) }}
       </span>
-      <span v-else-if="part === 0" class="font-semibold">esclusa</span>
+      <span v-else-if="part === 0" class="font-semibold">{{ t('app.card.excluded') }}</span>
       <span
         v-if="page.pendingRotation"
         class="ml-auto rounded-full bg-accent-soft px-1.5 font-semibold text-accent"

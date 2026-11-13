@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { DocumentId } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
@@ -8,6 +9,7 @@ import InlineRename from './InlineRename.vue'
 import { PAGE_DRAG_TYPE } from '@/lib/reorder'
 import { useEditorStore } from '@/stores/editor'
 
+const { t } = useI18n()
 const store = useEditorStore()
 const emit = defineEmits<{ open: [] }>()
 
@@ -65,8 +67,10 @@ function onDrop(event: DragEvent, id: DocumentId) {
 <template>
   <aside class="flex flex-col gap-1 overflow-y-auto border-r border-line bg-surface px-2.5 py-3.5">
     <div class="flex items-center justify-between px-1.5 pb-1.5">
-      <h2 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">Documenti</h2>
-      <IconButton icon="plus" label="Apri file" @click="emit('open')" />
+      <h2 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">
+        {{ t('app.documents.title') }}
+      </h2>
+      <IconButton icon="plus" :label="t('app.documents.openFiles')" @click="emit('open')" />
     </div>
 
     <ul v-if="store.documents.length" class="flex flex-col gap-0.5">
@@ -92,7 +96,7 @@ function onDrop(event: DragEvent, id: DocumentId) {
           <InlineRename
             class="flex-1"
             :value="doc.name"
-            :label="`Nuovo nome per ${doc.name}`"
+            :label="t('app.documents.newName', { name: doc.name })"
             @save="(name) => (store.rename(doc.id, name), (renaming = null))"
             @cancel="renaming = null"
           />
@@ -107,7 +111,7 @@ function onDrop(event: DragEvent, id: DocumentId) {
             <span
               v-if="doc.locked"
               role="img"
-              aria-label="Protetto da password"
+              :aria-label="t('app.documents.locked')"
               class="text-warning"
             >
               <AppIcon name="lock" />
@@ -115,30 +119,30 @@ function onDrop(event: DragEvent, id: DocumentId) {
             <AppIcon v-else name="file" />
             <span
               class="flex-1 truncate"
-              :title="doc.locked ? `${doc.name} (protetto da password)` : doc.name"
+              :title="doc.locked ? t('app.documents.lockedTitle', { name: doc.name }) : doc.name"
               >{{ doc.name }}</span
             >
             <span class="flex items-center gap-1.5 text-xs text-fg-muted">
               <span
                 v-if="doc.hasPendingChanges"
                 class="size-1.75 rounded-full bg-warning"
-                title="Modifiche non applicate"
+                :title="t('app.documents.pending')"
               />
               <template v-if="!doc.locked">{{ doc.pages.length }}</template>
             </span>
           </button>
           <IconButton
             icon="pen"
-            :label="`Rinomina ${doc.name}`"
+            :label="t('app.documents.rename', { name: doc.name })"
             size="sm"
             class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-            title="Rinomina (anche con doppio clic sul nome)"
+            :title="t('app.documents.renameHint')"
             @click="renaming = doc.id"
           />
         </template>
         <IconButton
           icon="close"
-          :label="`Chiudi ${doc.name}`"
+          :label="t('app.documents.close', { name: doc.name })"
           size="sm"
           class="mr-1 focus-visible:opacity-100"
           :class="doc.id === store.activeId ? '' : 'opacity-0 group-hover:opacity-100'"
@@ -153,7 +157,7 @@ function onDrop(event: DragEvent, id: DocumentId) {
           class="pointer-events-none absolute inset-x-2 bottom-0.5 h-0.5 overflow-hidden rounded-full bg-line transition-opacity duration-500"
           :class="percent(doc.id) < 100 ? 'opacity-100' : 'opacity-0'"
           role="progressbar"
-          :aria-label="`Anteprime di ${doc.name}`"
+          :aria-label="t('app.documents.thumbnails', { name: doc.name })"
           aria-valuemin="0"
           :aria-valuemax="progress.get(doc.id)?.total ?? 0"
           :aria-valuenow="progress.get(doc.id)?.done ?? 0"
@@ -166,9 +170,11 @@ function onDrop(event: DragEvent, id: DocumentId) {
         </div>
       </li>
     </ul>
-    <p v-else class="mx-2 my-1 text-[13px] text-fg-muted">Nessun documento aperto.</p>
+    <p v-else class="mx-2 my-1 text-[13px] text-fg-muted">{{ t('app.documents.empty') }}</p>
 
-    <p v-if="store.loading" class="mx-2 my-1 text-[13px] text-fg-muted">Elaborazione in corso…</p>
+    <p v-if="store.loading" class="mx-2 my-1 text-[13px] text-fg-muted">
+      {{ t('app.documents.loading') }}
+    </p>
 
     <!--
       At the bottom, out of the list's way: shown when the drag starts, it
@@ -178,7 +184,7 @@ function onDrop(event: DragEvent, id: DocumentId) {
       v-if="store.draggingPages && store.documents.length > 1"
       class="mx-1.5 mt-auto rounded-md border border-dashed border-accent px-2 py-1.5 text-xs text-accent"
     >
-      Rilascia su un altro documento per spostare le pagine (tieni premuto ⌥/Alt per copiarle)
+      {{ t('app.documents.dropHint') }}
     </p>
   </aside>
 </template>

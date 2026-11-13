@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { isWinAnsi, type TextContent } from 'pdfrs-editor'
 
 import ColorPicker from './ColorPicker.vue'
@@ -9,6 +10,7 @@ import SegmentedControl from './SegmentedControl.vue'
 const content = defineModel<TextContent>({ required: true })
 /** Font size in points, when the form sets it (placing new text). */
 const size = defineModel<number>('size')
+const { t } = useI18n()
 
 // A local copy that's always current: two changes in a row (before the
 // parent has passed the first one back down) must build on each other.
@@ -26,62 +28,61 @@ function set<K extends keyof TextContent>(key: K, value: TextContent[K]) {
 <template>
   <div class="flex flex-col gap-3">
     <label class="flex flex-col gap-1.5">
-      <span class="text-xs font-semibold text-fg-muted">Testo</span>
+      <span class="text-xs font-semibold text-fg-muted">{{ t('editing.textEditor.text') }}</span>
       <textarea
         :value="local.text"
         rows="3"
         class="resize-y rounded-md border border-line bg-surface px-2 py-1.5 text-[13px] text-fg"
-        placeholder="Scrivi qui (Invio per andare a capo)"
-        aria-label="Testo"
+        :placeholder="t('editing.textEditor.placeholder')"
+        :aria-label="t('editing.textEditor.text')"
         @input="set('text', ($event.target as HTMLTextAreaElement).value)"
       />
       <span v-if="unsupported" class="text-xs text-warning" role="status">
-        Alcuni caratteri non esistono nei font standard del PDF e appariranno come «?» (vanno bene
-        le lettere latine, gli accenti, € e «»).
+        {{ t('editing.textEditor.unsupported') }}
       </span>
     </label>
 
     <SegmentedControl
       :model-value="local.font"
-      label="Carattere"
+      :label="t('editing.textEditor.font')"
       :options="[
-        { value: 'helvetica', label: 'Helvetica', title: 'Senza grazie' },
-        { value: 'times', label: 'Times', title: 'Con grazie' },
-        { value: 'courier', label: 'Courier', title: 'Da macchina da scrivere' },
+        { value: 'helvetica', label: 'Helvetica', title: t('editing.textEditor.sansSerif') },
+        { value: 'times', label: 'Times', title: t('editing.textEditor.serif') },
+        { value: 'courier', label: 'Courier', title: t('editing.textEditor.monospace') },
       ]"
       @update:model-value="set('font', $event)"
     />
 
     <div class="flex flex-wrap items-end gap-3">
       <label v-if="size !== undefined" class="flex flex-col gap-1.5">
-        <span class="text-xs font-semibold text-fg-muted">Dimensione (pt)</span>
+        <span class="text-xs font-semibold text-fg-muted">{{ t('editing.textEditor.size') }}</span>
         <input
           v-model.number="size"
           type="number"
           min="4"
           max="200"
           class="w-20 rounded-md border border-line bg-surface px-2 py-1.5 text-[13px] text-fg"
-          aria-label="Dimensione in punti"
+          :aria-label="t('editing.textEditor.sizeLabel')"
         />
       </label>
-      <div class="flex gap-1" role="group" aria-label="Stile">
+      <div class="flex gap-1" role="group" :aria-label="t('editing.textEditor.style')">
         <button
           class="grid size-8 cursor-pointer place-items-center rounded-md border font-bold"
           :class="local.bold ? 'border-accent bg-accent-soft text-accent' : 'border-line text-fg'"
           :aria-pressed="local.bold"
-          aria-label="Grassetto"
+          :aria-label="t('editing.textEditor.bold')"
           @click="set('bold', !local.bold)"
         >
-          G
+          {{ t('editing.textEditor.boldShort') }}
         </button>
         <button
           class="grid size-8 cursor-pointer place-items-center rounded-md border font-serif italic"
           :class="local.italic ? 'border-accent bg-accent-soft text-accent' : 'border-line text-fg'"
           :aria-pressed="local.italic"
-          aria-label="Corsivo"
+          :aria-label="t('editing.textEditor.italic')"
           @click="set('italic', !local.italic)"
         >
-          C
+          {{ t('editing.textEditor.italicShort') }}
         </button>
       </div>
       <ColorPicker :model-value="local.color" @update:model-value="set('color', $event)" />
@@ -89,11 +90,11 @@ function set<K extends keyof TextContent>(key: K, value: TextContent[K]) {
 
     <SegmentedControl
       :model-value="local.align"
-      label="Allineamento"
+      :label="t('editing.textEditor.align')"
       :options="[
-        { value: 'left', label: 'Sinistra' },
-        { value: 'center', label: 'Centro' },
-        { value: 'right', label: 'Destra' },
+        { value: 'left', label: t('editing.textEditor.left') },
+        { value: 'center', label: t('editing.textEditor.center') },
+        { value: 'right', label: t('editing.textEditor.right') },
       ]"
       @update:model-value="set('align', $event)"
     />

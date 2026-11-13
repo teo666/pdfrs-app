@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppButton from './AppButton.vue'
 import IconButton from './IconButton.vue'
@@ -8,6 +9,7 @@ import { pickFiles } from '@/lib/files'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 const props = defineProps<{ doc: DocumentState }>()
+const { t } = useI18n()
 const store = useEditorStore()
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -38,9 +40,9 @@ const selectionAllMarked = computed(
 const summary = computed(() => {
   const total = props.doc.pages.length
   const deleted = props.doc.pages.filter((p) => p.markedForDeletion).length
-  const parts = [`${total} ${total === 1 ? 'pagina' : 'pagine'}`]
-  if (deleted > 0) parts.push(`${deleted} da eliminare`)
-  return parts.join(' · ')
+  return deleted > 0
+    ? t('app.toolbar.summaryDeleted', { deleted }, total)
+    : t('app.toolbar.summary', total)
 })
 </script>
 
@@ -54,7 +56,7 @@ const summary = computed(() => {
         v-if="renaming"
         class="w-full max-w-md text-base font-semibold"
         :value="doc.name"
-        :label="`Nuovo nome per ${doc.name}`"
+        :label="t('app.toolbar.newName', { name: doc.name })"
         @save="(name) => (store.rename(doc.id, name), (renaming = false))"
         @cancel="renaming = false"
       />
@@ -64,31 +66,33 @@ const summary = computed(() => {
         </h1>
         <IconButton
           icon="pen"
-          :label="`Rinomina ${doc.name}`"
+          :label="t('app.toolbar.rename', { name: doc.name })"
           size="sm"
           class="opacity-0 group-hover/title:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
-          title="Rinomina (anche con doppio clic sul nome)"
+          :title="t('app.toolbar.renameHint')"
           @click="renaming = true"
         />
       </div>
       <p class="text-xs text-fg-muted">
         {{ summary }}
-        <span v-if="doc.hasPendingChanges" class="text-warning">· modifiche non applicate</span>
+        <span v-if="doc.hasPendingChanges" class="text-warning">{{
+          t('app.toolbar.pending')
+        }}</span>
       </p>
     </div>
 
     <div class="flex items-center gap-1.5">
       <IconButton
         icon="undo"
-        label="Annulla"
-        :title="`Annulla (${mod}Z)`"
+        :label="t('app.toolbar.undo')"
+        :title="t('app.toolbar.undoTitle', { shortcut: `${mod}Z` })"
         :disabled="!doc.canUndo || doc.busy"
         @click="store.undo()"
       />
       <IconButton
         icon="redo"
-        label="Ripeti"
-        :title="`Ripeti (${isMac ? '⇧⌘Z' : 'Ctrl+Y'})`"
+        :label="t('app.toolbar.redo')"
+        :title="t('app.toolbar.redoTitle', { shortcut: isMac ? '⇧⌘Z' : 'Ctrl+Y' })"
         :disabled="!doc.canRedo || doc.busy"
         @click="store.redo()"
       />
@@ -98,31 +102,29 @@ const summary = computed(() => {
       <AppButton
         icon="plus"
         :title="
-          doc.selection.size
-            ? 'Aggiungi le pagine di un PDF o JPEG dopo l’ultima pagina selezionata'
-            : 'Aggiungi le pagine di un PDF o JPEG in fondo al documento'
+          doc.selection.size ? t('app.toolbar.insertAfterSelection') : t('app.toolbar.insertAtEnd')
         "
         :disabled="doc.busy"
         @click="insert"
       >
-        Inserisci pagine
+        {{ t('app.toolbar.insert') }}
       </AppButton>
       <AppButton
         icon="check"
-        title="Applica rotazioni, eliminazioni e riordino al documento"
+        :title="t('app.toolbar.applyTitle')"
         :disabled="!doc.hasPendingChanges || doc.busy"
         @click="store.commit()"
       >
-        Applica modifiche
+        {{ t('app.toolbar.apply') }}
       </AppButton>
       <AppButton
         variant="primary"
         icon="download"
-        title="Scarica il PDF con le modifiche, anche quelle non ancora applicate"
+        :title="t('app.toolbar.downloadTitle')"
         :disabled="doc.busy"
         @click="store.download()"
       >
-        Scarica
+        {{ t('app.toolbar.download') }}
       </AppButton>
     </div>
 
@@ -131,54 +133,54 @@ const summary = computed(() => {
       v-if="selected > 0"
       class="flex basis-full flex-wrap items-center gap-x-3 gap-y-2 rounded-card bg-accent-soft px-3 py-2"
       role="toolbar"
-      aria-label="Azioni sulle pagine selezionate"
+      :aria-label="t('app.toolbar.selectionActions')"
     >
       <span class="font-semibold text-accent">
-        {{ selected === 1 ? '1 pagina selezionata' : `${selected} pagine selezionate` }}
+        {{ t('app.toolbar.selected', selected) }}
       </span>
       <button
         v-if="!allSelected"
         class="cursor-pointer text-accent underline-offset-2 hover:underline"
         @click="store.selectAll()"
       >
-        Seleziona tutte
+        {{ t('app.toolbar.selectAll') }}
       </button>
       <button
         class="cursor-pointer text-accent underline-offset-2 hover:underline"
-        title="Deseleziona (Esc)"
+        :title="t('app.toolbar.deselectTitle')"
         @click="store.clearSelection()"
       >
-        Deseleziona
+        {{ t('app.toolbar.deselect') }}
       </button>
 
       <div class="ml-auto flex flex-wrap items-center gap-1.5">
         <IconButton
           icon="rotate-left"
-          label="Ruota a sinistra le pagine selezionate"
+          :label="t('app.toolbar.rotateLeft')"
           :disabled="doc.busy"
           @click="store.rotateSelected(-90)"
         />
         <IconButton
           icon="rotate-right"
-          label="Ruota a destra le pagine selezionate"
+          :label="t('app.toolbar.rotateRight')"
           :disabled="doc.busy"
           @click="store.rotateSelected(90)"
         />
         <AppButton
           :icon="selectionAllMarked ? 'restore' : 'trash'"
-          :title="selectionAllMarked ? undefined : 'Segna per l’eliminazione (Canc)'"
+          :title="selectionAllMarked ? undefined : t('app.toolbar.deleteTitle')"
           :disabled="doc.busy"
           @click="store.toggleDeleteSelected()"
         >
-          {{ selectionAllMarked ? 'Ripristina' : 'Elimina' }}
+          {{ selectionAllMarked ? t('app.toolbar.restore') : t('app.toolbar.delete') }}
         </AppButton>
         <AppButton
           icon="file-plus"
-          title="Copia le pagine selezionate, così come appaiono, in un nuovo documento"
+          :title="t('app.toolbar.extractTitle')"
           :disabled="doc.busy"
           @click="store.extractSelected()"
         >
-          Estrai in un nuovo documento
+          {{ t('app.toolbar.extract') }}
         </AppButton>
       </div>
     </div>

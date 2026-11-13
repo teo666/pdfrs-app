@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 import AppIcon from './AppIcon.vue'
 
 const emit = defineEmits<{ open: [] }>()
+const { t } = useI18n()
 </script>
 
 <template>
@@ -11,11 +14,11 @@ const emit = defineEmits<{ open: [] }>()
       @click="emit('open')"
     >
       <AppIcon name="upload" :size="36" class="mb-1.5 text-accent" />
-      <strong class="text-base">Trascina qui i tuoi PDF o JPEG</strong>
-      <span class="text-fg-muted">oppure clicca per sceglierli</span>
+      <strong class="text-base">{{ t('editing.emptyState.drop') }}</strong>
+      <span class="text-fg-muted">{{ t('editing.emptyState.click') }}</span>
     </button>
     <p class="text-xs text-fg-muted">
-      I file restano sul tuo computer: vengono elaborati nel browser.
+      {{ t('editing.emptyState.local') }}
     </p>
   </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { ImageAsset } from 'pdfrs-editor'
 
 import ColorPicker from './ColorPicker.vue'
@@ -8,6 +9,7 @@ import { cropToInk } from '@/lib/images'
 /** "dark" on the viewer's black backdrop, "light" in the app's tool panel. */
 const { tone = 'dark' } = defineProps<{ tone?: 'dark' | 'light' }>()
 const emit = defineEmits<{ done: [image: ImageAsset]; cancel: [] }>()
+const { t } = useI18n()
 
 const styles = {
   dark: {
@@ -140,7 +142,7 @@ onMounted(() => {
         ref="canvas"
         class="block h-36 w-full cursor-crosshair touch-none rounded-md bg-white"
         :class="{ 'ring-1 ring-line': tone === 'light' }"
-        aria-label="Area per disegnare la firma"
+        :aria-label="t('editing.signaturePad.canvas')"
         @pointerdown="onDown"
         @pointermove="onMove"
         @pointerup="onUp"
@@ -154,13 +156,13 @@ onMounted(() => {
         v-if="empty"
         class="pointer-events-none absolute inset-0 grid place-items-center text-sm text-black/40"
       >
-        Firma qui con il mouse o con il dito
+        {{ t('editing.signaturePad.placeholder') }}
       </p>
     </div>
     <div class="flex items-end gap-1.5 text-xs">
-      <ColorPicker v-model="ink" label="Inchiostro" :tone="tone" />
+      <ColorPicker v-model="ink" :label="t('editing.signaturePad.ink')" :tone="tone" />
       <button class="ml-auto cursor-pointer px-2 py-1" :class="styles.quiet" @click="clear">
-        Cancella
+        {{ t('editing.signaturePad.clear') }}
       </button>
     </div>
     <div class="flex gap-1.5">
@@ -170,14 +172,14 @@ onMounted(() => {
         :disabled="empty"
         @click="save"
       >
-        Usa questa firma
+        {{ t('editing.signaturePad.use') }}
       </button>
       <button
         class="cursor-pointer rounded-md px-3 py-1.5 text-sm"
         :class="styles.secondary"
         @click="emit('cancel')"
       >
-        Annulla
+        {{ t('editing.signaturePad.cancel') }}
       </button>
     </div>
   </div>

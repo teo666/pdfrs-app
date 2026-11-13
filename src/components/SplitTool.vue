@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppButton from './AppButton.vue'
 import SegmentedControl from './SegmentedControl.vue'
@@ -7,6 +8,7 @@ import { leftOut, parseRanges, partColor, splitAtStarts, splitEvery, type Part }
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
+const { t } = useI18n()
 
 type Mode = 'every' | 'ranges' | 'selection'
 const mode = ref<Mode>('every')
@@ -52,76 +54,86 @@ onUnmounted(() => store.previewSplit(null))
 const LISTED = 8
 
 const describe = ({ start, end }: Part) =>
-  start === end ? `pagina ${start}` : `pagine ${start}–${end}`
-const pages = (count: number) => (count === 1 ? '1 pagina' : `${count} pagine`)
+  start === end ? t('tools.split.onePage', { start }) : t('tools.split.pageRange', { start, end })
+const pages = (count: number) => t('tools.common.pages', count)
 </script>
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    Taglia il documento in più parti: ognuna diventa un nuovo documento, con le pagine così come
-    appaiono ora. L’originale non cambia.
+    {{ t('tools.split.intro') }}
   </p>
 
   <p v-if="!store.active" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per dividerlo.
+    {{ t('tools.split.noDocument') }}
   </p>
 
   <template v-else>
     <SegmentedControl
       v-model="mode"
-      label="Come dividere"
+      :label="t('tools.split.mode')"
       :options="[
-        { value: 'every', label: 'Ogni N', title: 'Parti di N pagine ciascuna' },
-        { value: 'ranges', label: 'Intervalli', title: 'Scrivi gli intervalli, es. 1-3, 4-8' },
+        {
+          value: 'every',
+          label: t('tools.split.modes.every.label'),
+          title: t('tools.split.modes.every.title'),
+        },
+        {
+          value: 'ranges',
+          label: t('tools.split.modes.ranges.label'),
+          title: t('tools.split.modes.ranges.title'),
+        },
         {
           value: 'selection',
-          label: 'Selezione',
-          title: 'Ogni pagina selezionata inizia una nuova parte',
+          label: t('tools.split.modes.selection.label'),
+          title: t('tools.split.modes.selection.title'),
         },
       ]"
     />
 
     <label v-if="mode === 'every'" class="flex flex-col gap-1.5">
-      <span class="text-xs font-semibold text-fg-muted">Pagine per parte</span>
+      <span class="text-xs font-semibold text-fg-muted">{{ t('tools.split.size') }}</span>
       <input
         v-model.number="size"
         type="number"
         min="1"
         :max="total"
         class="w-24 rounded-md border border-line bg-surface px-2 py-1.5 text-[13px]"
-        aria-label="Pagine per parte"
+        :aria-label="t('tools.split.size')"
       />
-      <span class="text-xs text-fg-muted">1 = un documento per ogni pagina</span>
+      <span class="text-xs text-fg-muted">{{ t('tools.split.sizeHint') }}</span>
     </label>
 
     <label v-else-if="mode === 'ranges'" class="flex flex-col gap-1.5">
-      <span class="text-xs font-semibold text-fg-muted">Intervalli, uno per parte</span>
+      <span class="text-xs font-semibold text-fg-muted">{{ t('tools.split.ranges') }}</span>
       <input
         v-model="rangesText"
         type="text"
-        :placeholder="`es. 1-3, 4-8, 9-${total}`"
+        :placeholder="t('tools.split.rangesPlaceholder', { total })"
         class="rounded-md border bg-surface px-2 py-1.5 text-[13px]"
         :class="error ? 'border-danger' : 'border-line'"
-        aria-label="Intervalli di pagine"
+        :aria-label="t('tools.split.rangesLabel')"
         spellcheck="false"
       />
       <span v-if="error" class="text-xs text-danger" role="alert">{{ error }}</span>
       <span v-else class="text-xs text-fg-muted">
-        Numeri delle pagine come sulle miniature; una pagina sola vale come parte.
+        {{ t('tools.split.rangesHint') }}
       </span>
     </label>
 
     <p v-else class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-      Seleziona le pagine da cui deve iniziare ogni nuova parte: la prima parte parte sempre da
-      pagina 1.
+      {{ t('tools.split.selectionHint') }}
       <template v-if="selectedPositions.length">
-        Selezionate: {{ selectedPositions.join(', ') }}.
+        {{ t('tools.split.selected', { pages: selectedPositions.join(', ') }) }}
       </template>
     </p>
 
-    <section v-if="usable.length" class="flex flex-col gap-1.5" aria-label="Parti">
+    <section
+      v-if="usable.length"
+      class="flex flex-col gap-1.5"
+      :aria-label="t('tools.split.parts')"
+    >
       <h3 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">
-        {{ usable.length === 1 ? '1 parte' : `${usable.length} parti` }}
+        {{ t('tools.split.partsCount', usable.length) }}
       </h3>
       <ol class="flex flex-col gap-1 text-[13px]">
         <li
@@ -135,22 +147,21 @@ const pages = (count: number) => (count === 1 ? '1 pagina' : `${count} pagine`)
               :style="{ backgroundColor: partColor(index + 1) }"
               aria-hidden="true"
             />
-            Parte {{ index + 1 }}: {{ describe(part) }}
+            {{ t('tools.split.part', { number: index + 1, range: describe(part) }) }}
           </span>
           <span class="text-fg-muted">{{ pages(kept(part)) }}</span>
         </li>
         <li v-if="usable.length > LISTED" class="px-2.5 text-xs text-fg-muted">
-          … e altre {{ usable.length - LISTED }} parti
+          {{ t('tools.split.more', { count: usable.length - LISTED }) }}
         </li>
       </ol>
     </section>
 
     <p v-if="missing.length" class="text-xs text-fg-muted">
-      Non finiscono in nessuna parte: {{ missing.length === 1 ? 'pagina' : 'pagine' }}
-      {{ missing.join(', ') }}.
+      {{ t('tools.split.missing', { pages: missing.join(', ') }, missing.length) }}
     </p>
     <p v-if="hasDeletions" class="text-xs text-fg-muted">
-      Le pagine segnate da eliminare vengono lasciate fuori.
+      {{ t('tools.split.deletions') }}
     </p>
 
     <AppButton
@@ -159,13 +170,7 @@ const pages = (count: number) => (count === 1 ? '1 pagina' : `${count} pagine`)
       :disabled="store.active.busy || usable.length === 0 || !!error"
       @click="store.split(usable)"
     >
-      {{
-        usable.length > 1
-          ? `Dividi in ${usable.length} documenti`
-          : usable.length === 1
-            ? 'Crea 1 documento'
-            : 'Indica come dividere'
-      }}
+      {{ usable.length > 0 ? t('tools.split.submit', usable.length) : t('tools.split.submitNone') }}
     </AppButton>
   </template>
 </template>

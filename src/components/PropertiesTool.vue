@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { MetadataField } from 'pdfrs-editor'
 
 import AppButton from './AppButton.vue'
@@ -13,6 +14,7 @@ import { useEditorStore } from '@/stores/editor'
  * An emptied field is removed from the document.
  */
 const store = useEditorStore()
+const { t } = useI18n()
 const doc = computed(() => store.active)
 
 // Read the first time they're wanted, for whichever document is on show.
@@ -24,23 +26,45 @@ watch(
   { immediate: true },
 )
 
-const textFields: { field: MetadataField; label: string; hint?: string; placeholder?: string }[] = [
+type TextField = { field: MetadataField; label: string; hint?: string; placeholder?: string }
+const textFields = computed<TextField[]>(() => [
   {
     field: 'title',
-    label: 'Titolo',
-    hint: 'I lettori PDF lo mostrano al posto del nome del file',
+    label: t('tools.properties.fields.title'),
+    hint: t('tools.properties.hints.title'),
   },
-  { field: 'author', label: 'Autore' },
-  { field: 'subject', label: 'Oggetto' },
-  { field: 'keywords', label: 'Parole chiave', placeholder: 'separate da virgole' },
-  { field: 'creator', label: 'Creato con', hint: 'L’applicazione in cui è nato il documento' },
-  { field: 'producer', label: 'Prodotto da', hint: 'Il programma che ha scritto il PDF' },
+  { field: 'author', label: t('tools.properties.fields.author') },
+  { field: 'subject', label: t('tools.properties.fields.subject') },
+  {
+    field: 'keywords',
+    label: t('tools.properties.fields.keywords'),
+    placeholder: t('tools.properties.keywordsPlaceholder'),
+  },
+  {
+    field: 'creator',
+    label: t('tools.properties.fields.creator'),
+    hint: t('tools.properties.hints.creator'),
+  },
+  {
+    field: 'producer',
+    label: t('tools.properties.fields.producer'),
+    hint: t('tools.properties.hints.producer'),
+  },
+])
+const dateFields = computed<{ field: MetadataField; label: string }[]>(() => [
+  { field: 'creationDate', label: t('tools.properties.fields.creationDate') },
+  { field: 'modDate', label: t('tools.properties.fields.modDate') },
+])
+const allFields: MetadataField[] = [
+  'title',
+  'author',
+  'subject',
+  'keywords',
+  'creator',
+  'producer',
+  'creationDate',
+  'modDate',
 ]
-const dateFields: { field: MetadataField; label: string }[] = [
-  { field: 'creationDate', label: 'Creato il' },
-  { field: 'modDate', label: 'Modificato il' },
-]
-const allFields = [...textFields, ...dateFields].map(({ field }) => field)
 
 const value = (field: MetadataField) => doc.value?.metadata?.[field] ?? ''
 const pending = (field: MetadataField) => doc.value?.pendingMetadata.includes(field) ?? false
@@ -76,20 +100,23 @@ const blurOnEnter = (event: KeyboardEvent) => (event.target as HTMLInputElement)
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    Le informazioni che il PDF porta con sé e che i lettori mostrano nelle proprietà del file. Si
-    scrivono con «Applica modifiche» o scaricando, e si annullano come le altre modifiche.
+    {{ t('tools.properties.intro') }}
   </p>
 
   <p v-if="!doc" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-    Apri un documento per vederne le proprietà.
+    {{ t('tools.properties.noDocument') }}
   </p>
-  <p v-else-if="!doc.metadata" class="text-[13px] text-fg-muted">Lettura delle proprietà…</p>
+  <p v-else-if="!doc.metadata" class="text-[13px] text-fg-muted">
+    {{ t('tools.properties.loading') }}
+  </p>
 
   <template v-else>
     <label v-for="item in textFields" :key="item.field" class="flex flex-col gap-1">
       <span class="flex items-center gap-1.5 text-xs font-semibold text-fg-muted">
         {{ item.label }}
-        <span v-if="pending(item.field)" class="font-normal text-warning">· modificato</span>
+        <span v-if="pending(item.field)" class="font-normal text-warning">{{
+          t('tools.properties.modified')
+        }}</span>
       </span>
       <input
         :value="value(item.field)"
@@ -107,7 +134,9 @@ const blurOnEnter = (event: KeyboardEvent) => (event.target as HTMLInputElement)
       <label v-for="item in dateFields" :key="item.field" class="flex min-w-0 flex-col gap-1">
         <span class="flex items-center gap-1.5 text-xs font-semibold text-fg-muted">
           {{ item.label }}
-          <span v-if="pending(item.field)" class="font-normal text-warning">· modificato</span>
+          <span v-if="pending(item.field)" class="font-normal text-warning">{{
+            t('tools.properties.modified')
+          }}</span>
         </span>
         <input
           :value="dateValue(item.field)"
@@ -117,7 +146,7 @@ const blurOnEnter = (event: KeyboardEvent) => (event.target as HTMLInputElement)
           @change="saveDate(item.field, $event)"
         />
         <span v-if="unreadable(item.field)" class="text-xs break-all text-fg-muted">
-          Nel file: {{ formatPdfDate(value(item.field)) }}
+          {{ t('tools.properties.inFile', { date: formatPdfDate(value(item.field)) }) }}
         </span>
       </label>
     </div>
@@ -125,11 +154,11 @@ const blurOnEnter = (event: KeyboardEvent) => (event.target as HTMLInputElement)
     <AppButton
       icon="trash"
       class="justify-center"
-      title="Toglie tutte le proprietà, per esempio prima di condividere il file"
+      :title="t('tools.properties.clearAllHint')"
       :disabled="doc.busy || empty"
       @click="clearAll"
     >
-      Togli tutte le proprietà
+      {{ t('tools.properties.clearAll') }}
     </AppButton>
   </template>
 </template>

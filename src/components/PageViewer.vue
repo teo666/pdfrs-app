@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AnnotationId, PageId } from 'pdfrs-editor'
 
 import AnnotationLayer from './AnnotationLayer.vue'
@@ -19,6 +20,7 @@ import {
 
 const props = defineProps<{ doc: DocumentState; pageId: PageId }>()
 const store = useEditorStore()
+const { t, locale } = useI18n()
 
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const scroller = useTemplateRef<HTMLElement>('scroller')
@@ -84,13 +86,16 @@ watch(pageAnnotations, (list) => {
 // --- A page made from a photo: which page it's on --------------------------
 
 const photoPage = computed(() => props.doc.photoPages[props.pageId])
+/** `label` is a message key. */
 const photoPageOptions: { value: ImagePage; label: string }[] = [
-  { value: 'a4', label: 'A4' },
-  { value: 'letter', label: 'Letter' },
-  { value: 'native', label: 'Dimensione reale' },
+  { value: 'a4', label: 'viewer.pageViewer.photo.a4' },
+  { value: 'letter', label: 'viewer.pageViewer.photo.letter' },
+  { value: 'native', label: 'viewer.pageViewer.photo.native' },
 ]
 const marginLabel = (mm: number) =>
-  mm === 0 ? 'Nessuno' : `${(mm / 10).toLocaleString('it-IT')} cm`
+  mm === 0
+    ? t('viewer.pageViewer.photo.noMargin')
+    : t('viewer.pageViewer.photo.marginCm', { cm: (mm / 10).toLocaleString(locale.value) })
 /** The photo isn't on the page and margin new photos get. */
 const photoNotDefault = computed(
   () =>
@@ -409,9 +414,10 @@ onBeforeUnmount(() => {
   dialog.value?.close()
 })
 
+/** `label` is a message key. */
 const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
-  { mode: 'fit', label: 'Adatta', key: '0' },
-  { mode: 'actual', label: '100%', key: '1' },
+  { mode: 'fit', label: 'viewer.pageViewer.zoom.fit', key: '0' },
+  { mode: 'actual', label: 'viewer.pageViewer.zoom.actual', key: '1' },
 ]
 </script>
 
@@ -419,18 +425,20 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
   <dialog
     ref="dialog"
     class="m-0 h-dvh max-h-none w-dvw max-w-none bg-transparent p-0 text-white backdrop:bg-black/80"
-    aria-label="Anteprima pagina"
+    :aria-label="t('viewer.pageViewer.dialog')"
     @cancel="onCancel"
     @keydown="onKeyDown"
   >
     <div class="flex h-full flex-col">
       <header class="flex items-center gap-3 bg-black/50 px-4 py-2.5 backdrop-blur">
-        <span class="font-semibold whitespace-nowrap">Pagina {{ index + 1 }} di {{ total }}</span>
+        <span class="font-semibold whitespace-nowrap">{{
+          t('viewer.pageViewer.header.page', { page: index + 1, total })
+        }}</span>
         <span
           v-if="page && page.originalNumber != null && page.originalNumber !== index + 1"
           class="text-white/60 whitespace-nowrap"
         >
-          era {{ page.originalNumber }}
+          {{ t('viewer.pageViewer.header.was', { page: page.originalNumber }) }}
         </span>
         <span v-if="rotation" class="rounded-full bg-white/15 px-2 text-xs font-semibold">
           {{ rotation }}°
@@ -439,7 +447,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
           v-if="page?.markedForDeletion"
           class="rounded-full bg-danger px-2 text-xs font-semibold whitespace-nowrap text-white"
         >
-          Da eliminare
+          {{ t('viewer.pageViewer.header.markedForDeletion') }}
         </span>
         <span class="ml-auto truncate text-white/60 max-md:hidden">{{ doc.name }}</span>
 
@@ -450,23 +458,23 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
           @click="signing = !signing"
         >
           <AppIcon name="pen" :size="14" />
-          Firma
+          {{ t('viewer.pageViewer.header.sign') }}
         </button>
         <button
           class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors"
           :class="showingImages ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20'"
           :aria-pressed="showingImages"
-          title="Mostra le immagini già presenti nella pagina, per rimuoverle o scaricarle"
+          :title="t('viewer.pageViewer.header.imagesTitle')"
           @click="showingImages = !showingImages"
         >
           <AppIcon name="images" :size="14" />
-          Immagini
+          {{ t('viewer.pageViewer.header.images') }}
         </button>
 
         <div
           class="flex shrink-0 rounded-md bg-white/10 p-0.5 max-md:ml-auto"
           role="group"
-          aria-label="Zoom"
+          :aria-label="t('viewer.pageViewer.zoom.group')"
         >
           <button
             v-for="option in zoomOptions"
@@ -478,17 +486,17 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                 : 'text-white/75 hover:text-white'
             "
             :aria-pressed="store.viewerZoom === option.mode"
-            :title="`${option.label} (${option.key})`"
+            :title="t('viewer.pageViewer.zoom.title', { label: t(option.label), key: option.key })"
             @click="setZoom(option.mode)"
           >
-            {{ option.label }}
+            {{ t(option.label) }}
           </button>
         </div>
 
         <button
           class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md hover:bg-white/15"
-          aria-label="Chiudi anteprima"
-          title="Chiudi (Esc)"
+          :aria-label="t('viewer.pageViewer.header.close')"
+          :title="t('viewer.pageViewer.header.closeTitle')"
           @click="store.closeViewer()"
         >
           <AppIcon name="close" />
@@ -527,7 +535,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                 >
                   <img
                     :src="shown.url"
-                    :alt="`Pagina ${index + 1}`"
+                    :alt="t('viewer.pageViewer.pageAlt', { page: index + 1 })"
                     class="block size-full max-w-none bg-white shadow-2xl transition-[filter] duration-200"
                     :class="{
                       'blur-[2px]': shown.placeholder,
@@ -560,7 +568,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                 v-else
                 class="size-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
                 role="status"
-                aria-label="Caricamento"
+                :aria-label="t('viewer.pageViewer.loading')"
               />
             </div>
           </div>
@@ -570,11 +578,15 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             v-if="photoPage"
             class="absolute top-3 left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-card bg-black/80 px-3 py-2 text-xs shadow-lift backdrop-blur"
             role="group"
-            aria-label="Pagina della foto"
+            :aria-label="t('viewer.pageViewer.photo.group')"
           >
             <span class="flex items-center gap-2">
-              <span class="font-semibold">Foto su</span>
-              <div class="flex rounded-md bg-white/10 p-0.5" role="group" aria-label="Pagina">
+              <span class="font-semibold">{{ t('viewer.pageViewer.photo.on') }}</span>
+              <div
+                class="flex rounded-md bg-white/10 p-0.5"
+                role="group"
+                :aria-label="t('viewer.pageViewer.photo.page')"
+              >
                 <button
                   v-for="option in photoPageOptions"
                   :key="option.value"
@@ -588,14 +600,18 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                   :disabled="doc.busy"
                   @click="store.setPhotoPage(pageId, { page: option.value })"
                 >
-                  {{ option.label }}
+                  {{ t(option.label) }}
                 </button>
               </div>
             </span>
             <!-- The white around the photo: only a page of a set size has any. -->
             <span v-if="photoPage.page !== 'native'" class="flex items-center gap-2">
-              <span class="font-semibold">Margine</span>
-              <div class="flex rounded-md bg-white/10 p-0.5" role="group" aria-label="Margine">
+              <span class="font-semibold">{{ t('viewer.pageViewer.photo.margin') }}</span>
+              <div
+                class="flex rounded-md bg-white/10 p-0.5"
+                role="group"
+                :aria-label="t('viewer.pageViewer.photo.margin')"
+              >
                 <button
                   v-for="mm in PHOTO_MARGINS_MM"
                   :key="mm"
@@ -616,12 +632,12 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             <button
               v-if="photoNotDefault"
               class="cursor-pointer rounded-md px-2 py-1 font-semibold text-white/80 hover:bg-white/10 hover:text-white"
-              title="Le prossime foto che apri o inserisci andranno su questa pagina, con questo margine"
+              :title="t('viewer.pageViewer.photo.useAsDefaultTitle')"
               @click="usePhotoPageAsDefault"
             >
-              Usa per le prossime foto
+              {{ t('viewer.pageViewer.photo.useAsDefault') }}
             </button>
-            <span v-else class="text-white/50">predefinita per le prossime foto</span>
+            <span v-else class="text-white/50">{{ t('viewer.pageViewer.photo.isDefault') }}</span>
           </div>
 
           <!-- What applies to the selected signature: this page, or all of them. -->
@@ -636,10 +652,10 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             role="group"
             :aria-label="
               selected.kind === 'image'
-                ? 'Immagine selezionata'
+                ? t('viewer.pageViewer.selected.image')
                 : selected.kind === 'text'
-                  ? 'Testo selezionato'
-                  : 'Firma selezionata'
+                  ? t('viewer.pageViewer.selected.text')
+                  : t('viewer.pageViewer.selected.signature')
             "
           >
             <label class="flex cursor-pointer items-center gap-2 font-semibold">
@@ -651,7 +667,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                   store.setOnAllPages(selected.id, ($event.target as HTMLInputElement).checked)
                 "
               />
-              Uguale su tutte le pagine
+              {{ t('viewer.pageViewer.selected.onAllPages') }}
               <span v-if="selected.linked" class="font-normal text-white/60">
                 ({{ store.linkedCopies(selected.group) }})
               </span>
@@ -659,27 +675,27 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             <span class="text-xs text-white/60">
               {{
                 selected.linked
-                  ? 'Ogni modifica vale per tutte le pagine collegate.'
+                  ? t('viewer.pageViewer.selected.linked')
                   : selected.group !== null
-                    ? 'Modificata solo su questa pagina: rimetti la spunta per riallinearla alle altre copie.'
-                    : 'Solo su questa pagina.'
+                    ? t('viewer.pageViewer.selected.unlinked')
+                    : t('viewer.pageViewer.selected.single')
               }}
             </span>
             <button
               v-if="selected.kind === 'text'"
               class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10"
-              title="Cambia il testo, il carattere o il colore (anche con un doppio clic sul testo)"
+              :title="t('viewer.pageViewer.selected.editTextTitle')"
               @click="startEditingText"
             >
-              Modifica testo
+              {{ t('viewer.pageViewer.selected.editText') }}
             </button>
             <button
               v-if="selected.height !== null"
               class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10"
-              title="Annulla l’allungamento: l’altezza torna a seguire la larghezza"
+              :title="t('viewer.pageViewer.selected.resetProportionsTitle')"
               @click="store.updateAnnotation(selected.id, { height: null })"
             >
-              Proporzioni originali
+              {{ t('viewer.pageViewer.selected.resetProportions') }}
             </button>
             <button
               class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-white/10"
@@ -687,8 +703,10 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             >
               {{
                 selected.linked
-                  ? `Rimuovi da ${store.linkedCopies(selected.group)} pagine`
-                  : 'Rimuovi'
+                  ? t('viewer.pageViewer.selected.removeLinked', {
+                      count: store.linkedCopies(selected.group),
+                    })
+                  : t('viewer.pageViewer.selected.remove')
               }}
             </button>
           </div>
@@ -699,21 +717,29 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
           v-if="placement && placementImage && !selected"
           class="absolute bottom-4 left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-card bg-black/80 px-4 py-2.5 text-sm shadow-lift backdrop-blur"
           role="group"
-          aria-label="Immagine del documento selezionata"
+          :aria-label="t('viewer.pageViewer.pdfImage.group')"
         >
-          <span class="font-semibold">Immagine</span>
+          <span class="font-semibold">{{ t('viewer.pageViewer.pdfImage.title') }}</span>
           <span class="text-xs text-white/60">
-            {{ placementImage.width }} × {{ placementImage.height }} px ·
-            {{ placementImage.format.toUpperCase() }} · {{ formatBytes(placementImage.bytes) }} ·
-            {{ pagesLabel(placementImage.pages) }}
+            {{
+              t('viewer.pageViewer.pdfImage.details', {
+                width: placementImage.width,
+                height: placementImage.height,
+                format: placementImage.format.toUpperCase(),
+                size: formatBytes(placementImage.bytes),
+                pages: pagesLabel(placementImage.pages),
+              })
+            }}
           </span>
           <template v-if="placement.removed">
-            <span class="rounded-full bg-danger px-2 text-xs font-semibold">Da rimuovere</span>
+            <span class="rounded-full bg-danger px-2 text-xs font-semibold">{{
+              t('viewer.pageViewer.pdfImage.removed')
+            }}</span>
             <button
               class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10"
               @click="store.restoreImages([placement.id])"
             >
-              Ripristina
+              {{ t('viewer.pageViewer.pdfImage.restore') }}
             </button>
           </template>
           <template v-else>
@@ -721,15 +747,17 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
               class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-white/10"
               :title="
                 placement.sharedPages.length
-                  ? 'Fa parte di un contenuto che anche altre pagine disegnano: sparisce anche lì'
+                  ? t('viewer.pageViewer.pdfImage.sharedTitle')
                   : undefined
               "
               @click="removeSelectedImage"
             >
               {{
                 placement.sharedPages.length
-                  ? `Rimuovi (anche da altre ${placement.sharedPages.length} pagine)`
-                  : 'Rimuovi da questa pagina'
+                  ? t('viewer.pageViewer.pdfImage.removeShared', {
+                      count: placement.sharedPages.length,
+                    })
+                  : t('viewer.pageViewer.pdfImage.removeHere')
               }}
             </button>
             <button
@@ -737,7 +765,11 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
               class="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-white/10"
               @click="store.removeImages(placementImage.placements)"
             >
-              Rimuovi da tutte ({{ pagesLabel(placementImage.pages) }})
+              {{
+                t('viewer.pageViewer.pdfImage.removeEverywhere', {
+                  pages: pagesLabel(placementImage.pages),
+                })
+              }}
             </button>
           </template>
           <button
@@ -745,7 +777,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             @click="store.downloadImage(placementImage.key)"
           >
             <AppIcon name="download" :size="14" />
-            Scarica
+            {{ t('viewer.pageViewer.pdfImage.download') }}
           </button>
         </div>
 
@@ -755,7 +787,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
         <aside
           v-if="editingText && textDraft"
           class="absolute top-3 right-3 z-20 flex max-h-[calc(100%-1.5rem)] w-80 flex-col gap-3 overflow-y-auto rounded-card bg-surface p-4 text-fg shadow-lift"
-          aria-label="Modifica testo"
+          :aria-label="t('viewer.pageViewer.textEdit.panel')"
         >
           <TextEditor v-model="textDraft" />
           <div class="flex gap-1.5">
@@ -764,13 +796,13 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
               :disabled="!textDraft.text.trim()"
               @click="applyTextEdit"
             >
-              Applica
+              {{ t('viewer.pageViewer.textEdit.apply') }}
             </button>
             <button
               class="cursor-pointer rounded-md px-3 py-1.5 text-sm text-fg-muted hover:bg-surface-muted"
               @click="editingText = false"
             >
-              Annulla
+              {{ t('viewer.pageViewer.textEdit.cancel') }}
             </button>
           </div>
         </aside>
@@ -779,8 +811,8 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
 
     <button
       class="fixed top-1/2 left-4 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-black/55 hover:bg-black/75 disabled:cursor-default disabled:opacity-25"
-      aria-label="Pagina precedente"
-      title="Pagina precedente (←)"
+      :aria-label="t('viewer.pageViewer.previous')"
+      :title="t('viewer.pageViewer.previousTitle')"
       :disabled="index <= 0"
       @click="store.stepViewer(-1)"
     >
@@ -789,8 +821,8 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
     <button
       class="fixed top-1/2 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-black/55 hover:bg-black/75 disabled:cursor-default disabled:opacity-25"
       :class="signing ? 'right-76 max-md:right-4' : 'right-4'"
-      aria-label="Pagina successiva"
-      title="Pagina successiva (→)"
+      :aria-label="t('viewer.pageViewer.next')"
+      :title="t('viewer.pageViewer.nextTitle')"
       :disabled="index >= total - 1"
       @click="store.stepViewer(1)"
     >

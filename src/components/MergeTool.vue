@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { DocumentId } from 'pdfrs-editor'
 
 import AppButton from './AppButton.vue'
@@ -9,6 +10,7 @@ import { pickFiles } from '@/lib/files'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 const store = useEditorStore()
+const { t } = useI18n()
 
 /** The picked documents, in merge order. */
 const picked = computed(() =>
@@ -73,17 +75,15 @@ function onDragEnd() {
 
 <template>
   <p class="text-[13px] text-fg-muted">
-    I documenti sono uniti così come appaiono ora (riordini, rotazioni, eliminazioni e firme
-    comprese), nell’ordine della lista. Il risultato si apre come nuovo documento; gli originali
-    restano aperti.
+    {{ t('tools.merge.intro') }}
   </p>
 
   <section class="flex flex-col gap-2">
     <h3 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">
-      Da unire, in quest’ordine
+      {{ t('tools.merge.picked') }}
     </h3>
     <p v-if="picked.length === 0" class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted">
-      Nessun documento: aggiungine almeno due dall’elenco qui sotto.
+      {{ t('tools.merge.empty') }}
     </p>
     <ol class="flex flex-col gap-1.5" @dragleave.self="dropIndex = null">
       <li
@@ -115,27 +115,27 @@ function onDragEnd() {
         <span class="min-w-0 flex-1">
           <span class="block truncate text-[13px]" :title="doc.name">{{ doc.name }}</span>
           <span class="text-xs text-fg-muted">
-            {{ pageCount(doc) === 1 ? '1 pagina' : `${pageCount(doc)} pagine` }}
+            {{ t('tools.common.pages', pageCount(doc)) }}
           </span>
         </span>
         <IconButton
           icon="arrow-up"
           size="sm"
-          :label="`Sposta su ${doc.name}`"
+          :label="t('tools.merge.moveUp', { name: doc.name })"
           :disabled="index === 0"
           @click="store.moveMergePick(doc.id, index - 1)"
         />
         <IconButton
           icon="arrow-down"
           size="sm"
-          :label="`Sposta giù ${doc.name}`"
+          :label="t('tools.merge.moveDown', { name: doc.name })"
           :disabled="index === picked.length - 1"
           @click="store.moveMergePick(doc.id, index + 1)"
         />
         <IconButton
           icon="close"
           size="sm"
-          :label="`Togli ${doc.name} dall’unione`"
+          :label="t('tools.merge.remove', { name: doc.name })"
           @click="store.toggleMergePick(doc.id)"
         />
       </li>
@@ -144,13 +144,13 @@ function onDragEnd() {
 
   <section v-if="others.length" class="flex flex-col gap-2">
     <h3 class="text-xs font-semibold tracking-wider text-fg-muted uppercase">
-      Altri documenti aperti
+      {{ t('tools.merge.others') }}
     </h3>
     <ul class="flex flex-col gap-1">
       <li v-for="doc in others" :key="doc.id">
         <button
           class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-surface-muted"
-          :aria-label="`Aggiungi ${doc.name} all’unione`"
+          :aria-label="t('tools.merge.add', { name: doc.name })"
           @click="store.toggleMergePick(doc.id)"
         >
           <AppIcon name="plus" :size="16" class="text-accent" />
@@ -160,7 +160,9 @@ function onDragEnd() {
     </ul>
   </section>
 
-  <AppButton icon="plus" class="justify-center" @click="open">Apri altri file da unire</AppButton>
+  <AppButton icon="plus" class="justify-center" @click="open">
+    {{ t('tools.merge.openMore') }}
+  </AppButton>
 
   <AppButton
     variant="primary"
@@ -170,8 +172,8 @@ function onDragEnd() {
   >
     {{
       picked.length < 2
-        ? 'Scegli almeno due documenti'
-        : `Unisci ${picked.length} documenti (${total} pagine)`
+        ? t('tools.merge.pickTwo')
+        : t('tools.merge.submit', { documents: picked.length, pages: total })
     }}
   </AppButton>
 </template>

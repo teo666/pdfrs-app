@@ -1,3 +1,5 @@
+import { currentLocale } from '@/i18n'
+
 /**
  * PDF dates (`D:YYYYMMDDHHmmSSOHH'mm'`) to and from what a
  * `<input type="datetime-local">` holds (`YYYY-MM-DDTHH:mm`, local time).
@@ -58,5 +60,5 @@ export function fromDatetimeLocal(value: string): string | null {
 export function formatPdfDate(value: string): string {
   const date = parsePdfDate(value)
   if (!date) return value
-  return date.toLocaleString('it-IT', { dateStyle: 'long', timeStyle: 'short' })
+  return date.toLocaleString(currentLocale(), { dateStyle: 'long', timeStyle: 'short' })
 }

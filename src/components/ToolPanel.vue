@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import IconButton from './IconButton.vue'
 import BookletTool from './BookletTool.vue'
@@ -17,22 +18,9 @@ import TextTool from './TextTool.vue'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
+const { t } = useI18n()
 
-const titles = {
-  sign: 'Firma',
-  image: 'Immagine',
-  text: 'Testo',
-  merge: 'Unisci documenti',
-  split: 'Dividi documento',
-  nup: 'Più pagine per foglio',
-  booklet: 'Libretto',
-  protect: 'Proteggi con password',
-  properties: 'Proprietà del documento',
-  images: 'Immagini del documento',
-  history: 'Cronologia delle modifiche',
-  outline: 'Indice del documento',
-} as const
-const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
+const title = computed(() => (store.activeTool ? t(`tools.panel.titles.${store.activeTool}`) : ''))
 </script>
 
 <template>
@@ -43,7 +31,7 @@ const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
   >
     <header class="flex items-center justify-between border-b border-line px-4 py-3">
       <h2 class="text-sm font-semibold">{{ title }}</h2>
-      <IconButton icon="close" label="Chiudi il pannello" @click="store.activeTool = null" />
+      <IconButton icon="close" :label="t('tools.panel.close')" @click="store.activeTool = null" />
     </header>
     <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
       <!-- A locked document has no pages to work on; merging lists the others. -->
@@ -51,7 +39,7 @@ const title = computed(() => (store.activeTool ? titles[store.activeTool] : ''))
         v-if="store.active?.locked && store.activeTool !== 'merge'"
         class="rounded-md bg-surface-muted p-3 text-[13px] text-fg-muted"
       >
-        «{{ store.active.name }}» è protetto da password: sbloccalo per usare questo strumento.
+        {{ t('tools.panel.locked', { name: store.active.name }) }}
       </p>
       <SignTool v-else-if="store.activeTool === 'sign'" />
       <ImageTool v-else-if="store.activeTool === 'image'" />

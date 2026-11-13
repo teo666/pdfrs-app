@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 /**
  * A few ready colours plus any colour at all: the last swatch opens the
  * system colour picker, and shows the chosen colour once it's not one of the
  * ready ones. Used for text and signature ink.
  */
-const { tone = 'light', label = 'Colore' } = defineProps<{
+const { tone = 'light', label } = defineProps<{
   tone?: 'light' | 'dark'
   label?: string
 }>()
 const color = defineModel<string>({ required: true })
+const { t } = useI18n()
+/** The label given, else "Colore". */
+const shownLabel = computed(() => label ?? t('editing.colorPicker.color'))
 
 const presets = [
-  { value: '#1c2026', name: 'Nero' },
-  { value: '#1a3fb0', name: 'Blu' },
-  { value: '#c4261d', name: 'Rosso' },
-  { value: '#1f7a45', name: 'Verde' },
+  { value: '#1c2026', nameKey: 'editing.colorPicker.black' },
+  { value: '#1a3fb0', nameKey: 'editing.colorPicker.blue' },
+  { value: '#c4261d', nameKey: 'editing.colorPicker.red' },
+  { value: '#1f7a45', nameKey: 'editing.colorPicker.green' },
 ]
 
 const custom = computed(() => !presets.some((p) => p.value === color.value.toLowerCase()))
@@ -29,9 +33,9 @@ const ring = computed(() => (tone === 'dark' ? 'border-white' : 'border-accent')
       class="text-xs font-semibold"
       :class="tone === 'dark' ? 'text-white/60' : 'text-fg-muted'"
     >
-      {{ label }}
+      {{ shownLabel }}
     </span>
-    <div class="flex items-center gap-1.5" role="radiogroup" :aria-label="label">
+    <div class="flex items-center gap-1.5" role="radiogroup" :aria-label="shownLabel">
       <button
         v-for="preset in presets"
         :key="preset.value"
@@ -40,8 +44,8 @@ const ring = computed(() => (tone === 'dark' ? 'border-white' : 'border-accent')
         :style="{ backgroundColor: preset.value }"
         role="radio"
         :aria-checked="color.toLowerCase() === preset.value"
-        :aria-label="preset.name"
-        :title="preset.name"
+        :aria-label="t(preset.nameKey)"
+        :title="t(preset.nameKey)"
         @click="color = preset.value"
       />
       <!--
@@ -56,13 +60,13 @@ const ring = computed(() => (tone === 'dark' ? 'border-white' : 'border-accent')
             ? color
             : 'conic-gradient(#e11d48, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #e11d48)',
         }"
-        title="Scegli un altro colore"
+        :title="t('editing.colorPicker.custom')"
       >
         <input
           type="color"
           :value="color"
           class="absolute inset-0 size-full cursor-pointer opacity-0"
-          aria-label="Scegli un altro colore"
+          :aria-label="t('editing.colorPicker.custom')"
           @input="color = ($event.target as HTMLInputElement).value"
         />
       </label>
