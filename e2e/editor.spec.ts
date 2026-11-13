@@ -1247,6 +1247,8 @@ test('each photo is put on its own page, A4 by default, changed in the viewer', 
   await expect(photo).toContainText('predefinita per le prossime foto')
   await photo.getByRole('button', { name: 'Dimensione reale' }).click()
   await expect(photo.getByRole('button', { name: 'Dimensione reale' })).toHaveAttribute('aria-pressed', 'true')
+  // A page of the photo's own size has no margin to choose.
+  await expect(photo.getByRole('group', { name: 'Margine' })).toBeHidden()
   // Still the same page, not one moved from elsewhere.
   await expect(viewer.locator('header')).not.toContainText('era')
   await photo.getByRole('button', { name: 'Usa per le prossime foto' }).click()
@@ -1266,3 +1268,40 @@ test('each photo is put on its own page, A4 by default, changed in the viewer', 
   await page.getByRole('button', { name: 'Annulla' }).click()
   expect(await download()).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+400\s+300\s*\]/)
 })
+
+test('the margin around a photo is chosen per photo, and can become the default', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'photo.jpg')
+  await expectAllThumbnails(page, 1)
+  /** Height of the photo as drawn on the page, in points (from its `cm`). */
+  const drawnHeight = async () => {
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Scarica', exact: true }).click()
+    const pdf = await readFile(await (await downloadPromise).path())
+    const content = inflatedStreams(pdf).find((stream) => /\/Im0\s+Do/.test(stream))!
+    const [, , height] = /([\d.]+)\s+0\s+0\s+([\d.]+)\s+[\d.]+\s+[\d.]+\s+cm/.exec(content)!
+    return Number(height)
+  }
+  // Landscape A4 (595.28 pt tall), 1 cm (28.35 pt) above and below by default.
+  expect(await drawnHeight()).toBeCloseTo(595.28 - 2 * 28.35, 0)
+
+  await cards(page).first().getByRole('checkbox', { name: /Seleziona pagina/ }).dblclick()
+  const photo = page.getByRole('group', { name: 'Pagina della foto' })
+  const margin = photo.getByRole('group', { name: 'Margine' })
+  await expect(margin.getByRole('button', { name: '1 cm' })).toHaveAttribute('aria-pressed', 'true')
+  await margin.getByRole('button', { name: 'Nessuno' }).click()
+  await expect(margin.getByRole('button', { name: 'Nessuno' })).toHaveAttribute('aria-pressed', 'true')
+  await photo.getByRole('button', { name: 'Usa per le prossime foto' }).click()
+  await expect(photo).toContainText('predefinita per le prossime foto')
+  await page.keyboard.press('Escape')
+  // Edge to edge, top to bottom.
+  expect(await drawnHeight()).toBeCloseTo(595.28, 0)
+
+  // The next photo gets no margin either.
+  await page.reload()
+  await openFiles(page, 'photo.jpg')
+  await expectAllThumbnails(page, 1)
+  expect(await drawnHeight()).toBeCloseTo(595.28, 0)
+  await page.evaluate(() => localStorage.clear())
+})
+

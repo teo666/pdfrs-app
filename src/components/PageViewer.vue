@@ -10,6 +10,7 @@ import TextEditor from './TextEditor.vue'
 import { layoutText, type TextContent } from 'pdfrs-editor'
 import { formatBytes, pagesLabel } from '@/lib/format'
 import {
+  PHOTO_MARGINS_MM,
   useEditorStore,
   type DocumentState,
   type ImagePage,
@@ -88,6 +89,21 @@ const photoPageOptions: { value: ImagePage; label: string }[] = [
   { value: 'letter', label: 'Letter' },
   { value: 'native', label: 'Dimensione reale' },
 ]
+const marginLabel = (mm: number) =>
+  mm === 0 ? 'Nessuno' : `${(mm / 10).toLocaleString('it-IT')} cm`
+/** The photo isn't on the page and margin new photos get. */
+const photoNotDefault = computed(
+  () =>
+    !!photoPage.value &&
+    (photoPage.value.page !== store.imagePage ||
+      (photoPage.value.page !== 'native' && photoPage.value.marginMm !== store.imageMargin)),
+)
+
+function usePhotoPageAsDefault() {
+  if (!photoPage.value) return
+  store.imagePage = photoPage.value.page
+  if (photoPage.value.page !== 'native') store.imageMargin = photoPage.value.marginMm
+}
 
 // --- Images already in the PDF -------------------------------------------
 
@@ -556,29 +572,52 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
             role="group"
             aria-label="Pagina della foto"
           >
-            <span class="font-semibold">Foto su</span>
-            <div class="flex rounded-md bg-white/10 p-0.5">
-              <button
-                v-for="option in photoPageOptions"
-                :key="option.value"
-                class="cursor-pointer rounded px-2.5 py-1 font-semibold transition-colors disabled:cursor-default"
-                :class="
-                  photoPage === option.value
-                    ? 'bg-white text-black'
-                    : 'text-white/75 hover:text-white'
-                "
-                :aria-pressed="photoPage === option.value"
-                :disabled="doc.busy"
-                @click="store.setPhotoPage(pageId, option.value)"
-              >
-                {{ option.label }}
-              </button>
-            </div>
+            <span class="flex items-center gap-2">
+              <span class="font-semibold">Foto su</span>
+              <div class="flex rounded-md bg-white/10 p-0.5" role="group" aria-label="Pagina">
+                <button
+                  v-for="option in photoPageOptions"
+                  :key="option.value"
+                  class="cursor-pointer rounded px-2.5 py-1 font-semibold transition-colors disabled:cursor-default"
+                  :class="
+                    photoPage.page === option.value
+                      ? 'bg-white text-black'
+                      : 'text-white/75 hover:text-white'
+                  "
+                  :aria-pressed="photoPage.page === option.value"
+                  :disabled="doc.busy"
+                  @click="store.setPhotoPage(pageId, { page: option.value })"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </span>
+            <!-- The white around the photo: only a page of a set size has any. -->
+            <span v-if="photoPage.page !== 'native'" class="flex items-center gap-2">
+              <span class="font-semibold">Margine</span>
+              <div class="flex rounded-md bg-white/10 p-0.5" role="group" aria-label="Margine">
+                <button
+                  v-for="mm in PHOTO_MARGINS_MM"
+                  :key="mm"
+                  class="cursor-pointer rounded px-2.5 py-1 font-semibold transition-colors disabled:cursor-default"
+                  :class="
+                    photoPage.marginMm === mm
+                      ? 'bg-white text-black'
+                      : 'text-white/75 hover:text-white'
+                  "
+                  :aria-pressed="photoPage.marginMm === mm"
+                  :disabled="doc.busy"
+                  @click="store.setPhotoPage(pageId, { marginMm: mm })"
+                >
+                  {{ marginLabel(mm) }}
+                </button>
+              </div>
+            </span>
             <button
-              v-if="photoPage !== store.imagePage"
+              v-if="photoNotDefault"
               class="cursor-pointer rounded-md px-2 py-1 font-semibold text-white/80 hover:bg-white/10 hover:text-white"
-              title="Le prossime foto che apri o inserisci andranno su questa pagina"
-              @click="store.imagePage = photoPage"
+              title="Le prossime foto che apri o inserisci andranno su questa pagina, con questo margine"
+              @click="usePhotoPageAsDefault"
             >
               Usa per le prossime foto
             </button>

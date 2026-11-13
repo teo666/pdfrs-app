@@ -16,8 +16,8 @@ vi.mock('pdfrs-editor', () => {
     pending: Record<string, string | null>
     /** Image draws waiting to be removed (lives here so undo snapshots carry it). */
     removedImages?: string[]
-    /** Pages made from a photo → the page size they're on (same reason). */
-    photos?: Record<number, string>
+    /** Pages made from a photo → the page options they're on (same reason). */
+    photos?: Record<number, { pageSize: string; margin?: number }>
   }
 
   class FakeDocument {
@@ -269,25 +269,26 @@ vi.mock('pdfrs-editor', () => {
     }
     photoPages() {
       return new Map(
-        Object.entries(this.meta.photos ?? {}).map(([page, pageSize]) => [
-          Number(page),
-          { pageSize },
-        ]),
+        Object.entries(this.meta.photos ?? {}).map(([page, options]) => [Number(page), options]),
       )
     }
-    async insertImage(_jpeg: Uint8Array, options: { pageSize: string }, at?: number) {
+    async insertImage(
+      _jpeg: Uint8Array,
+      options: { pageSize: string; margin?: number },
+      at?: number,
+    ) {
       imageOptions.push(options)
       const [page] = await this.insertPages(new Uint8Array([1]), at)
-      this.meta.photos = { ...this.meta.photos, [page!]: options.pageSize }
+      this.meta.photos = { ...this.meta.photos, [page!]: options }
       return page!
     }
-    async setPhotoPage(page: number, options: { pageSize: string }) {
-      if (this.meta.photos?.[page] === options.pageSize) return page
+    async setPhotoPage(page: number, options: { pageSize: string; margin?: number }) {
+      if (JSON.stringify(this.meta.photos?.[page]) === JSON.stringify(options)) return page
       this.save()
       const replacement = Math.max(0, ...this.pageList.map((p) => p.id)) + 1
       this.pageList = this.pageList.map((p) => (p.id === page ? { ...p, id: replacement } : p))
       const { [page]: _old, ...others } = this.meta.photos ?? {}
-      this.meta.photos = { ...others, [replacement]: options.pageSize }
+      this.meta.photos = { ...others, [replacement]: options }
       return replacement
     }
     async insertPages(bytes: Uint8Array, at?: number) {
@@ -387,11 +388,11 @@ vi.mock('pdfrs-editor', () => {
       this.docs.set(newId, new FakeDocument(new Uint8Array([201]), lock.pages))
       return newId
     }
-    async addImage(_bytes: Uint8Array, options?: { pageSize: string }) {
+    async addImage(_bytes: Uint8Array, options?: { pageSize: string; margin?: number }) {
       imageOptions.push(options)
       const id = this.nextId++
       const doc = new FakeDocument(new Uint8Array([1]), 1)
-      doc.meta.photos = { 1: options?.pageSize ?? 'native' }
+      doc.meta.photos = { 1: options ?? { pageSize: 'native' } }
       this.docs.set(id, doc)
       return id
     }
@@ -1212,7 +1213,7 @@ describe('editor store', () => {
     expect(imageOptions[imageOptions.length - 1]).toEqual({
       pageSize: 'a4',
       orientation: 'auto',
-      margin: 28.35,
+      margin: expect.closeTo(28.35, 1),
     })
 
     store.imagePage = 'native'
@@ -1232,19 +1233,25 @@ describe('editor store', () => {
     const doc = store.active!
     await store.insertFiles([new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'foto.jpg')])
     const photo = doc.pages[doc.pages.length - 1]!.id
-    expect(doc.photoPages).toEqual({ [photo]: 'a4' })
+    expect(doc.photoPages).toEqual({ [photo]: { page: 'a4', marginMm: 10 } })
 
     store.selectPage(photo, 'only')
     store.openViewer(photo)
-    await store.setPhotoPage(photo, 'letter')
+    await store.setPhotoPage(photo, { page: 'letter' })
 
     const replacement = doc.pages[doc.pages.length - 1]!.id
     expect(replacement).not.toBe(photo)
-    expect(doc.photoPages).toEqual({ [replacement]: 'letter' })
+    expect(doc.photoPages).toEqual({ [replacement]: { page: 'letter', marginMm: 10 } })
     expect(store.viewerPageId).toBe(replacement)
     expect([...doc.selection]).toEqual([replacement])
 
+    // The margin alone, then back: both undo.
+    await store.setPhotoPage(replacement, { marginMm: 20 })
+    const wider = doc.pages[doc.pages.length - 1]!.id
+    expect(doc.photoPages[wider]).toEqual({ page: 'letter', marginMm: 20 })
+
     store.undo()
-    expect(doc.photoPages).toEqual({ [photo]: 'a4' })
+    store.undo()
+    expect(doc.photoPages).toEqual({ [photo]: { page: 'a4', marginMm: 10 } })
   })
 })

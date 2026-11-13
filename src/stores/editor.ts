@@ -51,8 +51,29 @@ const THUMB_SIZE_KEY = 'pdfrs.thumbSize'
 export type ImagePage = 'a4' | 'letter' | 'native'
 const IMAGE_PAGES: ImagePage[] = ['a4', 'letter', 'native']
 const IMAGE_PAGE_KEY = 'pdfrs.imagePage'
-/** White around a photo on an A4/Letter page: 1 cm, in PDF points. */
-const IMAGE_MARGIN = 28.35
+
+/** A photo page: the page it's on, and the white around the photo (only on A4/Letter). */
+export interface PhotoPage {
+  page: ImagePage
+  /** In millimetres: one of `PHOTO_MARGINS_MM`. */
+  marginMm: number
+}
+/** The margins offered around a photo on an A4/Letter page, in millimetres. */
+export const PHOTO_MARGINS_MM = [0, 5, 10, 20]
+const IMAGE_MARGIN_KEY = 'pdfrs.imageMargin'
+/** PDF points per millimetre. */
+const POINTS_PER_MM = 72 / 25.4
+
+/** The last choice of margin for photos, if this browser kept it; 1 cm otherwise. */
+function savedImageMargin(): number {
+  try {
+    const saved = Number(localStorage.getItem(IMAGE_MARGIN_KEY) ?? NaN)
+    if (PHOTO_MARGINS_MM.includes(saved)) return saved
+  } catch {
+    /* no storage: the default */
+  }
+  return 10
+}
 
 /** The last choice of page for photos, if this browser kept it; A4 otherwise. */
 function savedImagePage(): ImagePage {
@@ -195,7 +216,7 @@ export interface DocumentState {
    * The pages made from a photo, with the page each is on: those can be
    * put on another (`setPhotoPage`). Updated entry by entry.
    */
-  photoPages: Record<PageId, ImagePage>
+  photoPages: Record<PageId, PhotoPage>
 }
 
 /** An image of the document, with where it's drawn. */
@@ -285,25 +306,28 @@ export const useEditorStore = defineStore('editor', () => {
   /** Documents picked for a merge, in the order they were picked: that's the merge order. */
   const mergePicks = ref<DocumentId[]>([])
 
-  /** Card width chosen with the header's slider, in CSS pixels. */
   /**
-   * The page a JPEG gets when opened or inserted (see `ImagePage`): the
-   * default, remembered. Each photo page can then be put on another one
-   * (`setPhotoPage`), and that choice made the new default.
+   * The page a JPEG gets when opened or inserted (see `ImagePage`), and the
+   * margin around it: the defaults, remembered. Each photo page can then be
+   * put on another page or margin (`setPhotoPage`), and that choice made
+   * the new default.
    */
   const imagePage = ref<ImagePage>(savedImagePage())
-  watch(imagePage, (page) => {
+  const imageMargin = ref(savedImageMargin())
+  watch([imagePage, imageMargin], ([page, margin]) => {
     try {
       localStorage.setItem(IMAGE_PAGE_KEY, page)
+      localStorage.setItem(IMAGE_MARGIN_KEY, String(margin))
     } catch {
       /* not kept: fine */
     }
   })
-  const imagePageOptions = (page: ImagePage = imagePage.value) =>
+  const imagePageOptions = (page: ImagePage = imagePage.value, marginMm = imageMargin.value) =>
     page === 'native'
       ? { pageSize: 'native' as const }
-      : { pageSize: page, orientation: 'auto' as const, margin: IMAGE_MARGIN }
+      : { pageSize: page, orientation: 'auto' as const, margin: marginMm * POINTS_PER_MM }
 
+  /** Card width chosen with the header's slider, in CSS pixels. */
   const thumbSize = ref(savedThumbSize())
   const previewScale = computed(() => previewScaleFor(thumbSize.value))
   watch(thumbSize, (size) => {
@@ -414,20 +438,28 @@ export const useEditorStore = defineStore('editor', () => {
       if (!photos.has(Number(key))) delete current[Number(key)]
     }
     for (const [page, options] of photos) {
-      const kind = (options.pageSize ?? 'native') as ImagePage
-      if (current[page] !== kind) current[page] = kind
+      const view: PhotoPage = {
+        page: (options.pageSize ?? 'native') as ImagePage,
+        marginMm: Math.round((options.margin ?? 0) / POINTS_PER_MM),
+      }
+      const old = current[page]
+      if (old?.page !== view.page || old.marginMm !== view.marginMm) current[page] = view
     }
   }
 
   /**
    * Puts a photo page of the active document on another page (A4, Letter,
-   * the photo's own size): made again from its JPEG, in the same place,
-   * with its pending edits. One undo step. The page gets a new id; the
-   * viewer and the selection follow it.
+   * the photo's own size) or margin - whatever `change` says, the rest as
+   * it is: made again from its JPEG, in the same place, with its pending
+   * edits. One undo step. The page gets a new id; the viewer and the
+   * selection follow it.
    */
-  const setPhotoPage = (page: PageId, kind: ImagePage) =>
+  const setPhotoPage = (page: PageId, change: Partial<PhotoPage>) =>
     runBusy(async (doc, state) => {
-      const replacement = await doc.setPhotoPage(page, imagePageOptions(kind))
+      const now = state.photoPages[page]
+      if (!now) return
+      const next = { ...now, ...change }
+      const replacement = await doc.setPhotoPage(page, imagePageOptions(next.page, next.marginMm))
       if (replacement === page) return
       if (viewerPageId.value === page) viewerPageId.value = replacement
       if (state.selection.delete(page)) state.selection.add(replacement)
@@ -1443,6 +1475,7 @@ export const useEditorStore = defineStore('editor', () => {
     thumbSize,
     previewScale,
     imagePage,
+    imageMargin,
     setPhotoPage,
     moveMergePick,
     pendingPlacement,
