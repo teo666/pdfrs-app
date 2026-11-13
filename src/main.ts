@@ -7,6 +7,7 @@ import App from './App.vue'
 import { useTheme } from './composables/useTheme'
 import { currentLocale, i18n } from './i18n'
 import router from './router'
+import { registerServiceWorker } from './serviceWorker'
 
 // Keeps <html data-theme> on the theme in use from the start (and when the system's changes).
 useTheme()
@@ -19,3 +20,5 @@ document.documentElement.lang = currentLocale()
 app.use(router)
 
 app.mount('#app')
+
+registerServiceWorker()

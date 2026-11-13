@@ -13,7 +13,7 @@ pnpm build:extension
 Produce, in `dist-extension/`:
 
 - `chrome/` e `pdfrs-chrome.zip` — per Chrome, Edge, Brave e gli altri browser Chromium;
-- `firefox/` e `pdfrs-firefox.zip` — per Firefox (128 o successivo).
+- `firefox/` e `pdfrs-firefox.zip` — per Firefox (140 o successivo; 142 su Android).
 
 Le due cartelle differiscono solo nel `manifest.json`: Chromium vuole un
 service worker in background, Firefox degli script e un id
@@ -41,7 +41,7 @@ Da fare a mano, con un account sviluppatore:
 - **Firefox Add-ons (AMO)**: carica `pdfrs-firefox.zip`; Mozilla lo firma.
   L'id in `browser_specific_settings` va tenuto fisso tra le versioni.
 
-Prima di ogni pubblicazione aggiorna `version` in `extension/manifest.base.json`.
+La versione dell'estensione è quella dell'app, in `package.json`. Gli zip da caricare li produce anche il workflow delle release (`.github/workflows/release.yml`), allegati alla release del tag `v<versione>`: vedi il README principale.
 
 ## Come è fatta
 

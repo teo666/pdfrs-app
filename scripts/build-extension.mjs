@@ -26,7 +26,22 @@ execFileSync('pnpm', ['exec', 'vite', 'build', '--mode', 'extension', '--base', 
   stdio: 'inherit',
 })
 
-const base = JSON.parse(readFileSync(join(extension, 'manifest.base.json'), 'utf8'))
+// The website's files from public/ that an extension has no use for (its
+// icons are in its manifest, and nobody shares a link to it).
+for (const file of [
+  'manifest.webmanifest',
+  'og-image.png',
+  'apple-touch-icon.png',
+  'icon-192.png',
+  'icon-512.png',
+  'icon-maskable-512.png',
+]) {
+  rmSync(join(app, file), { force: true })
+}
+
+// The version is the app's (package.json), the same as the release's tag.
+const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+const base = { version, ...JSON.parse(readFileSync(join(extension, 'manifest.base.json'), 'utf8')) }
 const browsers = {
   // Chromium (Chrome, Edge, Brave…): a service worker in the background.
   chrome: { ...base, background: { service_worker: 'background.js' } },
@@ -37,10 +52,12 @@ const browsers = {
     browser_specific_settings: {
       gecko: {
         id: 'pdfrs@pdfrs.app',
-        strict_min_version: '128.0',
+        // The first versions that know data_collection_permissions.
+        strict_min_version: '140.0',
         // Firefox asks every add-on to declare what it collects: nothing.
         data_collection_permissions: { required: ['none'] },
       },
+      gecko_android: { strict_min_version: '142.0' },
     },
   },
 }

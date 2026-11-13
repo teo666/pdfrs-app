@@ -1,0 +1,72 @@
+# Builds the app and publishes it on GitHub Pages, at every push to main.
+#
+# The engine is compiled from the pdfrs repository (see
+# .github/actions/engine): from `main`, or from the branch chosen when the
+# workflow is run by hand (Actions → Pages → Run workflow).
+#
+# One-time setup: Settings → Pages → Source: "GitHub Actions".
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pdfrs_ref:
+        description: Branch, tag or commit of teo666/pdfrs to build the engine from
+        default: main
+
+permissions:
+  contents: read
+
+# One deployment at a time; one already running is allowed to finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: pdfrs-app
+
+      - uses: ./pdfrs-app/.github/actions/engine
+        with:
+          pdfrs-ref: ${{ inputs.pdfrs_ref || 'main' }}
+
+      - name: Unit tests
+        working-directory: pdfrs-app
+        run: pnpm test:unit --run
+
+      - name: Pages address
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # base: the path the site lives under ("/pdfrs-app/", or "/" with a
+      # custom domain). SITE_URL: its full address, for the canonical link,
+      # the Open Graph tags and the sitemap (see vite.config.ts).
+      - name: Build
+        working-directory: pdfrs-app
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}/
+        run: pnpm build --base "${{ steps.pages.outputs.base_path }}/"
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: pdfrs-app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish
+        id: deployment
+        uses: actions/deploy-pages@v4
