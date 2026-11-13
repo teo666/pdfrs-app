@@ -7,6 +7,7 @@ import {
   type AnnotationId,
   type TextContent,
   type AssetId,
+  type CompressionLevel,
   type DocumentId,
   type HistoryEntry,
   type ImageAsset,
@@ -32,6 +33,8 @@ import {
 import { t } from '@/i18n'
 import { describeError } from '@/lib/errors'
 import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
+import { formatBytes } from '@/lib/format'
+import { replacementBytes } from '@/lib/images'
 
 /** Card width range of the thumbnail-size slider, in CSS pixels. */
 export const THUMB_SIZE = { min: 120, max: 360, default: 170 }
@@ -553,6 +556,18 @@ export const useEditorStore = defineStore('editor', () => {
   const removeImages = (ids: string[]) => edit((doc) => doc.removeImages(ids))
   /** Puts back image draws taken away and not applied yet. */
   const restoreImages = (ids: string[]) => edit((doc) => doc.restoreImages(ids))
+
+  /**
+   * Puts the picture `file` in the place of the active document's image
+   * `key`, wherever it's drawn; one of other proportions fits inside the old
+   * box. Applied at once, one undo step.
+   */
+  const replaceImage = (key: string, file: File) =>
+    runBusy(async (doc) => {
+      const pages = imageOf(key)?.pages.length ?? 1
+      await doc.replaceImage(key, await replacementBytes(file))
+      notify(t('store.notices.imageReplaced', pages))
+    })
 
   /** The active document's image, by key. */
   const imageOf = (key: string) => active.value?.images?.find((image) => image.key === key)
@@ -1257,6 +1272,32 @@ export const useEditorStore = defineStore('editor', () => {
     })
 
   /**
+   * A lighter copy of the active document, as it looks now, its images
+   * recompressed for `level`: opened, with the sizes before and after in
+   * the notice. When no image gets lighter, nothing is made.
+   */
+  const compressImages = (level: CompressionLevel) =>
+    runBusy(async (_doc, state) => {
+      const result = await editor.compressDocument(state.id, level)
+      if (result.id === null) {
+        notify(t('store.notices.nothingToCompress'))
+        return
+      }
+      const name = t('store.names.compressed', { base: baseName(state.name) })
+      register(result.id, name)
+      select(result.id)
+      notify(
+        t('store.notices.compressed', {
+          name,
+          before: formatBytes(result.bytesBefore),
+          after: formatBytes(result.bytesAfter),
+          percent: Math.round(100 * (1 - result.bytesAfter / result.bytesBefore)),
+        }),
+        { label: t('store.actions.backToOriginal'), run: () => select(state.id) },
+      )
+    })
+
+  /**
    * A readable copy of the active, locked document, opened. False when the
    * password is wrong (the caller says so), true otherwise - errors other
    * than that are reported as usual.
@@ -1546,6 +1587,8 @@ export const useEditorStore = defineStore('editor', () => {
     loadImages,
     removeImages,
     restoreImages,
+    replaceImage,
+    compressImages,
     downloadImage,
     imageThumbnail,
     focusedImage,

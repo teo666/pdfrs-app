@@ -44,6 +44,11 @@ export default {
       'Bild auf {pages} Seiten wiederherstellen | {count} Bilder auf {pages} Seiten wiederherstellen',
     noPage: 'Bild wiederherstellen | {count} Bilder wiederherstellen',
   },
+  replaceImage: {
+    onePage: 'Bild ersetzen (Seite {page})',
+    manyPages: 'Bild auf {pages} Seiten ersetzen',
+    noPage: 'Bild ersetzen',
+  },
   metadata: 'Metadaten bearbeiten ({fields})',
   commit: 'Änderungen anwenden ({pages} Seiten)',
   encrypt: 'Dokument verschlüsseln',

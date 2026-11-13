@@ -30,7 +30,7 @@ export default {
       label: 'Indice',
       hint: 'Indice del documento: i segnalibri, per andare alle pagine',
     },
-    images: { label: 'Immagini', hint: 'Le immagini già nel PDF: vedile, scaricale o rimuovile' },
+    images: { label: 'Immagini', hint: 'Le immagini già nel PDF: vedile, scaricale, sostituiscile, rimuovile o alleggeriscile' },
     protect: {
       label: 'Proteggi',
       hint: 'Proteggi con password: una copia che si apre solo con la password',
@@ -253,7 +253,7 @@ export default {
 
   images: {
     intro:
-      'Le immagini che il PDF contiene già: foto, loghi, scansioni. Rimuoverle è una modifica come le altre: si annulla, e si applica con «Applica modifiche» o scaricando.',
+      'Le immagini che il PDF contiene già: foto, loghi, scansioni. Rimuoverle è una modifica come le altre: si annulla, e si applica con «Applica modifiche» o scaricando. Sostituirne una con un’altra figura vale subito, in ogni pagina in cui compare, e si annulla anche quello.',
     noDocument: 'Apri un documento per vederne le immagini.',
     searching: 'Ricerca delle immagini…',
     none: 'Nessuna immagine in questo documento. Loghi e grafiche disegnati come forme vettoriali non sono immagini e non compaiono qui.',
@@ -274,6 +274,24 @@ export default {
     remove: 'Rimuovi',
     someOnly:
       'Per togliere un’immagine solo da alcune pagine, aprila: nella pagina si sceglie se toglierla lì o ovunque.',
+    replace: 'Sostituisci',
+    replaceOf: 'Sostituisci l’immagine di {pages}',
+    replaceEverywhere: 'Sostituisci in tutte le pagine',
+    cannotReplace:
+      'Questa immagine è scritta dentro la pagina (o è una maschera): non si può sostituire',
+    /** Recompressing the images, into a lighter copy. */
+    compress: {
+      title: 'Alleggerisci il file',
+      intro:
+        'Ricomprime le immagini e le riduce alla risoluzione che serve dove sono disegnate. Crea una copia: l’originale resta com’era.',
+      level: 'Qualità',
+      levels: {
+        high: { label: 'Alta qualità', hint: 'Quasi uguale all’originale (220 dpi)' },
+        balanced: { label: 'Bilanciata', hint: 'Buona a schermo e in stampa (150 dpi)' },
+        small: { label: 'File piccolo', hint: 'Per inviarlo o leggerlo a schermo (100 dpi)' },
+      },
+      submit: 'Comprimi le immagini',
+    },
   },
 
   outline: {

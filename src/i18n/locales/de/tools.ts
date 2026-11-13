@@ -45,7 +45,7 @@ export default {
     },
     images: {
       label: 'Bilder',
-      hint: 'Die Bilder, die schon im PDF sind: ansehen, herunterladen oder entfernen',
+      hint: 'Die Bilder, die schon im PDF sind: ansehen, herunterladen, ersetzen, entfernen oder komprimieren',
     },
     protect: {
       label: 'Schützen',
@@ -281,7 +281,7 @@ export default {
 
   images: {
     intro:
-      'Die Bilder, die das PDF schon enthält: Fotos, Logos, Scans. Sie zu entfernen ist eine Änderung wie die anderen: sie lässt sich rückgängig machen und wird mit „Änderungen anwenden“ oder beim Herunterladen übernommen.',
+      'Die Bilder, die das PDF schon enthält: Fotos, Logos, Scans. Sie zu entfernen ist eine Änderung wie die anderen: sie lässt sich rückgängig machen und wird mit „Änderungen anwenden“ oder beim Herunterladen übernommen. Ein Bild durch ein anderes zu ersetzen gilt sofort, auf jeder Seite, auf der es vorkommt, und lässt sich ebenfalls rückgängig machen.',
     noDocument: 'Öffne ein Dokument, um seine Bilder zu sehen.',
     searching: 'Bilder werden gesucht…',
     none: 'Keine Bilder in diesem Dokument. Logos und Grafiken, die als Vektorformen gezeichnet sind, sind keine Bilder und erscheinen hier nicht.',
@@ -302,6 +302,24 @@ export default {
     remove: 'Entfernen',
     someOnly:
       'Um ein Bild nur von einigen Seiten zu entfernen, öffne es: auf der Seite wählst du, ob es nur dort oder überall entfernt wird.',
+    replace: 'Ersetzen',
+    replaceOf: 'Bild auf {pages} ersetzen',
+    replaceEverywhere: 'Auf allen Seiten ersetzen',
+    cannotReplace:
+      'Dieses Bild steht direkt in der Seite (oder ist eine Maske): Es lässt sich nicht ersetzen',
+    /** Recompressing the images, into a lighter copy. */
+    compress: {
+      title: 'Datei verkleinern',
+      intro:
+        'Komprimiert die Bilder neu und verkleinert sie auf die Auflösung, die sie dort brauchen, wo sie gezeichnet werden. Erstellt eine Kopie: Das Original bleibt unverändert.',
+      level: 'Qualität',
+      levels: {
+        high: { label: 'Hohe Qualität', hint: 'Fast wie das Original (220 dpi)' },
+        balanced: { label: 'Ausgewogen', hint: 'Gut am Bildschirm und im Druck (150 dpi)' },
+        small: { label: 'Kleine Datei', hint: 'Zum Versenden oder Lesen am Bildschirm (100 dpi)' },
+      },
+      submit: 'Bilder komprimieren',
+    },
   },
 
   outline: {

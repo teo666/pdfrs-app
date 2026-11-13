@@ -36,7 +36,7 @@ export default {
     },
     images: {
       label: 'Images',
-      hint: 'The images already in the PDF: view, download or remove them',
+      hint: 'The images already in the PDF: view, download, replace, remove or compress them',
     },
     protect: {
       label: 'Protect',
@@ -261,7 +261,7 @@ export default {
 
   images: {
     intro:
-      'The images the PDF already contains: photos, logos, scans. Removing them is a change like any other: it can be undone, and it’s applied with “Apply changes” or by downloading.',
+      'The images the PDF already contains: photos, logos, scans. Removing them is a change like any other: it can be undone, and it’s applied with “Apply changes” or by downloading. Replacing one with another picture takes effect at once, on every page it appears on, and can be undone too.',
     noDocument: 'Open a document to see its images.',
     searching: 'Looking for images…',
     none: 'No images in this document. Logos and graphics drawn as vector shapes aren’t images and don’t appear here.',
@@ -282,6 +282,23 @@ export default {
     remove: 'Remove',
     someOnly:
       'To remove an image from only some pages, open it: on the page you choose whether to remove it there or everywhere.',
+    replace: 'Replace',
+    replaceOf: 'Replace the image on {pages}',
+    replaceEverywhere: 'Replace on every page',
+    cannotReplace: 'This image is written inside the page (or is a mask): it can’t be replaced',
+    /** Recompressing the images, into a lighter copy. */
+    compress: {
+      title: 'Make the file lighter',
+      intro:
+        'Recompresses the images and scales them down to the resolution they need where they’re drawn. Makes a copy: the original stays as it was.',
+      level: 'Quality',
+      levels: {
+        high: { label: 'High quality', hint: 'Almost the same as the original (220 dpi)' },
+        balanced: { label: 'Balanced', hint: 'Good on screen and in print (150 dpi)' },
+        small: { label: 'Small file', hint: 'For sending or reading on screen (100 dpi)' },
+      },
+      submit: 'Compress images',
+    },
   },
 
   outline: {

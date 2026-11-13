@@ -1187,6 +1187,88 @@ test('images already in the PDF: listed, downloaded, removed from the viewer, un
   await expect(panel.getByTestId('images-summary')).not.toContainText('da rimuovere')
 })
 
+/** A picture made by the page itself (canvas), as file bytes: `kind` PNG or JPEG. */
+async function canvasPicture(page: Page, width: number, height: number, kind: 'png' | 'grainy-jpeg') {
+  const bytes = await page.evaluate(
+    async ([width, height, kind]) => {
+      const canvas = new OffscreenCanvas(width, height)
+      const context = canvas.getContext('2d')!
+      if (kind === 'png') {
+        context.fillStyle = '#0000ff'
+        context.fillRect(0, 0, width, height)
+        return Array.from(new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer()))
+      }
+      const pixels = context.createImageData(width, height)
+      for (let i = 0; i < pixels.data.length; i += 4) {
+        const grain = Math.floor(Math.random() * 48)
+        pixels.data.set([150 + grain, 90 + grain / 2, 60, 255], i)
+      }
+      context.putImageData(pixels, 0, 0)
+      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.95 })
+      return Array.from(new Uint8Array(await blob.arrayBuffer()))
+    },
+    [width, height, kind] as const,
+  )
+  return Buffer.from(bytes)
+}
+
+test('images already in the PDF: one replaced by another picture, undone', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'photo.jpg')
+  await expectAllThumbnails(page, 1)
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagini' }).click()
+  const panel = page.getByRole('complementary', { name: 'Immagini del documento' })
+  await expect(panel).toContainText('400 × 300 px')
+
+  // A square in place of the 4:3 photo: fitted inside its box, the sides transparent.
+  const square = await canvasPicture(page, 90, 90, 'png')
+  const chooserPromise = page.waitForEvent('filechooser')
+  await panel.getByRole('button', { name: 'Sostituisci l’immagine di pagina 1' }).click()
+  await (await chooserPromise).setFiles({ name: 'quadrato.png', mimeType: 'image/png', buffer: square })
+  await expect(page.getByText('Immagine sostituita')).toBeVisible()
+  await expect(panel).toContainText('120 × 90 px')
+  await expectAllThumbnails(page, 1)
+
+  // In the file at once (no "Applica modifiche"): with its soft mask.
+  const pdfPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica', exact: true }).click()
+  const pdf = (await readFile(await (await pdfPromise).path())).toString('latin1')
+  expect(pdf).toMatch(/\/SMask/)
+
+  // A step of the history like the others, and undone.
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Cronologia' }).click()
+  await expect(page.getByRole('complementary', { name: 'Cronologia delle modifiche' })).toContainText(
+    'Sostituisci immagine (pagina 1)',
+  )
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagini' }).click()
+  await expect(panel).toContainText('400 × 300 px')
+})
+
+test('images already in the PDF: a lighter copy with them recompressed', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.goto('/')
+  const heavy = await canvasPicture(page, 2000, 1500, 'grainy-jpeg')
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Apri file' }).first().click()
+  await (await chooserPromise).setFiles({ name: 'grande.jpg', mimeType: 'image/jpeg', buffer: heavy })
+  await expectAllThumbnails(page, 1)
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagini' }).click()
+  const panel = page.getByRole('complementary', { name: 'Immagini del documento' })
+  await panel.getByRole('radio', { name: /File piccolo/ }).check()
+  await panel.getByRole('button', { name: 'Comprimi le immagini' }).click()
+
+  // A new document, opened; the original left as it was.
+  await expect(page.getByText(/Creato «grande \(compresso\)\.pdf»: da .* a .* \(−\d+%\)/)).toBeVisible({
+    timeout: 30_000,
+  })
+  const list = page.getByRole('complementary').filter({ hasText: 'Documenti' }).first()
+  await expect(list).toContainText('grande.jpg')
+  await expect(list).toContainText('grande (compresso).pdf')
+  await expectAllThumbnails(page, 1)
+})
+
 test('history panel: every step listed, a click goes back or forward to it', async ({ page }) => {
   await page.goto('/')
   await openFiles(page, 'four_pages.pdf')

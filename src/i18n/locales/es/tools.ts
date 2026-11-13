@@ -41,7 +41,7 @@ export default {
     },
     images: {
       label: 'Imágenes',
-      hint: 'Las imágenes que ya están en el PDF: velas, descárgalas o quítalas',
+      hint: 'Las imágenes que ya están en el PDF: velas, descárgalas, sustitúyelas, quítalas o aligéralas',
     },
     protect: {
       label: 'Proteger',
@@ -271,7 +271,7 @@ export default {
 
   images: {
     intro:
-      'Las imágenes que el PDF ya contiene: fotos, logotipos, escaneos. Quitarlas es un cambio como los demás: se puede deshacer, y se aplica con «Aplicar cambios» o al descargar.',
+      'Las imágenes que el PDF ya contiene: fotos, logotipos, escaneos. Quitarlas es un cambio como los demás: se puede deshacer, y se aplica con «Aplicar cambios» o al descargar. Sustituir una por otra imagen se aplica enseguida, en todas las páginas donde aparece, y también se puede deshacer.',
     noDocument: 'Abre un documento para ver sus imágenes.',
     searching: 'Buscando imágenes…',
     none: 'No hay imágenes en este documento. Los logotipos y gráficos dibujados como formas vectoriales no son imágenes y no aparecen aquí.',
@@ -292,6 +292,24 @@ export default {
     remove: 'Quitar',
     someOnly:
       'Para quitar una imagen solo de algunas páginas, ábrela: en la página eliges si quitarla ahí o en todas partes.',
+    replace: 'Sustituir',
+    replaceOf: 'Sustituir la imagen de {pages}',
+    replaceEverywhere: 'Sustituir en todas las páginas',
+    cannotReplace:
+      'Esta imagen está escrita dentro de la página (o es una máscara): no se puede sustituir',
+    /** Recompressing the images, into a lighter copy. */
+    compress: {
+      title: 'Aligerar el archivo',
+      intro:
+        'Vuelve a comprimir las imágenes y las reduce a la resolución que necesitan donde se dibujan. Crea una copia: el original queda como estaba.',
+      level: 'Calidad',
+      levels: {
+        high: { label: 'Alta calidad', hint: 'Casi igual que el original (220 ppp)' },
+        balanced: { label: 'Equilibrada', hint: 'Buena en pantalla y al imprimir (150 ppp)' },
+        small: { label: 'Archivo pequeño', hint: 'Para enviarlo o leerlo en pantalla (100 ppp)' },
+      },
+      submit: 'Comprimir las imágenes',
+    },
   },
 
   outline: {

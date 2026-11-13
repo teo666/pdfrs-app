@@ -1,6 +1,7 @@
 import type { ImageAsset } from 'pdfrs-editor'
 
 import { t } from '@/i18n'
+import { detectKind } from '@/lib/files'
 
 /**
  * Images are decoded by the browser (canvas), not by the wasm engine: that's
@@ -109,4 +110,29 @@ export function cropToInk(canvas: HTMLCanvasElement, margin = 8): ImageAsset | n
   const w = right - left + 1
   const h = bottom - top + 1
   return { pixels: new Uint8Array(context.getImageData(left, top, w, h).data), width: w, height: h }
+}
+
+/** Picture files an image of the PDF can be replaced with. */
+export const REPLACEMENT_FILES =
+  'image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif'
+
+/**
+ * A picture file as the engine takes it, JPEG or PNG: those as they are (a
+ * JPEG goes into the PDF byte for byte), anything else the browser can read
+ * (WebP, GIF…) turned into a PNG.
+ */
+export async function replacementBytes(file: File): Promise<Uint8Array> {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const png = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+  if (png || detectKind(bytes) === 'jpeg') return bytes
+  const bitmap = await createImageBitmap(file)
+  try {
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error(t('store.errors.imageDecode'))
+    context.drawImage(bitmap, 0, 0)
+    return new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer())
+  } finally {
+    bitmap.close()
+  }
 }

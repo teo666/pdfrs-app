@@ -105,6 +105,14 @@ vi.mock('pdfrs-editor', () => {
       this.save()
       this.meta.removedImages = (this.meta.removedImages ?? []).filter((id) => !ids.includes(id))
     }
+    /** Puts another picture in: the baseline changes, the image gets the new picture's size. */
+    async replaceImage(key: string, file: Uint8Array) {
+      if (file.length === 0) throw new Error('formato non supportato')
+      this.save()
+      this.bytes = new Uint8Array(this.bytes)
+      const image = this.imageReport.images.find((item) => item.key === key)
+      if (image) Object.assign(image, { width: 120, height: 90, format: 'flate' })
+    }
     async extractImage() {
       return { mime: 'image/jpeg', width: 400, height: 300, bytes: new Uint8Array([0xff, 0xd8]) }
     }
@@ -391,6 +399,16 @@ vi.mock('pdfrs-editor', () => {
       doc.lock = { password, pages }
       this.docs.set(newId, doc)
       return newId
+    }
+    /** Only the "small" level gets anything lighter: 1000 bytes down to 400. */
+    async compressDocument(id: number, level: string) {
+      const source = this.getDocument(id)
+      if (level !== 'small') {
+        return { id: null, bytesBefore: 1000, bytesAfter: 1000, considered: 1, recompressed: 0 }
+      }
+      const newId = this.nextId++
+      this.docs.set(newId, new FakeDocument(new Uint8Array([202]), source.pageList.length))
+      return { id: newId, bytesBefore: 1000, bytesAfter: 400, considered: 1, recompressed: 1 }
     }
     async unlockDocument(id: number, password: string) {
       const lock = this.getDocument(id).lock
@@ -1064,6 +1082,41 @@ describe('editor store', () => {
     // Gone for good once no open document shows them.
     store.close(merged.id)
     expect(revoked.sort()).toEqual([...fromA].sort())
+  })
+
+  it('puts another picture in the place of an image, on every page that draws it', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('logo.pdf', 3)])
+    const doc = store.active!
+    await store.loadImages(doc.id)
+    expect(doc.images![0]).toMatchObject({ width: 400, pages: [1, 2] })
+
+    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])], 'nuovo.png', {
+      type: 'image/png',
+    })
+    await store.replaceImage('5 0', png)
+    await flushPreviews()
+
+    expect(doc.images![0]).toMatchObject({ width: 120, height: 90 })
+    expect(store.notice?.message).toBe('Immagine sostituita in 2 pagine')
+    expect(doc.canUndo).toBe(true)
+  })
+
+  it('makes a lighter copy with the images recompressed, or says nothing got lighter', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('foto.pdf', 2)])
+    const original = store.active!
+
+    await store.compressImages('balanced')
+    expect(store.documents).toHaveLength(1)
+    expect(store.notice?.message).toContain('Nessuna immagine si alleggerisce')
+
+    await store.compressImages('small')
+    expect(store.documents.map((d) => d.name)).toEqual(['foto.pdf', 'foto (compresso).pdf'])
+    expect(store.active?.name).toBe('foto (compresso).pdf')
+    expect(store.notice?.message).toContain('(−60%)')
+    store.notice?.action?.run()
+    expect(store.active?.id).toBe(original.id)
   })
 
   it('protects a copy of a document, listed locked beside the original', async () => {

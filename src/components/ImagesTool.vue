@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { I18nT, useI18n } from 'vue-i18n'
 
+import type { CompressionLevel } from 'pdfrs-editor'
+
+import AppButton from './AppButton.vue'
 import AppIcon from './AppIcon.vue'
 import IconButton from './IconButton.vue'
 import ImageThumb from './ImageThumb.vue'
+import { pickFiles } from '@/lib/files'
 import { formatBytes, pagesLabel } from '@/lib/format'
+import { REPLACEMENT_FILES } from '@/lib/images'
 import { useEditorStore } from '@/stores/editor'
 
 /**
  * The images already in the document: what they are, where, how heavy -
- * and taking them away (a pending edit, like the others) or downloading
- * them. A click on one opens it in the viewer, selected.
+ * taking them away (a pending edit, like the others), downloading them,
+ * putting another picture in the place of one (everywhere it's drawn), and
+ * a lighter copy of the document with them recompressed. A click on one
+ * opens it in the viewer, selected.
  */
 const store = useEditorStore()
 const { t } = useI18n()
@@ -29,6 +36,18 @@ const images = computed(() => doc.value?.images ?? null)
 const totalBytes = computed(() => (images.value ?? []).reduce((sum, image) => sum + image.bytes, 0))
 const removing = computed(() => (images.value ?? []).filter((image) => image.removed))
 const removingBytes = computed(() => removing.value.reduce((sum, image) => sum + image.bytes, 0))
+
+/** Inline images (written inside the page) and masks have no picture of their own to swap. */
+const replaceable = (image: { inline: boolean; colorSpace?: string | null }) =>
+  !image.inline && image.colorSpace !== 'ImageMask'
+
+async function replace(key: string) {
+  const [file] = await pickFiles(REPLACEMENT_FILES)
+  if (file) await store.replaceImage(key, file)
+}
+
+const LEVELS: CompressionLevel[] = ['high', 'balanced', 'small']
+const level = ref<CompressionLevel>('balanced')
 </script>
 
 <template>
@@ -102,6 +121,20 @@ const removingBytes = computed(() => removing.value.reduce((sum, image) => sum +
             @click="store.downloadImage(image.key)"
           />
           <IconButton
+            icon="upload"
+            size="sm"
+            :label="t('tools.images.replaceOf', { pages: pagesLabel(image.pages) })"
+            :title="
+              !replaceable(image)
+                ? t('tools.images.cannotReplace')
+                : image.pages.length > 1
+                  ? t('tools.images.replaceEverywhere')
+                  : t('tools.images.replace')
+            "
+            :disabled="doc.busy || image.removed || !replaceable(image)"
+            @click="replace(image.key)"
+          />
+          <IconButton
             v-if="image.removed"
             icon="restore"
             size="sm"
@@ -130,5 +163,46 @@ const removingBytes = computed(() => removing.value.reduce((sum, image) => sum +
       <AppIcon name="info" :size="14" class="mt-px" />
       {{ t('tools.images.someOnly') }}
     </p>
+
+    <section class="flex flex-col gap-2 border-t border-line pt-4" aria-labelledby="compress-title">
+      <h3 id="compress-title" class="text-xs font-semibold tracking-wider text-fg-muted uppercase">
+        {{ t('tools.images.compress.title') }}
+      </h3>
+      <p class="text-[13px] text-fg-muted">{{ t('tools.images.compress.intro') }}</p>
+      <fieldset class="flex flex-col gap-1.5">
+        <legend class="sr-only">{{ t('tools.images.compress.level') }}</legend>
+        <label
+          v-for="option in LEVELS"
+          :key="option"
+          class="flex cursor-pointer items-start gap-2 rounded-md border p-2"
+          :class="level === option ? 'border-accent bg-accent-soft' : 'border-line'"
+        >
+          <input
+            v-model="level"
+            type="radio"
+            name="compress-level"
+            :value="option"
+            class="mt-0.5 size-4 accent-accent"
+          />
+          <span class="flex flex-col">
+            <span class="text-[13px] font-semibold">{{
+              t(`tools.images.compress.levels.${option}.label`)
+            }}</span>
+            <span class="text-xs text-fg-muted">{{
+              t(`tools.images.compress.levels.${option}.hint`)
+            }}</span>
+          </span>
+        </label>
+      </fieldset>
+      <AppButton
+        variant="primary"
+        icon="file-plus"
+        class="justify-center"
+        :disabled="doc.busy"
+        @click="store.compressImages(level)"
+      >
+        {{ t('tools.images.compress.submit') }}
+      </AppButton>
+    </section>
   </template>
 </template>

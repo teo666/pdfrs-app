@@ -28,6 +28,10 @@ export default {
     extracted: '1 Seite in „{name}“ | {n} Seiten in „{name}“',
     protected: '„{name}“ erstellt, passwortgeschützt: das Original bleibt unverändert',
     unlocked: '„{name}“ erstellt, ohne Passwort',
+    imageReplaced: 'Bild ersetzt | Bild auf {n} Seiten ersetzt',
+    /** `before`/`after`: the file's size, formatted. */
+    compressed: '„{name}“ erstellt: von {before} auf {after} (−{percent} %)',
+    nothingToCompress: 'Auf dieser Stufe wird kein Bild kleiner: Die Datei bleibt, wie sie ist',
   },
   /** The buttons on the notices. */
   actions: {
@@ -46,6 +50,7 @@ export default {
     unlocked: '{base} (entsperrt).pdf',
     image: '{base} - Bild {n}.{extension}',
     signature: 'Unterschrift {n}',
+    compressed: '{base} (komprimiert).pdf',
   },
   /** Adding signatures and images to the library. */
   library: {
