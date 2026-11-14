@@ -230,6 +230,7 @@ async function animateReorder(lo: number, hi: number, apply: () => void) {
       @drop="onDrop"
       @dragend="onDragEnd"
       @rotate="store.rotate(page.id, $event)"
+      @reset-rotation="store.resetRotation(page.id)"
       @toggle-delete="store.toggleDelete(page.id)"
       @need-preview="store.requestPreview(doc.id, page.id)"
       @open="store.openViewer(page.id)"

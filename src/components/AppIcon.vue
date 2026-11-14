@@ -3,6 +3,8 @@
 const paths = {
   'rotate-left': ['M3 12a9 9 0 1 0 3-6.7L3 8', 'M3 3v5h5'],
   'rotate-right': ['M21 12a9 9 0 1 1-3-6.7L21 8', 'M21 3v5h-5'],
+  /** Rotate-left with a cross inside: take the rotation away. */
+  'rotate-reset': ['M3 12a9 9 0 1 0 3-6.7L3 8', 'M3 3v5h5', 'M10 10l4 4', 'M14 10l-4 4'],
   trash: ['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6', 'M10 11v6', 'M14 11v6'],
   restore: ['M9 14 4 9l5-5', 'M4 9h10.5a5.5 5.5 0 0 1 0 11H11'],
   undo: ['M9 14 4 9l5-5', 'M4 9h10.5a5.5 5.5 0 0 1 0 11H11'],

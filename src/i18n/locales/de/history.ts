@@ -7,6 +7,7 @@ export default {
   movePage: 'Seite {page} an Position {position} verschieben',
   rotatePage: 'Seite {page} um {degrees}° drehen',
   resetRotation: 'Drehung von Seite {page} zurücksetzen',
+  resetRotations: 'Drehung von 1 Seite zurücksetzen | Drehung von {count} Seiten zurücksetzen',
   deletePage: 'Seite {page} löschen',
   restorePage: 'Seite {page} wiederherstellen',
   rotatePages: '{count} Seiten um {degrees}° drehen',
