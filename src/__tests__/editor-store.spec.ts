@@ -141,6 +141,12 @@ vi.mock('pdfrs-editor', () => {
       const image = this.imageReport.images.find((item) => item.key === key)
       if (image) Object.assign(image, { width: 120, height: 90, format: 'flate' })
     }
+    async moveImage(placement: string, box: { x: number; y: number; width: number; height: number }) {
+      this.save()
+      this.bytes = new Uint8Array(this.bytes)
+      const found = this.imageReport.placements.find((p) => p.id === placement)
+      if (found) Object.assign(found, box)
+    }
     async extractImage() {
       return { mime: 'image/jpeg', width: 400, height: 300, bytes: new Uint8Array([0xff, 0xd8]) }
     }
@@ -1203,6 +1209,18 @@ describe('editor store', () => {
 
     expect(doc.images![0]).toMatchObject({ width: 120, height: 90 })
     expect(store.notice?.message).toBe('Immagine sostituita in 2 pagine')
+    expect(doc.canUndo).toBe(true)
+  })
+
+  it('moves an image already in the document, keeping its placement', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('logo.pdf', 3)])
+    const doc = store.active!
+    await store.loadImages(doc.id)
+
+    await store.moveImage('p1#0', { x: 0.5, y: 0.6, width: 0.2, height: 0.15 })
+    await flushPreviews()
+    expect(doc.imagePlacements[1]?.[0]).toMatchObject({ id: 'p1#0', x: 0.5, y: 0.6, width: 0.2 })
     expect(doc.canUndo).toBe(true)
   })
 

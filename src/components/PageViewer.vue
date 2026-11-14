@@ -157,6 +157,23 @@ function selectPlacement(id: string) {
   selectedAnnotation.value = null
 }
 
+/** A picture of the selected image, for where it's dragged to (see ImageLayer). */
+const placementPicture = ref<string | null>(null)
+watch(
+  () => placement.value?.image,
+  async (key) => {
+    placementPicture.value = null
+    if (!key) return
+    try {
+      const url = await store.imageThumbnail(key)
+      if (placement.value?.image === key) placementPicture.value = url
+    } catch {
+      /* no picture: the drag shows the image's shape instead */
+    }
+  },
+  { immediate: true },
+)
+
 function removeSelectedImage() {
   if (placement.value && !placement.value.removed) store.removeImages([placement.value.id])
 }
@@ -258,6 +275,20 @@ async function show(id: PageId) {
     if (neighbour && isCurrent()) void store.renderPage(neighbour.id, scale).catch(() => {})
   }
 }
+
+// The document changed under the page on show (an image moved here, an
+// undo...): drawn again, the old picture kept until the new one is ready.
+watch(
+  () => props.doc.baselineVersion,
+  () => {
+    const token = ++request
+    render(props.pageId, shown.value?.placeholder === false ? neededScale.value : dpr, () => token === request).catch(
+      (err) => {
+        if (token === request) error.value = err instanceof Error ? err.message : String(err)
+      },
+    )
+  },
+)
 
 watch(
   () => props.pageId,
@@ -568,7 +599,12 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                     :placements="pagePlacements"
                     :interactive="showingImages"
                     :selected-id="selectedPlacement"
+                    :rotation="rotation"
+                    :page-width="shown.width * zoom"
+                    :page-height="shown.height * zoom"
+                    :ghost-url="placementPicture"
                     @select="selectPlacement"
+                    @move="(id, box) => store.moveImage(id, box)"
                   />
                 </div>
               </div>
@@ -738,6 +774,19 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                 size: formatBytes(placementImage.bytes),
                 pages: pagesLabel(placementImage.pages),
               })
+            }}
+          </span>
+          <span
+            v-if="!placement.removed"
+            class="basis-full text-xs text-white/70"
+            :class="{ 'text-warning': placement.clipped && !placement.sharedPages.length }"
+          >
+            {{
+              placement.sharedPages.length
+                ? t('viewer.pageViewer.pdfImage.cannotMove')
+                : placement.clipped
+                  ? t('viewer.pageViewer.pdfImage.clipped')
+                  : t('viewer.pageViewer.pdfImage.moveHint')
             }}
           </span>
           <template v-if="placement.removed">

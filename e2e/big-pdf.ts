@@ -31,3 +31,12 @@ export async function outlinedPdf(): Promise<Buffer> {
   ])
   return Buffer.from(outlined)
 }
+
+/** Where the images of a PDF are drawn (`list_images`), read with the same wasm. */
+export async function imagePlacements(
+  bytes: Uint8Array,
+): Promise<{ id: string; x: number; y: number; width: number; height: number }[]> {
+  const wasm = await import(new URL('pdfrs.js', pkg).href)
+  await wasm.default({ module_or_path: await readFile(fileURLToPath(new URL('pdfrs_bg.wasm', pkg))) })
+  return (await wasm.list_images(new Uint8Array(bytes))).placements
+}

@@ -66,6 +66,9 @@ export default {
       removeHere: 'Quitar de esta página',
       removeEverywhere: 'Quitar de todas ({pages})',
       download: 'Descargar',
+      moveHint: 'Arrástrala para moverla; la esquina la redimensiona, los lados la estiran. Esc cancela.',
+      cannotMove: 'Forma parte de un contenido que también dibujan otras páginas: no se puede mover desde aquí.',
+      clipped: 'Se puede mover, pero podría quedar cortada: donde se dibuja hay un recorte.',
     },
     textEdit: {
       panel: 'Editar texto',
@@ -99,6 +102,10 @@ export default {
   imageLayer: {
     removed: 'Imagen por quitar',
     onPage: 'Imagen en la página',
+    moveTitle: 'Arrastra para moverla',
+    resize: 'Redimensionar la imagen, con sus proporciones',
+    stretchX: 'Ensanchar o estrechar la imagen',
+    stretchY: 'Alargar o acortar la imagen',
   },
   signaturePanel: {
     title: 'Firmas',
