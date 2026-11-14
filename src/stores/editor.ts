@@ -16,6 +16,8 @@ import {
   type OutlineEntry,
   type PageAnnotation,
   type PdfMetadata,
+  type PdfPermissions,
+  type ProtectOptions,
   type PageId,
   type PageInfo,
   type PdfImageInfo,
@@ -229,6 +231,12 @@ export interface DocumentState {
    * until something asks (`loadOutline`), then kept current.
    */
   outline: OutlineEntry[] | null
+  /**
+   * The restrictions of the file as it was opened (or, for an unlocked
+   * copy, of the locked original): undefined until something asks
+   * (`loadPermissions`), null when it had none (not encrypted).
+   */
+  permissions: PdfPermissions | null | undefined
 }
 
 /** An image of the document, with where it's drawn. */
@@ -453,6 +461,18 @@ export const useEditorStore = defineStore('editor', () => {
     try {
       const outline = await inner.doc.getOutline()
       if (JSON.stringify(outline) !== JSON.stringify(state.outline)) state.outline = outline
+    } catch (err) {
+      report(err)
+    }
+  }
+
+  /** Makes the restrictions of a document's file available (`permissions`), reading them the first time. */
+  async function loadPermissions(id: DocumentId) {
+    const state = stateOf(id)
+    const inner = internals.get(id)
+    if (!state || !inner || state.permissions !== undefined) return
+    try {
+      state.permissions = await inner.doc.getOriginalPermissions()
     } catch (err) {
       report(err)
     }
@@ -734,6 +754,7 @@ export const useEditorStore = defineStore('editor', () => {
       history: [],
       photoPages: {},
       outline: null,
+      permissions: undefined,
     })
     sync(id)
   }
@@ -1262,9 +1283,14 @@ export const useEditorStore = defineStore('editor', () => {
    * A copy of the active document, as it looks now, that needs `password`
    * to be opened (AES-256). Opened, locked; the original stays as it is.
    */
-  const protect = (password: string) =>
+  /**
+   * A protected copy of the active document. `options.permissions`
+   * restricts what the password allows; restrictions need
+   * `options.ownerPassword`, a different one that lifts them.
+   */
+  const protect = (password: string, options: ProtectOptions = {}) =>
     runBusy(async (_doc, state) => {
-      const id = await editor.protectDocument(state.id, password)
+      const id = await editor.protectDocument(state.id, password, options)
       const name = t('store.names.protected', { base: baseName(state.name) })
       register(id, name)
       activeTool.value = null
@@ -1569,6 +1595,7 @@ export const useEditorStore = defineStore('editor', () => {
     imagePage,
     imageMargin,
     loadOutline,
+    loadPermissions,
     revealedPage,
     revealPage,
     setPhotoPage,

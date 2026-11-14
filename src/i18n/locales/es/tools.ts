@@ -240,12 +240,38 @@ export default {
     show: 'Mostrar la contraseña',
     note: 'Se incluyen los cambios aún no aplicados. Guarda bien la contraseña: si la pierdes, la copia protegida ya no se podrá abrir.',
     submit: 'Crear copia protegida',
+    allowed: 'Quien abra el archivo con la contraseña puede',
+    permissions: {
+      print: 'Imprimir',
+      printHighQuality: 'Imprimir en alta calidad',
+      copy: 'Copiar texto e imágenes',
+      modify: 'Modificar el contenido',
+      annotate: 'Añadir comentarios y rellenar formularios',
+      fillForms: 'Rellenar formularios',
+      assemble: 'Añadir, girar y eliminar páginas',
+    },
+    denied: {
+      print: 'la impresión',
+      printHighQuality: 'la impresión en alta calidad',
+      copy: 'la copia de texto e imágenes',
+      modify: 'los cambios en el contenido',
+      annotate: 'los comentarios',
+      fillForms: 'el relleno de formularios',
+      assemble: 'añadir, girar y eliminar páginas',
+    },
+    ownerPassword: 'Contraseña para quitar las restricciones',
+    ownerHint: 'Distinta de la de apertura: quien la conoce abre el archivo sin restricciones.',
+    ownerSame: 'Debe ser distinta de la contraseña de apertura; si no, las restricciones no sirven.',
+    restrictionsNote: 'Las restricciones son una petición a los lectores de PDF: casi todos la respetan, pero no impiden de verdad imprimir o copiar.',
+    current: 'Este archivo restringe {list}.',
+    currentAdvice: 'Los cambios hechos aquí quitan las restricciones: las casillas de abajo parten de ellas, para volver a ponerlas en la copia protegida.',
   },
 
   properties: {
     intro:
       'La información que el PDF lleva consigo y que los lectores muestran en las propiedades del archivo. Se escribe con «Aplicar cambios» o al descargar, y se deshace como los demás cambios.',
     noDocument: 'Abre un documento para ver sus propiedades.',
+    permissionsAdvice: 'Los cambios hechos aquí quitan las restricciones; para volver a ponerlas, crea una copia con «Proteger».',
     loading: 'Leyendo las propiedades…',
     fields: {
       title: 'Título',

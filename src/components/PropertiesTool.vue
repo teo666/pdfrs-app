@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { MetadataField } from 'pdfrs-editor'
 
 import AppButton from './AppButton.vue'
+import PermissionsNote from './PermissionsNote.vue'
 import { formatPdfDate, fromDatetimeLocal, parsePdfDate, toDatetimeLocal } from '@/lib/pdfDate'
 import { useEditorStore } from '@/stores/editor'
 
@@ -21,7 +22,9 @@ const doc = computed(() => store.active)
 watch(
   () => store.active?.id,
   (id) => {
-    if (id !== undefined) void store.loadMetadata(id)
+    if (id === undefined) return
+    void store.loadMetadata(id)
+    void store.loadPermissions(id)
   },
   { immediate: true },
 )
@@ -111,6 +114,8 @@ const blurOnEnter = (event: KeyboardEvent) => (event.target as HTMLInputElement)
   </p>
 
   <template v-else>
+    <PermissionsNote :permissions="doc.permissions" :advice="t('tools.properties.permissionsAdvice')" />
+
     <label v-for="item in textFields" :key="item.field" class="flex flex-col gap-1">
       <span class="flex items-center gap-1.5 text-xs font-semibold text-fg-muted">
         {{ item.label }}

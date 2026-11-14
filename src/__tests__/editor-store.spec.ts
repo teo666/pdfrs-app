@@ -12,6 +12,16 @@ const imageOptions: unknown[] = []
 const mergeOptions: unknown[] = []
 
 vi.mock('pdfrs-editor', () => {
+  // The permissions of an encrypted file with no restrictions.
+  const EVERYTHING_ALLOWED = {
+    print: true,
+    printHighQuality: true,
+    copy: true,
+    modify: true,
+    annotate: true,
+    fillForms: true,
+    assemble: true,
+  }
   type Page = { id: number; pendingRotation: number; markedForDeletion: boolean }
   type Meta = {
     base: Record<string, string>
@@ -32,6 +42,11 @@ vi.mock('pdfrs-editor', () => {
     pngs = new Map<string, Uint8Array>()
     /** Set on a password-protected document: the password, and the pages it hides. */
     lock: { password: string; pages: number } | null = null
+    /** What `getOriginalPermissions` answers: null for a file that was never encrypted. */
+    permissions: Record<string, boolean> | null = null
+    async getOriginalPermissions() {
+      return this.permissions
+    }
 
     constructor(bytes: Uint8Array, count: number) {
       this.bytes = bytes
@@ -401,12 +416,17 @@ vi.mock('pdfrs-editor', () => {
       this.docs.set(id, doc)
       return id
     }
-    async protectDocument(id: number, password: string) {
+    async protectDocument(
+      id: number,
+      password: string,
+      options: { ownerPassword?: string; permissions?: Record<string, boolean> } = {},
+    ) {
       const source = this.getDocument(id)
       const pages = source.pageList.filter((p) => !p.markedForDeletion).length
       const newId = this.nextId++
       const doc = new FakeDocument(new Uint8Array([200]), 0)
       doc.lock = { password, pages }
+      doc.permissions = { ...EVERYTHING_ALLOWED, ...options.permissions }
       this.docs.set(newId, doc)
       return newId
     }
@@ -424,7 +444,9 @@ vi.mock('pdfrs-editor', () => {
       const lock = this.getDocument(id).lock
       if (!lock || lock.password !== password) throw new WrongPasswordError()
       const newId = this.nextId++
-      this.docs.set(newId, new FakeDocument(new Uint8Array([201]), lock.pages))
+      const copy = new FakeDocument(new Uint8Array([201]), lock.pages)
+      copy.permissions = this.getDocument(id).permissions
+      this.docs.set(newId, copy)
       return newId
     }
     async addImage(_bytes: Uint8Array, options?: { pageSize: string; margin?: number }) {
@@ -517,6 +539,7 @@ vi.mock('pdfrs-editor/operations', () => ({
 }))
 
 import { setLocale } from '@/i18n'
+import { ALL_ALLOWED } from '@/lib/permissions'
 import { useEditorStore, type DocumentState } from '@/stores/editor'
 
 /** A file the store will take for a PDF; byte 10 tells the fake how many pages it has. */
@@ -1148,6 +1171,21 @@ describe('editor store', () => {
     expect(store.notice?.message).toContain('(−60%)')
     store.notice?.action?.run()
     expect(store.active?.id).toBe(original.id)
+  })
+
+  it('protects a copy with restrictions, which the unlocked copy then reports', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('contratto.pdf', 4)])
+    const original = store.active!
+    await store.loadPermissions(original.id)
+    expect(original.permissions).toBeNull()
+
+    await store.protect('segreta', { ownerPassword: 'padrone', permissions: { print: false } })
+    expect(await store.unlock('segreta')).toBe(true)
+    const unlocked = store.active!
+    expect(unlocked.permissions).toBeUndefined() // not read until asked
+    await store.loadPermissions(unlocked.id)
+    expect(unlocked.permissions).toEqual({ ...ALL_ALLOWED, print: false })
   })
 
   it('protects a copy of a document, listed locked beside the original', async () => {

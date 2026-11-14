@@ -250,12 +250,38 @@ export default {
     show: 'Passwort anzeigen',
     note: 'Noch nicht angewendete Änderungen sind enthalten. Bewahr das Passwort gut auf: wenn du es verlierst, lässt sich die geschützte Kopie nicht mehr öffnen.',
     submit: 'Geschützte Kopie erstellen',
+    allowed: 'Wer die Datei mit dem Passwort öffnet, darf',
+    permissions: {
+      print: 'Drucken',
+      printHighQuality: 'In hoher Qualität drucken',
+      copy: 'Text und Bilder kopieren',
+      modify: 'Inhalt ändern',
+      annotate: 'Kommentieren und Formulare ausfüllen',
+      fillForms: 'Formulare ausfüllen',
+      assemble: 'Seiten hinzufügen, drehen und löschen',
+    },
+    denied: {
+      print: 'das Drucken',
+      printHighQuality: 'das Drucken in hoher Qualität',
+      copy: 'das Kopieren von Text und Bildern',
+      modify: 'Änderungen am Inhalt',
+      annotate: 'Kommentare',
+      fillForms: 'das Ausfüllen von Formularen',
+      assemble: 'das Hinzufügen, Drehen und Löschen von Seiten',
+    },
+    ownerPassword: 'Passwort zum Aufheben der Einschränkungen',
+    ownerHint: 'Anders als das Öffnungspasswort: Wer es kennt, öffnet die Datei ohne Einschränkungen.',
+    ownerSame: 'Es muss sich vom Öffnungspasswort unterscheiden, sonst gelten die Einschränkungen nicht.',
+    restrictionsNote: 'Einschränkungen sind eine Bitte an PDF-Programme: Fast alle halten sich daran, aber sie verhindern Drucken oder Kopieren nicht wirklich.',
+    current: 'Diese Datei schränkt {list} ein.',
+    currentAdvice: 'Änderungen hier heben die Einschränkungen auf: Die Kästchen unten übernehmen sie, um sie in der geschützten Kopie wieder zu setzen.',
   },
 
   properties: {
     intro:
       'Die Informationen, die das PDF mit sich trägt und die PDF-Reader in den Dateieigenschaften anzeigen. Sie werden mit „Änderungen anwenden“ oder beim Herunterladen geschrieben und lassen sich wie die anderen Änderungen rückgängig machen.',
     noDocument: 'Öffne ein Dokument, um seine Eigenschaften zu sehen.',
+    permissionsAdvice: 'Änderungen hier heben die Einschränkungen auf; um sie wieder zu setzen, erstelle eine Kopie mit „Schützen“.',
     loading: 'Eigenschaften werden gelesen…',
     fields: {
       title: 'Titel',

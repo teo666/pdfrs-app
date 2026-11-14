@@ -1085,6 +1085,17 @@ test('protects a copy with a password, opens a protected PDF and unlocks it', as
   await expect(panel.getByRole('alert')).toHaveText('Le due password non coincidono.')
   await expect(create).toBeDisabled()
   await panel.getByLabel('Ripeti la password').fill('segreta')
+
+  // No printing: a restriction, which needs a second password, a different one.
+  await expect(panel.getByLabel('Password per togliere le limitazioni')).toBeHidden()
+  await panel.getByLabel('Stampare', { exact: true }).uncheck()
+  await expect(panel.getByLabel('Stampare in alta qualità')).toBeDisabled()
+  const owner = panel.getByLabel('Password per togliere le limitazioni')
+  await expect(create).toBeDisabled()
+  await owner.fill('segreta')
+  await expect(panel.getByRole('alert')).toContainText('Deve essere diversa')
+  await expect(create).toBeDisabled()
+  await owner.fill('padrone')
   await create.click()
 
   // The copy: listed with a lock, no pages, downloadable as it is - encrypted.
@@ -1121,6 +1132,16 @@ test('protects a copy with a password, opens a protected PDF and unlocks it', as
   await expect(page.getByRole('heading', { name: 'riservato (sbloccato).pdf' })).toBeVisible()
   await expectAllThumbnails(page, 10)
   await expect(sidebar.getByRole('img', { name: 'Protetto da password' })).toHaveCount(2)
+
+  // The unlocked copy tells what the file held back, and protecting it again starts from that.
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Proteggi' }).click()
+  await expect(panel.getByRole('note')).toContainText('Questo file limita la stampa.')
+  await expect(panel.getByLabel('Stampare', { exact: true })).not.toBeChecked()
+  await expect(panel.getByLabel('Copiare testo e immagini')).toBeChecked()
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Proprietà' }).click()
+  await expect(
+    page.getByRole('complementary', { name: 'Proprietà del documento' }).getByRole('note'),
+  ).toContainText('Questo file limita la stampa.')
 })
 
 test('edits the document properties, written into the PDF with the download', async ({ page }) => {

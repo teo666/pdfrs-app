@@ -230,12 +230,38 @@ export default {
     show: 'Show the password',
     note: 'Changes not yet applied are included. Keep the password safe: if you lose it, the protected copy can no longer be opened.',
     submit: 'Create protected copy',
+    allowed: 'Whoever opens the file with the password can',
+    permissions: {
+      print: 'Print',
+      printHighQuality: 'Print at high quality',
+      copy: 'Copy text and images',
+      modify: 'Change the content',
+      annotate: 'Add comments and fill in forms',
+      fillForms: 'Fill in forms',
+      assemble: 'Add, rotate and delete pages',
+    },
+    denied: {
+      print: 'printing',
+      printHighQuality: 'high-quality printing',
+      copy: 'copying text and images',
+      modify: 'changes to the content',
+      annotate: 'comments',
+      fillForms: 'filling in forms',
+      assemble: 'adding, rotating and deleting pages',
+    },
+    ownerPassword: 'Password to lift the restrictions',
+    ownerHint: 'Different from the one that opens it: whoever knows it opens the file with no restrictions.',
+    ownerSame: 'It must differ from the opening password, or the restrictions mean nothing.',
+    restrictionsNote: 'Restrictions are a request to PDF readers: almost all of them honour it, but they don’t really stop printing or copying.',
+    current: 'This file restricts {list}.',
+    currentAdvice: 'Edits made here remove the restrictions: the boxes below start from them, to put them back in the protected copy.',
   },
 
   properties: {
     intro:
       'The information the PDF carries with it, which readers show in the file’s properties. It’s written with “Apply changes” or by downloading, and can be undone like any other change.',
     noDocument: 'Open a document to see its properties.',
+    permissionsAdvice: 'Edits made here remove the restrictions; to put them back, make a copy with “Protect”.',
     loading: 'Reading the properties…',
     fields: {
       title: 'Title',
