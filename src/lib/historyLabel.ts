@@ -45,6 +45,7 @@ export function historyLabel(entry: { label: string; action?: HistoryAction }): 
   switch (type) {
     case 'open':
     case 'insertPhoto':
+    case 'dropRestrictions':
     case 'encrypt':
     case 'decrypt':
       return t(`history.${type}`)

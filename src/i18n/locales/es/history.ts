@@ -20,6 +20,7 @@ export default {
   insertPhoto: 'Insertar foto',
   watermark: 'Marca de agua en la página {page} | Marca de agua en {count} páginas',
   blankPage: 'Insertar página en blanco en la posición {position}',
+  dropRestrictions: 'Quitar las restricciones del archivo',
   moveImage: 'Mover imagen (página {page})',
   resizeImage: 'Redimensionar imagen (página {page})',
   outlineAdd: 'Añadir «{title}» al índice',

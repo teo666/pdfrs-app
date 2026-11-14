@@ -281,6 +281,8 @@ export default {
     restrictionsNote: 'Le limitazioni sono una richiesta ai lettori PDF: quasi tutti la rispettano, ma non impediscono davvero di stampare o copiare.',
     current: 'Questo file limita {list}.',
     currentAdvice: 'Le modifiche fatte qui tolgono le limitazioni: le caselle qui sotto partono da queste, per rimetterle nella copia protetta.',
+    keptAdvice: 'Le modifiche fatte qui le mantengono, con la stessa password per toglierle.',
+    dropRestrictions: 'Togli le limitazioni',
   },
 
   properties: {

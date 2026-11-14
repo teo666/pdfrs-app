@@ -19,6 +19,7 @@ export default {
   insertPhoto: 'Inserisci foto',
   watermark: 'Filigrana sulla pagina {page} | Filigrana su {count} pagine',
   blankPage: 'Inserisci pagina bianca in posizione {position}',
+  dropRestrictions: 'Togli le limitazioni del file',
   moveImage: 'Sposta immagine (pagina {page})',
   resizeImage: 'Ridimensiona immagine (pagina {page})',
   outlineAdd: 'Aggiungi «{title}» all’indice',

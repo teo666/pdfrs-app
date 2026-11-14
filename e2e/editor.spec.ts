@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
-import { bigPdf, imagePlacements, outlinedPdf } from './big-pdf'
+import { bigPdf, imagePlacements, outlinedPdf, permissionsOf, restrictedPdf } from './big-pdf'
 
 const fixture = (name: string) => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
 
@@ -1183,6 +1183,33 @@ test('protects a copy with a password, opens a protected PDF and unlocks it', as
   await expect(
     page.getByRole('complementary', { name: 'Proprietà del documento' }).getByRole('note'),
   ).toContainText('Questo file limita la stampa.')
+})
+
+test('a file with restrictions keeps them through edits, until they are removed', async ({ page }) => {
+  await page.goto('/')
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Apri file' }).first().click()
+  await (await chooserPromise).setFiles({ name: 'limitato.pdf', mimeType: 'application/pdf', buffer: await restrictedPdf() })
+  await expectAllThumbnails(page, 4)
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Proteggi' }).click()
+  const note = page.getByRole('complementary', { name: 'Proteggi con password' }).getByRole('note')
+  await expect(note).toContainText('Questo file limita la stampa.')
+  await expect(note).toContainText('le mantengono')
+
+  // An edit, applied: the downloaded file still has them.
+  const first = cards(page).nth(0)
+  await first.hover()
+  await first.getByRole('button', { name: 'Ruota a destra' }).click()
+  await page.getByRole('button', { name: 'Applica modifiche' }).click()
+  await expect(page.getByText('modifiche non applicate')).toBeHidden()
+  expect((await permissionsOf(await downloadedPdf(page)))?.print).toBe(false)
+
+  // Removed: pending, then gone from the download.
+  await note.getByRole('button', { name: 'Togli le limitazioni' }).click()
+  await expect(page.getByText('modifiche non applicate')).toBeVisible()
+  await expect(note).not.toContainText('le mantengono')
+  expect(await permissionsOf(await downloadedPdf(page))).toBeNull()
 })
 
 test('edits the document properties, written into the PDF with the download', async ({ page }) => {

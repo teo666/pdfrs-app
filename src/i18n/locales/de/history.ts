@@ -20,6 +20,7 @@ export default {
   insertPhoto: 'Foto einfügen',
   watermark: 'Wasserzeichen auf Seite {page} | Wasserzeichen auf {count} Seiten',
   blankPage: 'Leere Seite an Position {position} einfügen',
+  dropRestrictions: 'Einschränkungen der Datei aufheben',
   moveImage: 'Bild verschieben (Seite {page})',
   resizeImage: 'Bildgröße ändern (Seite {page})',
   outlineAdd: '„{title}“ zum Inhaltsverzeichnis hinzufügen',
