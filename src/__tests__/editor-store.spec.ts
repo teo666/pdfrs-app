@@ -348,6 +348,18 @@ vi.mock('pdfrs-editor', () => {
       this.bytes = new Uint8Array([this.pageList.length])
       return pages.map((p) => p.id)
     }
+    async insertBlankPage(at?: number) {
+      const [id] = await this.insertPages(new Uint8Array([1]), at)
+      return id
+    }
+    /** The watermarks applied: their options, and the pages. */
+    watermarks: { options: unknown; pages: number[] }[] = []
+    async addWatermark(options: unknown, pages: number[]) {
+      this.save()
+      this.watermarks.push({ options, pages })
+      // A new baseline, as the real one has.
+      this.bytes = new Uint8Array([this.bytes[0] ?? 0, 99])
+    }
     undo() {
       const prev = this.undoStack.pop()
       if (!prev) return false
@@ -861,6 +873,31 @@ describe('editor store', () => {
     expect(store.notice?.message).toBe('Copiata 1 pagina in «b.pdf»')
     store.notice?.action?.run()
     expect(store.active).toStrictEqual(b)
+  })
+
+  it('watermarks the selected pages, or every page shown, and inserts blank pages', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 4)])
+    const doc = store.active!
+
+    // No selection: the pages shown, the one marked for deletion left out.
+    store.toggleDelete(3)
+    await store.addWatermark({ text: 'BOZZA' })
+    expect(store.notice?.message).toBe('Filigrana aggiunta a 3 pagine')
+    store.selectPage(2, 'only')
+    await store.addWatermark({ text: 'RISERVATO', opacity: 0.5 })
+    expect(store.notice?.message).toBe('Filigrana aggiunta a 1 pagina')
+    // A new baseline: the selection goes, as after any change of it.
+    expect(doc.selection.size).toBe(0)
+
+    // After the selected page; with no selection, at the end.
+    store.selectPage(2, 'only')
+    await store.insertBlankPage()
+    expect(doc.pages.map((p) => p.id)).toEqual([1, 2, 5, 3, 4])
+    expect(store.notice?.message).toBe('Pagina bianca inserita in posizione 3')
+    store.clearSelection()
+    await store.insertBlankPage()
+    expect(doc.pages.map((p) => p.id)).toEqual([1, 2, 5, 3, 4, 6])
   })
 
   it('inserts file pages after the selection, or at the end', async () => {

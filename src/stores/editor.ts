@@ -18,6 +18,7 @@ import {
   type PdfMetadata,
   type PdfPermissions,
   type ProtectOptions,
+  type WatermarkOptions,
   type PageId,
   type PageInfo,
   type PdfImageInfo,
@@ -121,6 +122,7 @@ export type ToolId =
   | 'images'
   | 'history'
   | 'outline'
+  | 'watermark'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -1042,17 +1044,46 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  /** Where an insertion goes: after the last selected page, or at the end. */
+  function insertionIndex(state: DocumentState): number {
+    const selected = selectedPages()
+    return selected.length > 0
+      ? state.pages.findIndex((p) => p.id === selected[selected.length - 1]) + 1
+      : state.pages.length
+  }
+
+  /**
+   * An empty page, the size of the page before it as shown: after the last
+   * selected page, or at the end. One undoable step.
+   */
+  const insertBlankPage = () =>
+    runBusy(async (doc, state) => {
+      const at = insertionIndex(state)
+      await doc.insertBlankPage(at)
+      notify(t('store.notices.blankPage', { position: at + 1 }))
+    })
+
+  /**
+   * A text watermark on the selected pages, or on every page shown (those
+   * marked for deletion left out). Applied to the document right away, as
+   * one undoable step: the thumbnails show it as it comes out.
+   */
+  const addWatermark = (options: WatermarkOptions) =>
+    runBusy(async (doc, state) => {
+      const selected = selectedPages()
+      const pages =
+        selected.length > 0 ? selected : state.pages.filter((p) => !p.markedForDeletion).map((p) => p.id)
+      await doc.addWatermark(options, pages)
+      notify(t('store.notices.watermarked', pages.length))
+    })
+
   /**
    * Adds the pages of PDF/JPEG files to the active document: after the last
    * selected page if there's a selection, otherwise at the end.
    */
   const insertFiles = (files: File[]) =>
     runBusy(async (doc, state) => {
-      const selected = selectedPages()
-      let at =
-        selected.length > 0
-          ? state.pages.findIndex((p) => p.id === selected[selected.length - 1]) + 1
-          : state.pages.length
+      let at = insertionIndex(state)
       let added = 0
       for (const file of files) {
         const bytes = await readFile(file)
@@ -1610,6 +1641,8 @@ export const useEditorStore = defineStore('editor', () => {
     clearMergePicks,
     mergePicked,
     insertFiles,
+    insertBlankPage,
+    addWatermark,
     transferPages,
     protect,
     unlock,

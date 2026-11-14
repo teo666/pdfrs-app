@@ -31,8 +31,8 @@ defineExpose({ scope })
         <strong>{{ scope.text }}</strong>
       </template>
     </I18nT>
-    <!-- The space before the hint is inside the span: the line break above renders as nothing. -->
-    <span v-if="!store.active?.selection.size" class="text-fg-muted">
+    <!-- The line break above renders as nothing: the gap is a margin. -->
+    <span v-if="!store.active?.selection.size" class="ml-1 text-fg-muted">
       {{ t('tools.scope.hint') }}
     </span>
   </p>

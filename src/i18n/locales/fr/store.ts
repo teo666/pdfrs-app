@@ -21,6 +21,8 @@ export default {
   notices: {
     merged: '{n} documents fusionnés : les originaux restent ouverts',
     inserted: '1 page insérée | {n} pages insérées',
+    watermarked: 'Filigrane ajouté à 1 page | Filigrane ajouté à {n} pages',
+    blankPage: 'Page blanche insérée en position {position}',
     moved: '1 page déplacée dans « {target} » | {n} pages déplacées dans « {target} »',
     copied: '1 page copiée dans « {target} » | {n} pages copiées dans « {target} »',
     created: '« {name} » créé : l’original reste inchangé',

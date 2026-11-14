@@ -21,6 +21,8 @@ export default {
   notices: {
     merged: 'Se han unido {n} documentos: los originales siguen abiertos',
     inserted: 'Se ha insertado 1 página | Se han insertado {n} páginas',
+    watermarked: 'Marca de agua añadida a 1 página | Marca de agua añadida a {n} páginas',
+    blankPage: 'Página en blanco insertada en la posición {position}',
     moved: 'Se ha movido 1 página a «{target}» | Se han movido {n} páginas a «{target}»',
     copied: 'Se ha copiado 1 página a «{target}» | Se han copiado {n} páginas a «{target}»',
     created: 'Se ha creado «{name}»: el original queda como estaba',

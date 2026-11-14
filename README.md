@@ -45,12 +45,13 @@
 - Selezione con clic, ⇧+clic e ⌘/Ctrl+A, poi operazioni su tutto il gruppo.
 - Estrae pagine in un nuovo documento.
 - Sposta o copia pagine tra documenti trascinandole sul loro nome.
-- Inserisce le pagine di un altro file.
+- Inserisce le pagine di un altro file, o una pagina bianca della misura di quella accanto.
 - Una foto diventa una pagina A4, Letter o delle sue misure, con il margine che scegli.
 
 **Strumenti**
 - **Firma**: disegnata con mouse o dito, oppure caricata da un'immagine (lo sfondo bianco diventa trasparente). Si sposta, si ridimensiona, si ruota, e si può mettere uguale su tutte le pagine.
 - **Immagine e testo** sopra le pagine. Il testo è vero, selezionabile e ricercabile nel PDF, scritto con i font standard.
+- **Filigrana**: «BOZZA», «RISERVATO» o quello che vuoi su tutte le pagine o su quelle scelte, adattata alla pagina o della dimensione che vuoi, inclinata, trasparente, sopra o sotto il contenuto.
 - **Unisci** più documenti; **dividi** ogni N pagine o per intervalli.
 - **N per foglio** e **libretto** da stampare fronte e retro.
 - **Indice** del PDF: lo vedi, lo modifichi, e non si perde quando sposti le pagine.
@@ -84,7 +85,7 @@ Il modulo wasm viene compilato una volta sola e condiviso da tutti i worker.
 | --- | --- |
 | `src/stores/editor.ts` | Store Pinia. Tiene una copia reattiva dello stato del modello, che non è reattivo, e raggruppa per frame le richieste di miniature |
 | `src/views/EditorView.vue` | Layout, scorciatoie da tastiera, file trascinati sulla finestra |
-| `src/components/ToolRail.vue`, `ToolPanel.vue` | Colonna degli strumenti a destra e il loro pannello (`SignTool`, `ImageTool`, `TextTool`, `MergeTool`, `SplitTool`, `NupTool`, `BookletTool`, `OutlineTool`, `ImagesTool`, `ProtectTool`, `PropertiesTool`, `HistoryTool`) |
+| `src/components/ToolRail.vue`, `ToolPanel.vue` | Colonna degli strumenti a destra e il loro pannello (`SignTool`, `ImageTool`, `TextTool`, `WatermarkTool`, `MergeTool`, `SplitTool`, `NupTool`, `BookletTool`, `OutlineTool`, `ImagesTool`, `ProtectTool`, `PropertiesTool`, `HistoryTool`) |
 | `src/components/` | `PageGrid` (griglia e riordino; il commento in testa spiega i vincoli di prestazioni), `PageCard`, `PageViewer`, `DocumentList`, `DocumentToolbar`, `EmptyState`… |
 | `src/components/TextStamp.vue` | Il testo disegnato in SVG con le stesse metriche del motore, così l'anteprima corrisponde al PDF |
 | `src/lib/` | Funzioni pure: riconoscimento dei file dai primi byte, divisione (`split.ts`), impaginazione (`imposition.ts`), date PDF, etichette della cronologia |

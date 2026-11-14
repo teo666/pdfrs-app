@@ -115,6 +115,16 @@ const summary = computed(() => {
         {{ t('app.toolbar.insert') }}
       </AppButton>
       <AppButton
+        icon="page-plus"
+        :title="
+          doc.selection.size ? t('app.toolbar.blankPageAfterSelection') : t('app.toolbar.blankPageAtEnd')
+        "
+        :disabled="doc.busy"
+        @click="store.insertBlankPage()"
+      >
+        {{ t('app.toolbar.blankPage') }}
+      </AppButton>
+      <AppButton
         icon="check"
         :title="t('app.toolbar.applyTitle')"
         :disabled="!doc.hasPendingChanges || doc.busy"

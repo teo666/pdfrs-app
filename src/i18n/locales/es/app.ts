@@ -41,6 +41,9 @@ export default {
     redo: 'Rehacer',
     redoTitle: 'Rehacer ({shortcut})',
     insert: 'Insertar páginas',
+    blankPage: 'Página en blanco',
+    blankPageAfterSelection: 'Insertar una página en blanco después de las seleccionadas, del tamaño de la anterior',
+    blankPageAtEnd: 'Insertar una página en blanco al final, del tamaño de la última',
     insertAfterSelection:
       'Añade las páginas de un PDF o JPEG después de la última página seleccionada',
     insertAtEnd: 'Añade las páginas de un PDF o JPEG al final del documento',
