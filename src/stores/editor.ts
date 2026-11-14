@@ -480,6 +480,35 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  /**
+   * Edits the active document's outline (see `PdfDocument.addOutlineEntry`
+   * and the others): one undoable pending step, like the page edits.
+   * Resolves to what the edit returns.
+   */
+  async function editOutline<T>(fn: (doc: PdfDocument) => Promise<T>): Promise<T | undefined> {
+    const id = activeId.value
+    let result: T | undefined
+    await runBusy(async (doc) => {
+      result = await fn(doc)
+    })
+    // Read again now, so the caller finds the outline as edited.
+    if (id !== null) await refreshOutline(id)
+    return result
+  }
+
+  /** Opens or closes an outline branch: kept, and written with the next Applica modifiche, but not an edit of its own. */
+  async function setOutlineOpen(index: number, open: boolean) {
+    const state = active.value
+    const inner = state ? internals.get(state.id) : undefined
+    if (!state || !inner) return
+    try {
+      await inner.doc.setOutlineOpen(index, open)
+    } catch (err) {
+      report(err)
+    }
+    await refreshOutline(state.id)
+  }
+
   /** Makes a document's outline available (`outline`), reading it the first time. */
   async function loadOutline(id: DocumentId) {
     if (stateOf(id)?.outline === null) await refreshOutline(id)
@@ -1626,6 +1655,8 @@ export const useEditorStore = defineStore('editor', () => {
     imagePage,
     imageMargin,
     loadOutline,
+    editOutline,
+    setOutlineOpen,
     loadPermissions,
     revealedPage,
     revealPage,

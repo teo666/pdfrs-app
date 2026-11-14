@@ -96,13 +96,26 @@ vi.mock('pdfrs-editor', () => {
       })),
     }
     /** Byte 12 set (see outlinedPdfFile()): a document with a small outline. */
+    outlineList: { title: string; level: number; page: number; open: boolean }[] | null = null
+    private outline() {
+      this.outlineList ??=
+        this.bytes[12] === 1
+          ? [
+              { title: 'Uno', level: 1, page: 1, open: true },
+              { title: 'Dentro', level: 2, page: 3, open: true },
+            ]
+          : []
+      return this.outlineList
+    }
     async getOutline() {
-      return this.bytes[12] === 1
-        ? [
-            { title: 'Uno', level: 1, page: 1, open: true },
-            { title: 'Dentro', level: 2, page: 3, open: true },
-          ]
-        : []
+      return structuredClone(this.outline())
+    }
+    async renameOutlineEntry(index: number, title: string) {
+      this.save()
+      this.outline()[index]!.title = title
+    }
+    async setOutlineOpen(index: number, open: boolean) {
+      this.outline()[index]!.open = open
     }
     async getImages() {
       return structuredClone(this.imageReport)
@@ -1434,6 +1447,21 @@ describe('editor store', () => {
     store.undo()
     store.undo()
     expect(doc.photoPages).toEqual({ [photo]: { page: 'a4', marginMm: 10 } })
+  })
+
+  it('edits the outline, and opens and closes its branches', async () => {
+    const store = useEditorStore()
+    await store.openFiles([outlinedPdfFile('manuale.pdf', 4)])
+    const manual = store.active!
+    await store.loadOutline(manual.id)
+
+    await store.editOutline((doc) => doc.renameOutlineEntry(0, 'Introduzione'))
+    // Read again before the edit resolves: the panel finds it at once.
+    expect(manual.outline?.map((entry) => entry.title)).toEqual(['Introduzione', 'Dentro'])
+    expect(manual.canUndo).toBe(true)
+
+    await store.setOutlineOpen(0, false)
+    expect(manual.outline?.[0]?.open).toBe(false)
   })
 
   it("reads the outline when asked, goes to an entry's page, and names the merge branches", async () => {

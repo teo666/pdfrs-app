@@ -388,7 +388,7 @@ export default {
 
   outline: {
     intro:
-      'Les signets du document. Cliquez sur une entrée pour aller à sa page ; avec Maj, vous sélectionnez toutes les pages jusqu’à celle-ci, avec ⌘/Ctrl, vous l’ajoutez à la sélection. La table des matières est conservée même quand vous supprimez, réorganisez, extrayez ou fusionnez des pages.',
+      'Les signets du document. Cliquez sur une entrée pour aller à sa page ; avec Maj vous sélectionnez toutes les pages jusqu’à elle, avec ⌘/Ctrl vous l’ajoutez à la sélection. Vous pouvez ajouter, renommer, déplacer et supprimer des entrées : les modifications s’appliquent avec les autres. La table des matières reste quand vous supprimez, réordonnez, extrayez, déplacez ou fusionnez des pages.',
     noDocument: 'Ouvrez un document pour voir sa table des matières.',
     loading: 'Lecture de la table des matières…',
     none: 'Ce document n’a pas de table des matières.',
@@ -399,5 +399,18 @@ export default {
     open: 'Développer {title}',
     close: 'Réduire {title}',
     nowhere: 'Ne mène à aucune page de ce document',
+    add: 'Ajouter une entrée pour la page {page}',
+    newTitle: 'Page {page}',
+    commands: 'Commandes de l’entrée choisie',
+    commandsFor: 'Commandes pour « {title} »',
+    rename: 'Renommer (F2 ou double-clic)',
+    renameLabel: 'Titre de l’entrée',
+    moveUp: 'Monter (Alt+↑)',
+    moveDown: 'Descendre (Alt+↓)',
+    outdent: 'Diminuer le retrait (Alt+←)',
+    indent: 'Mettre en retrait sous l’entrée précédente (Alt+→)',
+    remove: 'Supprimer, avec les entrées en dessous (Suppr)',
+    keys: 'Choisissez une entrée d’un clic, puis utilisez les commandes ci-dessus ou le clavier.',
+    link: 'lien',
   },
 } satisfies Messages['tools']

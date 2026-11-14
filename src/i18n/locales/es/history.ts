@@ -20,6 +20,13 @@ export default {
   insertPhoto: 'Insertar foto',
   watermark: 'Marca de agua en la página {page} | Marca de agua en {count} páginas',
   blankPage: 'Insertar página en blanco en la posición {position}',
+  outlineAdd: 'Añadir «{title}» al índice',
+  outlineRename: 'Renombrar «{from}» como «{title}» en el índice',
+  outlineRemove: 'Eliminar «{title}» del índice | Eliminar «{title}» del índice ({count} entradas)',
+  outlineMoveUp: 'Subir «{title}» en el índice',
+  outlineMoveDown: 'Bajar «{title}» en el índice',
+  outlineIndent: 'Sangrar «{title}» en el índice',
+  outlineOutdent: 'Reducir la sangría de «{title}» en el índice',
   photoPage: {
     a4: 'Foto en A4 (página {page})',
     letter: 'Foto en Letter (página {page})',

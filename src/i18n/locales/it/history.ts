@@ -19,6 +19,13 @@ export default {
   insertPhoto: 'Inserisci foto',
   watermark: 'Filigrana sulla pagina {page} | Filigrana su {count} pagine',
   blankPage: 'Inserisci pagina bianca in posizione {position}',
+  outlineAdd: 'Aggiungi «{title}» all’indice',
+  outlineRename: 'Rinomina «{from}» in «{title}» nell’indice',
+  outlineRemove: 'Elimina «{title}» dall’indice | Elimina «{title}» dall’indice ({count} voci)',
+  outlineMoveUp: 'Sposta «{title}» su nell’indice',
+  outlineMoveDown: 'Sposta «{title}» giù nell’indice',
+  outlineIndent: 'Rientra «{title}» nell’indice',
+  outlineOutdent: 'Riduci il rientro di «{title}» nell’indice',
   photoPage: {
     a4: 'Foto su A4 (pagina {page})',
     letter: 'Foto su Letter (pagina {page})',

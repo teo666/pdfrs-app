@@ -384,7 +384,7 @@ export default {
 
   outline: {
     intro:
-      'Die Lesezeichen des Dokuments. Klick auf einen Eintrag, um zu seiner Seite zu springen; mit Umschalt wählst du alle Seiten bis dorthin aus, mit ⌘/Strg fügst du sie der Auswahl hinzu. Das Inhaltsverzeichnis bleibt erhalten, auch wenn du Seiten löschst, umsortierst, extrahierst oder verbindest.',
+      'Die Lesezeichen des Dokuments. Klicke auf einen Eintrag, um zu seiner Seite zu gehen; mit Umschalt wählst du alle Seiten bis dorthin, mit ⌘/Strg fügst du sie der Auswahl hinzu. Du kannst Einträge hinzufügen, umbenennen, verschieben und entfernen: Die Änderungen werden mit den anderen angewendet. Das Inhaltsverzeichnis bleibt beim Löschen, Umordnen, Extrahieren, Verschieben oder Verbinden von Seiten erhalten.',
     noDocument: 'Öffne ein Dokument, um sein Inhaltsverzeichnis zu sehen.',
     loading: 'Inhaltsverzeichnis wird gelesen…',
     none: 'Dieses Dokument hat kein Inhaltsverzeichnis.',
@@ -395,5 +395,18 @@ export default {
     open: '{title} aufklappen',
     close: '{title} zuklappen',
     nowhere: 'Führt zu keiner Seite dieses Dokuments',
+    add: 'Eintrag für Seite {page} hinzufügen',
+    newTitle: 'Seite {page}',
+    commands: 'Befehle für den gewählten Eintrag',
+    commandsFor: 'Befehle für „{title}“',
+    rename: 'Umbenennen (F2 oder Doppelklick)',
+    renameLabel: 'Titel des Eintrags',
+    moveUp: 'Nach oben (Alt+↑)',
+    moveDown: 'Nach unten (Alt+↓)',
+    outdent: 'Ausrücken (Alt+←)',
+    indent: 'Unter den vorigen Eintrag einrücken (Alt+→)',
+    remove: 'Löschen, mit den Einträgen darunter (Entf)',
+    keys: 'Wähle einen Eintrag mit einem Klick, dann nutze die Befehle oben oder die Tastatur.',
+    link: 'Link',
   },
 } satisfies Messages['tools']
