@@ -363,7 +363,7 @@ export default {
 
   outline: {
     intro:
-      'The document’s bookmarks. Click an entry to go to its page; with Shift you select all the pages up to it, with ⌘/Ctrl you add it to the selection. The outline is kept even when you delete, reorder, extract or merge pages.',
+      'The document’s bookmarks. Click an entry to go to its page; with Shift you select every page up to it, with ⌘/Ctrl you add it to the selection. You can add, rename, move and remove entries: the edits are applied with the others. The outline stays when you delete, reorder, extract, move or merge pages.',
     noDocument: 'Open a document to see its outline.',
     loading: 'Reading the outline…',
     none: 'This document has no outline.',
@@ -374,5 +374,18 @@ export default {
     open: 'Expand {title}',
     close: 'Collapse {title}',
     nowhere: 'Doesn’t lead to a page in this document',
+    add: 'Add an entry for page {page}',
+    newTitle: 'Page {page}',
+    commands: 'Commands for the chosen entry',
+    commandsFor: 'Commands for “{title}”',
+    rename: 'Rename (F2 or double-click)',
+    renameLabel: 'Entry title',
+    moveUp: 'Move up (Alt+↑)',
+    moveDown: 'Move down (Alt+↓)',
+    outdent: 'Outdent (Alt+←)',
+    indent: 'Indent under the previous entry (Alt+→)',
+    remove: 'Delete, with the entries under it (Del)',
+    keys: 'Pick an entry with a click, then use the commands above or the keyboard.',
+    link: 'link',
   },
 } satisfies Messages['tools']

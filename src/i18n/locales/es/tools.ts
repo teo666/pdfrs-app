@@ -374,7 +374,7 @@ export default {
 
   outline: {
     intro:
-      'Los marcadores del documento. Haz clic en una entrada para ir a su página; con Mayús seleccionas todas las páginas hasta esa, con ⌘/Ctrl la añades a la selección. El índice se conserva aunque elimines, reordenes, extraigas o unas páginas.',
+      'Los marcadores del documento. Haz clic en una entrada para ir a su página; con Mayús seleccionas todas las páginas hasta ella, con ⌘/Ctrl la añades a la selección. Puedes añadir, renombrar, mover y quitar entradas: los cambios se aplican con los demás. El índice se mantiene al eliminar, reordenar, extraer, mover o unir páginas.',
     noDocument: 'Abre un documento para ver su índice.',
     loading: 'Leyendo el índice…',
     none: 'Este documento no tiene índice.',
@@ -385,5 +385,18 @@ export default {
     open: 'Abrir {title}',
     close: 'Cerrar {title}',
     nowhere: 'No lleva a ninguna página de este documento',
+    add: 'Añadir una entrada para la página {page}',
+    newTitle: 'Página {page}',
+    commands: 'Comandos de la entrada elegida',
+    commandsFor: 'Comandos para «{title}»',
+    rename: 'Renombrar (F2 o doble clic)',
+    renameLabel: 'Título de la entrada',
+    moveUp: 'Subir (Alt+↑)',
+    moveDown: 'Bajar (Alt+↓)',
+    outdent: 'Reducir sangría (Alt+←)',
+    indent: 'Sangrar bajo la entrada anterior (Alt+→)',
+    remove: 'Eliminar, con las entradas de debajo (Supr)',
+    keys: 'Elige una entrada con un clic y usa los comandos de arriba o el teclado.',
+    link: 'enlace',
   },
 } satisfies Messages['tools']

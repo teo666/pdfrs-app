@@ -1499,14 +1499,14 @@ test('outline: shown as a tree, an entry goes to its page, kept through edits an
   await third.getByRole('button', { name: 'Elimina pagina' }).click()
   await expect(tree.getByRole('treeitem').nth(2)).toHaveText(/Il dettaglio\s*da eliminare/)
   await page.getByRole('button', { name: 'Applica modifiche' }).click()
-  // Read again from the applied file: "Capitolo 2" closed as written, one page earlier.
+  // Read again from the applied file, one page earlier: "Capitolo 2" still
+  // open, as it was left - written into the file with the rest.
   await expect(tree.getByRole('treeitem')).toHaveText([
     /Introduzione\s*p\. 1/,
     /Capitolo 1\s*p\. 2/,
     /Capitolo 2\s*p\. 5/,
+    /Appendice nascosta\s*p\. 8/,
   ])
-  await tree.getByRole('button', { name: 'Apri Capitolo 2' }).click()
-  await expect(tree.getByRole('treeitem').last()).toHaveText(/Appendice nascosta\s*p\. 8/)
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Scarica', exact: true }).click()
   const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
@@ -1524,6 +1524,69 @@ test('outline: shown as a tree, an entry goes to its page, kept through edits an
   await expect(tree.getByRole('treeitem', { name: /four_pages/ })).toHaveText(/four_pages\s*p\. 10/)
 })
 
+
+test('outline: entries renamed, moved, added and removed, each undoable, written when applied', async ({ page }) => {
+  await page.goto('/')
+  const chooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Apri file' }).first().click()
+  await (await chooserPromise).setFiles({ name: 'manuale.pdf', mimeType: 'application/pdf', buffer: await outlinedPdf() })
+  await expectAllThumbnails(page, 10)
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Indice' }).click()
+  const panel = page.getByRole('complementary', { name: 'Indice del documento' })
+  const tree = panel.getByRole('tree', { name: 'Indice del documento' })
+  const titles = () => tree.getByRole('treeitem').allInnerTexts()
+  const entry = (name: RegExp) => tree.getByRole('button', { name })
+
+  // F2 renames in place.
+  await entry(/^Introduzione/).click()
+  await page.keyboard.press('F2')
+  await panel.getByLabel('Titolo della voce').fill('Premessa')
+  await page.keyboard.press('Enter')
+  await expect(tree.getByRole('treeitem').first()).toHaveText(/Premessa\s*p\. 1/)
+  await expect(page.getByText('modifiche non applicate')).toBeVisible()
+
+  // Down with its child, from the bar; back up from the keyboard.
+  await entry(/^Capitolo 1/).click()
+  await panel.getByRole('button', { name: 'Sposta giù (Alt+↓)' }).click()
+  await expect.poll(titles).toEqual([
+    expect.stringMatching(/Premessa/),
+    expect.stringMatching(/Capitolo 2/),
+    expect.stringMatching(/Capitolo 1/),
+    expect.stringMatching(/Il dettaglio/),
+  ])
+  await expect(entry(/^Capitolo 1/)).toBeFocused()
+  await page.keyboard.press('Alt+ArrowUp')
+  await expect(tree.getByRole('treeitem').nth(1)).toHaveText(/Capitolo 1/)
+
+  // A new entry for the selected page, after the branch of the page before it, named as typed.
+  // (Picking an entry selects its page: that selection goes first.)
+  await page.getByRole('button', { name: 'Deseleziona' }).click()
+  await cards(page).nth(4).getByRole('checkbox', { name: /Seleziona/ }).click()
+  await panel.getByRole('button', { name: 'Aggiungi una voce per la pagina 5' }).click()
+  await expect(panel.getByLabel('Titolo della voce')).toHaveValue('Pagina 5')
+  await panel.getByLabel('Titolo della voce').fill('Quinta')
+  await page.keyboard.press('Enter')
+  await expect(tree.getByRole('treeitem').nth(3)).toHaveText(/Quinta\s*p\. 5/)
+
+  // Delete takes the entry and those under it; undo puts them back.
+  await entry(/^Capitolo 1/).click()
+  await page.keyboard.press('Delete')
+  await expect(tree.getByText('Il dettaglio')).toBeHidden()
+  await expect(cards(page).nth(1).getByText('Da eliminare')).toBeHidden() // the page itself stays
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  await expect(tree.getByText('Il dettaglio')).toBeVisible()
+
+  // Applied and downloaded: in the file.
+  await page.getByRole('button', { name: 'Applica modifiche' }).click()
+  await expect(page.getByText('modifiche non applicate')).toBeHidden()
+  await expect(tree.getByRole('treeitem').first()).toHaveText(/Premessa/)
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica', exact: true }).click()
+  const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
+  expect(pdf).toMatch(/\/Title\s*\(Premessa\)/)
+  expect(pdf).toMatch(/\/Title\s*\(Quinta\)/)
+  expect(pdf).not.toContain('(Introduzione)')
+})
 
 test('theme: follows the system until chosen, then stays as chosen', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })

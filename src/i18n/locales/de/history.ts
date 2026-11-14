@@ -20,6 +20,13 @@ export default {
   insertPhoto: 'Foto einfügen',
   watermark: 'Wasserzeichen auf Seite {page} | Wasserzeichen auf {count} Seiten',
   blankPage: 'Leere Seite an Position {position} einfügen',
+  outlineAdd: '„{title}“ zum Inhaltsverzeichnis hinzufügen',
+  outlineRename: '„{from}“ in „{title}“ umbenennen',
+  outlineRemove: '„{title}“ aus dem Inhaltsverzeichnis löschen | „{title}“ aus dem Inhaltsverzeichnis löschen ({count} Einträge)',
+  outlineMoveUp: '„{title}“ nach oben verschieben',
+  outlineMoveDown: '„{title}“ nach unten verschieben',
+  outlineIndent: '„{title}“ einrücken',
+  outlineOutdent: '„{title}“ ausrücken',
   photoPage: {
     a4: 'Foto auf A4 (Seite {page})',
     letter: 'Foto auf Letter (Seite {page})',

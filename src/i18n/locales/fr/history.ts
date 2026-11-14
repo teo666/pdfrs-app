@@ -20,6 +20,13 @@ export default {
   insertPhoto: 'Insérer une photo',
   watermark: 'Filigrane sur la page {page} | Filigrane sur {count} pages',
   blankPage: 'Insérer une page blanche en position {position}',
+  outlineAdd: 'Ajouter « {title} » à la table des matières',
+  outlineRename: 'Renommer « {from} » en « {title} »',
+  outlineRemove: 'Supprimer « {title} » de la table des matières | Supprimer « {title} » de la table des matières ({count} entrées)',
+  outlineMoveUp: 'Monter « {title} » dans la table des matières',
+  outlineMoveDown: 'Descendre « {title} » dans la table des matières',
+  outlineIndent: 'Mettre « {title} » en retrait',
+  outlineOutdent: 'Diminuer le retrait de « {title} »',
   photoPage: {
     a4: 'Photo sur A4 (page {page})',
     letter: 'Photo sur Letter (page {page})',

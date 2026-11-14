@@ -96,6 +96,18 @@ export function historyLabel(entry: { label: string; action?: HistoryAction }): 
       const where = pages === 1 ? 'onePage' : pages > 1 ? 'manyPages' : 'noPage'
       return t(`history.${type}.${where}`, { count, page, pages }, count)
     }
+    case 'outlineAdd':
+    case 'outlineIndent':
+    case 'outlineOutdent':
+      return t(`history.${type}`, { title: String(params.title ?? '') })
+    case 'outlineRename':
+      return t('history.outlineRename', { from: String(params.from ?? ''), title: String(params.title ?? '') })
+    case 'outlineRemove':
+      return t('history.outlineRemove', { title: String(params.title ?? ''), count }, count)
+    case 'outlineMove':
+      return t(num('by') < 0 ? 'history.outlineMoveUp' : 'history.outlineMoveDown', {
+        title: String(params.title ?? ''),
+      })
     case 'watermark':
       return t('history.watermark', { page, count }, count)
     case 'blankPage':

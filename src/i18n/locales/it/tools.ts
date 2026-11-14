@@ -356,7 +356,7 @@ export default {
 
   outline: {
     intro:
-      'I segnalibri del documento. Fai clic su una voce per andare alla sua pagina; con Maiusc selezioni tutte le pagine fino a quella, con ⌘/Ctrl la aggiungi alla selezione. L’indice resta anche quando elimini, riordini, estrai o unisci pagine.',
+      'I segnalibri del documento. Fai clic su una voce per andare alla sua pagina; con Maiusc selezioni tutte le pagine fino a quella, con ⌘/Ctrl la aggiungi alla selezione. Puoi aggiungere, rinominare, spostare e togliere le voci: le modifiche si applicano con le altre. L’indice resta anche quando elimini, riordini, estrai, sposti o unisci pagine.',
     noDocument: 'Apri un documento per vederne l’indice.',
     loading: 'Lettura dell’indice…',
     none: 'Questo documento non ha un indice.',
@@ -367,5 +367,18 @@ export default {
     open: 'Apri {title}',
     close: 'Chiudi {title}',
     nowhere: 'Non porta a una pagina di questo documento',
+    add: 'Aggiungi una voce per la pagina {page}',
+    newTitle: 'Pagina {page}',
+    commands: 'Comandi della voce scelta',
+    commandsFor: 'Comandi per «{title}»',
+    rename: 'Rinomina (F2 o doppio clic)',
+    renameLabel: 'Titolo della voce',
+    moveUp: 'Sposta su (Alt+↑)',
+    moveDown: 'Sposta giù (Alt+↓)',
+    outdent: 'Riduci il rientro (Alt+←)',
+    indent: 'Rientra sotto la voce precedente (Alt+→)',
+    remove: 'Elimina, con le voci sotto (Canc)',
+    keys: 'Scegli una voce con un clic, poi usa i comandi qui sopra o la tastiera.',
+    link: 'link',
   },
 }

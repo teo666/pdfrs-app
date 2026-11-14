@@ -20,6 +20,13 @@ export default {
   insertPhoto: 'Insert photo',
   watermark: 'Watermark on page {page} | Watermark on {count} pages',
   blankPage: 'Insert blank page at position {position}',
+  outlineAdd: 'Add “{title}” to the outline',
+  outlineRename: 'Rename “{from}” to “{title}” in the outline',
+  outlineRemove: 'Delete “{title}” from the outline | Delete “{title}” from the outline ({count} entries)',
+  outlineMoveUp: 'Move “{title}” up in the outline',
+  outlineMoveDown: 'Move “{title}” down in the outline',
+  outlineIndent: 'Indent “{title}” in the outline',
+  outlineOutdent: 'Outdent “{title}” in the outline',
   photoPage: {
     a4: 'Photo on A4 (page {page})',
     letter: 'Photo on Letter (page {page})',
