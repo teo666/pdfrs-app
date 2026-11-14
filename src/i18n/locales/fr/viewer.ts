@@ -8,6 +8,7 @@ export default {
       page: 'Page {page} sur {total}',
       was: 'auparavant {page}',
       markedForDeletion: 'À supprimer',
+      resetRotation: 'Retirer la rotation de {degrees}°',
       sign: 'Signer',
       images: 'Images',
       imagesTitle:

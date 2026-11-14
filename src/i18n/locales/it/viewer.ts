@@ -6,6 +6,7 @@ export default {
       page: 'Pagina {page} di {total}',
       was: 'era {page}',
       markedForDeletion: 'Da eliminare',
+      resetRotation: 'Togli la rotazione di {degrees}°',
       sign: 'Firma',
       images: 'Immagini',
       imagesTitle: 'Mostra le immagini già presenti nella pagina, per rimuoverle o scaricarle',

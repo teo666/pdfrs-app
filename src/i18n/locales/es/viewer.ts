@@ -8,6 +8,7 @@ export default {
       page: 'Página {page} de {total}',
       was: 'era la {page}',
       markedForDeletion: 'Por eliminar',
+      resetRotation: 'Quitar el giro de {degrees}°',
       sign: 'Firmar',
       images: 'Imágenes',
       imagesTitle: 'Muestra las imágenes que ya hay en la página, para quitarlas o descargarlas',

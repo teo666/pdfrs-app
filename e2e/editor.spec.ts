@@ -120,6 +120,12 @@ test('edits a PDF: rotate, delete, undo/redo, reorder, apply and download', asyn
   await expect(first.getByText('90°')).toBeVisible()
   await expect(page.getByText('modifiche non applicate')).toBeVisible()
 
+  // The badge takes the rotation away; undo brings it back.
+  await first.getByRole('button', { name: 'Togli la rotazione di 90°' }).click()
+  await expect(first.getByText('90°')).toBeHidden()
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(first.getByText('90°')).toBeVisible()
+
   // Mark page 2 for deletion.
   const second = cards(page).nth(1)
   await second.hover()
@@ -361,6 +367,12 @@ test('selects pages, acts on them together, drags them as a block and extracts t
   // One rotation for all of them, undone in one step.
   await bar.getByRole('button', { name: 'Ruota a destra le pagine selezionate' }).click()
   for (const index of [1, 3, 4]) await expect(cards(page).nth(index).getByText('90°')).toBeVisible()
+  // Taken away from all of them in one go, and back with one undo.
+  await bar.getByRole('button', { name: 'Togli la rotazione dalle pagine selezionate' }).click()
+  await expect(page.getByText('90°')).toHaveCount(0)
+  await expect(bar.getByRole('button', { name: 'Togli la rotazione dalle pagine selezionate' })).toBeHidden()
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(page.getByText('90°')).toHaveCount(3)
   await page.keyboard.press('ControlOrMeta+z')
   await expect(page.getByText('90°')).toHaveCount(0)
 

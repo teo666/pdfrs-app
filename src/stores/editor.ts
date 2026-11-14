@@ -815,6 +815,8 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   const rotate = (page: PageId, degrees: number) => edit((doc) => doc.rotatePage(page, degrees))
+  /** Drops the page's pending rotation: back to how it is in the file. */
+  const resetRotation = (page: PageId) => edit((doc) => doc.resetRotation(page))
   const move = (page: PageId, toIndex: number) => edit((doc) => doc.movePage(page, toIndex))
   /** Moves pages as one block; `toIndex` counts the other pages only (see `PdfDocument.movePages`). */
   const movePages = (pages: PageId[], toIndex: number) =>
@@ -1128,6 +1130,8 @@ export const useEditorStore = defineStore('editor', () => {
 
   const rotateSelected = (degrees: number) =>
     edit((doc) => doc.rotatePages(selectedPages(), degrees))
+  /** Drops the pending rotation of the selected pages (the ones not rotated are left alone). */
+  const resetRotationSelected = () => edit((doc) => doc.resetRotations(selectedPages()))
 
   /** Marks the selected pages for deletion, or restores them if they all are already. */
   function toggleDeleteSelected() {
@@ -1598,6 +1602,7 @@ export const useEditorStore = defineStore('editor', () => {
     rename,
     close,
     rotate,
+    resetRotation,
     move,
     movePages,
     toggleDelete,
@@ -1605,6 +1610,7 @@ export const useEditorStore = defineStore('editor', () => {
     selectAll,
     clearSelection,
     rotateSelected,
+    resetRotationSelected,
     toggleDeleteSelected,
     extractSelected,
     impose,

@@ -7,6 +7,7 @@ export default {
   movePage: 'Mover página {page} a la posición {position}',
   rotatePage: 'Girar página {page} {degrees}°',
   resetRotation: 'Restablecer giro de la página {page}',
+  resetRotations: 'Quitar el giro de 1 página | Quitar el giro de {count} páginas',
   deletePage: 'Eliminar página {page}',
   restorePage: 'Restaurar página {page}',
   rotatePages: 'Girar {count} páginas {degrees}°',

@@ -34,6 +34,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   rotate: [degrees: number]
+  /** Take the pending rotation away. */
+  resetRotation: []
   toggleDelete: []
   /** The card is on screen and has no thumbnail yet. */
   needPreview: []
@@ -274,12 +276,18 @@ const inlineLabel = computed(() =>
         {{ t('app.card.part', { n: part }) }}
       </span>
       <span v-else-if="part === 0" class="font-semibold">{{ t('app.card.excluded') }}</span>
-      <span
+      <button
         v-if="page.pendingRotation"
-        class="ml-auto rounded-full bg-accent-soft px-1.5 font-semibold text-accent"
+        type="button"
+        class="ml-auto flex cursor-pointer items-center gap-0.5 rounded-full bg-accent-soft py-px pr-1 pl-1.5 font-semibold text-accent transition-colors hover:bg-accent hover:text-white disabled:cursor-default disabled:opacity-60"
+        :aria-label="t('app.card.resetRotation', { degrees: page.pendingRotation })"
+        :title="t('app.card.resetRotation', { degrees: page.pendingRotation })"
+        :disabled="disabled"
+        @click="emit('resetRotation')"
       >
         {{ page.pendingRotation }}°
-      </span>
+        <AppIcon name="close" :size="11" />
+      </button>
     </footer>
   </article>
 </template>

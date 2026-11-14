@@ -60,6 +60,7 @@ export function historyLabel(entry: { label: string; action?: HistoryAction }): 
       return t('history.rotatePages', { count, degrees: signed(num('degrees')) }, count)
     case 'deletePages':
     case 'restorePages':
+    case 'resetRotations':
       return t(`history.${type}`, { count }, count)
     case 'movePages':
       return t('history.movePages', { count, position: num('position') }, count)

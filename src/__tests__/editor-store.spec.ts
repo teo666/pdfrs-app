@@ -187,6 +187,11 @@ vi.mock('pdfrs-editor', () => {
       const page = this.page(id)
       page.pendingRotation = (((page.pendingRotation + degrees) % 360) + 360) % 360
     }
+    resetRotation(id: number) {
+      if (this.page(id).pendingRotation === 0) return
+      this.save()
+      this.page(id).pendingRotation = 0
+    }
     deletePage(id: number) {
       this.save()
       this.page(id).markedForDeletion = true
@@ -208,6 +213,11 @@ vi.mock('pdfrs-editor', () => {
         const page = this.page(id)
         page.pendingRotation = (((page.pendingRotation + degrees) % 360) + 360) % 360
       }
+    }
+    resetRotations(ids: number[]) {
+      if (!ids.some((id) => this.page(id).pendingRotation !== 0)) return
+      this.save()
+      for (const id of ids) this.page(id).pendingRotation = 0
     }
     deletePages(ids: number[]) {
       this.save()
@@ -720,6 +730,27 @@ describe('editor store', () => {
     expect(doc.selection.size).toBe(6)
     store.clearSelection()
     expect(doc.selection.size).toBe(0)
+  })
+
+  it('takes the rotation away from a page, or from the selected pages in one step', async () => {
+    const store = useEditorStore()
+    await store.openFiles([pdfFile('a.pdf', 4)])
+    const doc = store.active!
+    const rotations = () => doc.pages.map((p) => p.pendingRotation)
+
+    store.selectPage(1, 'only')
+    store.selectPage(3, 'range')
+    store.rotateSelected(90)
+    store.rotate(4, 270)
+    expect(rotations()).toEqual([90, 90, 90, 270])
+
+    store.resetRotation(4)
+    expect(rotations()).toEqual([90, 90, 90, 0])
+
+    store.resetRotationSelected()
+    expect(rotations()).toEqual([0, 0, 0, 0])
+    store.undo() // one step for the three pages
+    expect(rotations()).toEqual([90, 90, 90, 0])
   })
 
   it('applies group actions to the selection and clears it when a commit renumbers pages', async () => {

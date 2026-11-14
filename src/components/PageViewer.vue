@@ -440,9 +440,18 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
         >
           {{ t('viewer.pageViewer.header.was', { page: page.originalNumber }) }}
         </span>
-        <span v-if="rotation" class="rounded-full bg-white/15 px-2 text-xs font-semibold">
+        <button
+          v-if="rotation && page"
+          type="button"
+          class="flex cursor-pointer items-center gap-1 rounded-full bg-white/15 py-px pr-1.5 pl-2 text-xs font-semibold transition-colors hover:bg-white/30 disabled:cursor-default disabled:opacity-60"
+          :aria-label="t('viewer.pageViewer.header.resetRotation', { degrees: rotation })"
+          :title="t('viewer.pageViewer.header.resetRotation', { degrees: rotation })"
+          :disabled="doc.busy"
+          @click="store.resetRotation(page.id)"
+        >
           {{ rotation }}°
-        </span>
+          <AppIcon name="close" :size="12" />
+        </button>
         <span
           v-if="page?.markedForDeletion"
           class="rounded-full bg-danger px-2 text-xs font-semibold whitespace-nowrap text-white"

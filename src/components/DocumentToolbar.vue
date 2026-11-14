@@ -31,6 +31,11 @@ async function insert() {
 const selected = computed(() => props.doc.selection.size)
 const allSelected = computed(() => selected.value === props.doc.pages.length)
 /** The selection's delete button restores instead when every selected page is already marked. */
+/** Whether any selected page has a rotation to take away. */
+const selectionRotated = computed(() =>
+  props.doc.pages.some((p) => props.doc.selection.has(p.id) && p.pendingRotation !== 0),
+)
+
 const selectionAllMarked = computed(
   () =>
     selected.value > 0 &&
@@ -165,6 +170,13 @@ const summary = computed(() => {
           :label="t('app.toolbar.rotateRight')"
           :disabled="doc.busy"
           @click="store.rotateSelected(90)"
+        />
+        <IconButton
+          v-if="selectionRotated"
+          icon="rotate-reset"
+          :label="t('app.toolbar.resetRotation')"
+          :disabled="doc.busy"
+          @click="store.resetRotationSelected()"
         />
         <AppButton
           :icon="selectionAllMarked ? 'restore' : 'trash'"
