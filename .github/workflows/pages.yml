@@ -28,7 +28,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: pdfrs-app
 
@@ -42,7 +42,7 @@ jobs:
 
       - name: Pages address
         id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       # base: the path the site lives under ("/pdfrs-app/", or "/" with a
       # custom domain). SITE_URL: its full address, for the canonical link,
@@ -53,7 +53,7 @@ jobs:
           SITE_URL: ${{ steps.pages.outputs.base_url }}/
         run: pnpm build --base "${{ steps.pages.outputs.base_path }}/"
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: pdfrs-app/dist
 
@@ -69,4 +69,4 @@ jobs:
     steps:
       - name: Publish
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
