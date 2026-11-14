@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
-import { bigPdf, outlinedPdf } from './big-pdf'
+import { bigPdf, imagePlacements, outlinedPdf } from './big-pdf'
 
 const fixture = (name: string) => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
 
@@ -1260,6 +1260,79 @@ test('images already in the PDF: listed, downloaded, removed from the viewer, un
   await expect(cards(page).first().locator('.hatch-removed')).toHaveCount(0)
   await expect(panel.getByTestId('images-summary')).not.toContainText('da rimuovere')
 })
+
+test('images already in the PDF: moved and resized in the viewer, at once, undone', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'photo.jpg')
+  await expectAllThumbnails(page, 1)
+  const before = (await imagePlacements(await downloadedPdf(page)))[0]!
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagini' }).click()
+  await page
+    .getByRole('complementary', { name: 'Immagini del documento' })
+    .getByRole('button', { name: /400 × 300 px/ })
+    .click()
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  const bar = viewer.getByRole('group', { name: 'Immagine del documento selezionata' })
+  await expect(bar).toContainText('Trascinala per spostarla')
+  const outline = viewer.locator('[data-placement="p1#0"]')
+  const start = (await outline.boundingBox())!
+
+  // The corner: half the size, the top-left corner where it was.
+  const corner = (await viewer.locator('[data-image-resize]').boundingBox())!
+  await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(corner.x - start.width / 2, corner.y - start.height / 4, { steps: 5 })
+  await expect(viewer.locator('[data-image-draft]')).toBeVisible()
+  const picture = viewer.locator('img').first()
+  const drawn = await picture.getAttribute('src')
+  await page.mouse.up()
+  await expect.poll(async () => (await outline.boundingBox())!.width).toBeLessThan(start.width * 0.6)
+  // The page is drawn again, with the image where it went.
+  await expect.poll(() => picture.getAttribute('src')).not.toBe(drawn)
+
+  // Dragged by its box, then Esc in the middle of a drag: it stays, the viewer too.
+  const half = (await outline.boundingBox())!
+  await page.mouse.move(half.x + half.width / 2, half.y + half.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(half.x + half.width / 2 + 60, half.y + half.height / 2 + 80, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(async () => (await outline.boundingBox())!.x).toBeGreaterThan(half.x + 40)
+  const moved = (await outline.boundingBox())!
+  await page.mouse.move(moved.x + 10, moved.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(moved.x + 100, moved.y + 100, { steps: 5 })
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  await expect(viewer).toBeVisible()
+  expect((await outline.boundingBox())!.x).toBeCloseTo(moved.x, 0)
+
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(viewer).toBeHidden()
+
+  // In the file: the same image, smaller and further right and down.
+  const after = (await imagePlacements(await downloadedPdf(page)))[0]!
+  expect(after.id).toBe(before.id)
+  expect(after.width).toBeCloseTo(before.width / 2, 1)
+  expect(after.x).toBeGreaterThan(before.x)
+  expect(after.y).toBeGreaterThan(before.y)
+
+  // Two steps, undone one at a time: back where it was.
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  await expectAllThumbnails(page, 1)
+  const undone = (await imagePlacements(await downloadedPdf(page)))[0]!
+  expect(undone.x).toBeCloseTo(before.x, 4)
+  expect(undone.width).toBeCloseTo(before.width, 4)
+})
+
+/** The active document, downloaded. */
+async function downloadedPdf(page: Page): Promise<Uint8Array> {
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica', exact: true }).click()
+  return readFile(await (await downloadPromise).path())
+}
 
 /** A picture made by the page itself (canvas), as file bytes: `kind` PNG or JPEG. */
 async function canvasPicture(page: Page, width: number, height: number, kind: 'png' | 'grainy-jpeg') {

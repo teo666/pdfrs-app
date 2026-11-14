@@ -10,6 +10,7 @@ import {
   type CompressionLevel,
   type DocumentId,
   type HistoryEntry,
+  type ImageBox,
   type ImageAsset,
   type MetadataField,
   type MetadataPatch,
@@ -179,6 +180,12 @@ export interface DocumentState {
   hasPendingChanges: boolean
   /** Object URLs of the rendered thumbnails for the current baseline, by page id. */
   previews: Record<PageId, string>
+  /**
+   * Goes up each time the document itself changes (a commit, an undo of
+   * one, an image moved...): what a full-size view of a page watches to
+   * draw it again.
+   */
+  baselineVersion: number
   /** A commit/export is running: page actions are disabled meanwhile. */
   busy: boolean
   /**
@@ -439,6 +446,7 @@ export const useEditorStore = defineStore('editor', () => {
     syncPhotoPages(state, inner)
     if (doc.getBytes() !== inner.baseline) {
       inner.baseline = doc.getBytes()
+      state.baselineVersion++
       dropPreviews(state, inner)
       // Page ids are renumbered by a commit: the old selection means nothing.
       state.selection.clear()
@@ -609,6 +617,14 @@ export const useEditorStore = defineStore('editor', () => {
   const restoreImages = (ids: string[]) => edit((doc) => doc.restoreImages(ids))
 
   /**
+   * Moves and resizes an image already in the active document: the draw
+   * `placement` to `box` (fractions of the page shown). Applied at once,
+   * one undo step; the placement keeps its id.
+   */
+  const moveImage = (placement: string, box: ImageBox) =>
+    runBusy((doc) => doc.moveImage(placement, box))
+
+  /**
    * Puts the picture `file` in the place of the active document's image
    * `key`, wherever it's drawn; one of other proportions fits inside the old
    * box. Applied at once, one undo step.
@@ -773,6 +789,7 @@ export const useEditorStore = defineStore('editor', () => {
       canRedo: false,
       hasPendingChanges: false,
       previews: {},
+      baselineVersion: 0,
       busy: false,
       selection: new Set(),
       annotations: {},
@@ -1682,6 +1699,7 @@ export const useEditorStore = defineStore('editor', () => {
     loadImages,
     removeImages,
     restoreImages,
+    moveImage,
     replaceImage,
     compressImages,
     downloadImage,

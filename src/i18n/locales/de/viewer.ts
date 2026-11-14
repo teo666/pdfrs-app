@@ -67,6 +67,9 @@ export default {
       removeHere: 'Von dieser Seite entfernen',
       removeEverywhere: 'Von allen entfernen ({pages})',
       download: 'Herunterladen',
+      moveHint: 'Ziehen zum Verschieben; die Ecke skaliert, die Seiten strecken. Esc bricht ab.',
+      cannotMove: 'Es gehört zu Inhalt, den auch andere Seiten zeichnen: Es lässt sich hier nicht verschieben.',
+      clipped: 'Es lässt sich verschieben, könnte aber abgeschnitten werden: Wo es gezeichnet wird, gilt ein Beschneidungspfad.',
     },
     textEdit: {
       panel: 'Text bearbeiten',
@@ -101,6 +104,10 @@ export default {
   imageLayer: {
     removed: 'Zu entfernendes Bild',
     onPage: 'Bild in der Seite',
+    moveTitle: 'Ziehen, um es zu verschieben',
+    resize: 'Bild skalieren, mit seinen Proportionen',
+    stretchX: 'Bild breiter oder schmaler machen',
+    stretchY: 'Bild höher oder niedriger machen',
   },
   signaturePanel: {
     title: 'Unterschriften',

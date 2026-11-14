@@ -67,6 +67,9 @@ export default {
       removeHere: 'Retirer de cette page',
       removeEverywhere: 'Retirer de toutes ({pages})',
       download: 'Télécharger',
+      moveHint: 'Faites-la glisser pour la déplacer ; le coin la redimensionne, les côtés l’étirent. Échap annule.',
+      cannotMove: 'Elle fait partie d’un contenu que d’autres pages dessinent aussi : impossible de la déplacer d’ici.',
+      clipped: 'Elle peut être déplacée, mais risque d’être coupée : un détourage s’applique là où elle est dessinée.',
     },
     textEdit: {
       panel: 'Modifier le texte',
@@ -101,6 +104,10 @@ export default {
   imageLayer: {
     removed: 'Image à retirer',
     onPage: 'Image de la page',
+    moveTitle: 'Faites glisser pour la déplacer',
+    resize: 'Redimensionner l’image, en gardant ses proportions',
+    stretchX: 'Élargir ou rétrécir l’image',
+    stretchY: 'Allonger ou raccourcir l’image',
   },
   signaturePanel: {
     title: 'Signatures',

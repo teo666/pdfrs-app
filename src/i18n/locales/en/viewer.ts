@@ -64,6 +64,9 @@ export default {
       removeHere: 'Remove from this page',
       removeEverywhere: 'Remove from all ({pages})',
       download: 'Download',
+      moveHint: 'Drag it to move it; the corner resizes it, the sides stretch it. Esc cancels.',
+      cannotMove: 'It’s part of content other pages draw too: it can’t be moved from here.',
+      clipped: 'It can move, but it may be cut off: a clipping applies where it’s drawn.',
     },
     textEdit: {
       panel: 'Edit text',
@@ -96,6 +99,10 @@ export default {
   imageLayer: {
     removed: 'Image to remove',
     onPage: 'Image in the page',
+    moveTitle: 'Drag to move it',
+    resize: 'Resize the image, keeping its proportions',
+    stretchX: 'Widen or narrow the image',
+    stretchY: 'Lengthen or shorten the image',
   },
   signaturePanel: {
     title: 'Signatures',

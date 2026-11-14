@@ -108,6 +108,9 @@ export function historyLabel(entry: { label: string; action?: HistoryAction }): 
       return t(num('by') < 0 ? 'history.outlineMoveUp' : 'history.outlineMoveDown', {
         title: String(params.title ?? ''),
       })
+    case 'moveImage':
+    case 'resizeImage':
+      return t(`history.${type}`, { page })
     case 'watermark':
       return t('history.watermark', { page, count }, count)
     case 'blankPage':
