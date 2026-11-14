@@ -15,6 +15,7 @@ import ProtectTool from './ProtectTool.vue'
 import SignTool from './SignTool.vue'
 import SplitTool from './SplitTool.vue'
 import TextTool from './TextTool.vue'
+import WatermarkTool from './WatermarkTool.vue'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
@@ -44,6 +45,7 @@ const title = computed(() => (store.activeTool ? t(`tools.panel.titles.${store.a
       <SignTool v-else-if="store.activeTool === 'sign'" />
       <ImageTool v-else-if="store.activeTool === 'image'" />
       <TextTool v-else-if="store.activeTool === 'text'" />
+      <WatermarkTool v-else-if="store.activeTool === 'watermark'" />
       <MergeTool v-else-if="store.activeTool === 'merge'" />
       <SplitTool v-else-if="store.activeTool === 'split'" />
       <NupTool v-else-if="store.activeTool === 'nup'" />

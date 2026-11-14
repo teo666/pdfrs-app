@@ -17,6 +17,8 @@ export default {
   insertFromDocument:
     'Inserisci 1 pagina da un altro documento | Inserisci {count} pagine da un altro documento',
   insertPhoto: 'Inserisci foto',
+  watermark: 'Filigrana sulla pagina {page} | Filigrana su {count} pagine',
+  blankPage: 'Inserisci pagina bianca in posizione {position}',
   photoPage: {
     a4: 'Foto su A4 (pagina {page})',
     letter: 'Foto su Letter (pagina {page})',

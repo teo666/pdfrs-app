@@ -19,6 +19,8 @@ export default {
   notices: {
     merged: 'Uniti {n} documenti: gli originali restano aperti',
     inserted: 'Inserita 1 pagina | Inserite {n} pagine',
+    watermarked: 'Filigrana aggiunta a 1 pagina | Filigrana aggiunta a {n} pagine',
+    blankPage: 'Pagina bianca inserita in posizione {position}',
     moved: 'Spostata 1 pagina in «{target}» | Spostate {n} pagine in «{target}»',
     copied: 'Copiata 1 pagina in «{target}» | Copiate {n} pagine in «{target}»',
     created: 'Creato «{name}»: l’originale resta com’era',

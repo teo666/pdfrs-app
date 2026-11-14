@@ -25,6 +25,7 @@ export default {
       label: 'Texto',
       hint: 'Texto: escribe sobre las páginas, con texto real y seleccionable',
     },
+    watermark: { label: 'Marca de agua', hint: 'Marca de agua: un texto, como «BORRADOR», en todas las páginas o en las seleccionadas' },
     merge: { label: 'Unir', hint: 'Unir varios documentos en uno' },
     split: { label: 'Dividir', hint: 'Dividir el documento en varias partes' },
     nup: {
@@ -68,6 +69,7 @@ export default {
       images: 'Imágenes del documento',
       history: 'Historial de cambios',
       outline: 'Índice del documento',
+      watermark: 'Marca de agua',
     },
     close: 'Cerrar el panel',
     locked: '«{name}» está protegido con contraseña: desbloquéalo para usar esta herramienta.',
@@ -100,6 +102,38 @@ export default {
     formats:
       'PNG, JPEG, WebP o GIF. La transparencia de los PNG se conserva; las imágenes de más de 1600 píxeles se reducen.',
     placedCount: '1 imagen | {n} imágenes',
+  },
+
+  watermark: {
+    intro: 'Un texto repetido en las páginas, como «BORRADOR» o «CONFIDENCIAL». Entra en el documento al momento y las miniaturas lo muestran tal cual; se quita con Deshacer o desde el Historial.',
+    noDocument: 'Abre un documento para ponerle una marca de agua.',
+    defaultText: 'BORRADOR',
+    size: 'Tamaño',
+    sizeFit: 'Ajustar a la página',
+    sizePoints: 'Fijo',
+    sizeLabel: 'Tamaño en puntos',
+    angle: 'Inclinación',
+    angles: {
+      rising: 'En diagonal, hacia arriba',
+      horizontal: 'Horizontal',
+      falling: 'En diagonal, hacia abajo',
+      vertical: 'Vertical',
+    },
+    opacity: 'Opacidad',
+    position: 'Posición',
+    positions: {
+      top: 'Arriba',
+      center: 'En el centro',
+      bottom: 'Abajo',
+    },
+    layer: 'Capa',
+    layers: {
+      over: 'Sobre el contenido',
+      under: 'Bajo el contenido',
+    },
+    underHint: 'Bajo el contenido no tapa el texto, pero no se ve en páginas con fondo lleno, como los escaneos.',
+    preview: 'Vista previa de la marca de agua en la página {page}',
+    submit: 'Aplicar marca de agua',
   },
 
   text: {

@@ -1070,6 +1070,47 @@ test('colour pickers: any colour for text, and for the signature ink (even after
   expect(inked).toEqual([0x7a, 0x1f, 0xa2])
 })
 
+test('puts a watermark on the pages at once, and inserts a blank page', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+  const thumbnail = (index: number) => cards(page).nth(index).locator('img').first()
+  const before = await thumbnail(1).getAttribute('src')
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Filigrana' }).click()
+  const panel = page.getByRole('complementary', { name: 'Filigrana' })
+  await expect(panel.getByLabel('Testo', { exact: true })).toHaveValue('BOZZA')
+  await expect(panel.getByRole('figure', { name: 'Anteprima della filigrana sulla pagina 1' })).toBeVisible()
+  await panel.getByRole('radio', { name: 'Sotto il contenuto' }).click()
+  await expect(panel.getByText('non si vede sulle pagine con uno sfondo pieno')).toBeVisible()
+  await panel.getByRole('radio', { name: 'Sopra il contenuto' }).click()
+  await panel.getByRole('button', { name: 'Applica filigrana' }).click()
+
+  // In the document at once: the thumbnails are drawn again, nothing pending.
+  await expect(page.getByRole('status').filter({ hasText: 'Filigrana aggiunta a 4 pagine' })).toBeVisible()
+  await expectAllThumbnails(page, 4)
+  await expect.poll(() => thumbnail(1).getAttribute('src')).not.toBe(before)
+  await expect(page.getByText('modifiche non applicate')).toBeHidden()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Scarica' }).click()
+  const pdf = (await readFile(await (await downloadPromise).path())).toString('latin1')
+  expect(pdf).toMatch(/\/ExtGState/)
+  expect(pdf).toMatch(/\/ca 0\.3/)
+  expect(pdf).toContain('/Helvetica-Bold')
+
+  // Undo takes it away.
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  await expectAllThumbnails(page, 4)
+  await expect.poll(() => thumbnail(1).getAttribute('src')).not.toBe(null)
+
+  // A blank page after the selected one.
+  await cards(page).nth(1).getByRole('checkbox', { name: /Seleziona/ }).click()
+  await page.getByRole('button', { name: 'Pagina bianca' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Pagina bianca inserita in posizione 3' })).toBeVisible()
+  await expectAllThumbnails(page, 5)
+})
+
 test('protects a copy with a password, opens a protected PDF and unlocks it', async ({ page }) => {
   await page.goto('/')
   await openFiles(page, 'ten_pages.pdf')

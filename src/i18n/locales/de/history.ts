@@ -18,6 +18,8 @@ export default {
   insertFromDocument:
     '1 Seite aus einem anderen Dokument einfügen | {count} Seiten aus einem anderen Dokument einfügen',
   insertPhoto: 'Foto einfügen',
+  watermark: 'Wasserzeichen auf Seite {page} | Wasserzeichen auf {count} Seiten',
+  blankPage: 'Leere Seite an Position {position} einfügen',
   photoPage: {
     a4: 'Foto auf A4 (Seite {page})',
     letter: 'Foto auf Letter (Seite {page})',

@@ -22,6 +22,7 @@ export default {
       label: 'Testo',
       hint: 'Testo: scrivi sopra le pagine, con testo vero e selezionabile',
     },
+    watermark: { label: 'Filigrana', hint: 'Filigrana: un testo, come «BOZZA», su tutte le pagine o su quelle selezionate' },
     merge: { label: 'Unisci', hint: 'Unisci più documenti in uno' },
     split: { label: 'Dividi', hint: 'Dividi il documento in più parti' },
     nup: { label: 'N per foglio', hint: 'Più pagine su ogni foglio, per stampare con meno carta' },
@@ -56,6 +57,7 @@ export default {
       images: 'Immagini del documento',
       history: 'Cronologia delle modifiche',
       outline: 'Indice del documento',
+      watermark: 'Filigrana',
     },
     close: 'Chiudi il pannello',
     locked: '«{name}» è protetto da password: sbloccalo per usare questo strumento.',
@@ -88,6 +90,38 @@ export default {
     formats:
       'PNG, JPEG, WebP o GIF. La trasparenza dei PNG resta; le immagini più grandi di 1600 pixel vengono ridotte.',
     placedCount: '1 immagine | {n} immagini',
+  },
+
+  watermark: {
+    intro: 'Un testo ripetuto sulle pagine, come «BOZZA» o «RISERVATO». Entra subito nel documento e le miniature lo mostrano com’è; si toglie con Annulla o dalla Cronologia.',
+    noDocument: 'Apri un documento per metterci una filigrana.',
+    defaultText: 'BOZZA',
+    size: 'Dimensione',
+    sizeFit: 'Adatta alla pagina',
+    sizePoints: 'Fissa',
+    sizeLabel: 'Dimensione in punti',
+    angle: 'Inclinazione',
+    angles: {
+      rising: 'In diagonale, verso l’alto',
+      horizontal: 'Orizzontale',
+      falling: 'In diagonale, verso il basso',
+      vertical: 'Verticale',
+    },
+    opacity: 'Opacità',
+    position: 'Posizione',
+    positions: {
+      top: 'In alto',
+      center: 'Al centro',
+      bottom: 'In basso',
+    },
+    layer: 'Livello',
+    layers: {
+      over: 'Sopra il contenuto',
+      under: 'Sotto il contenuto',
+    },
+    underHint: 'Sotto il contenuto non copre il testo, ma non si vede sulle pagine con uno sfondo pieno, come le scansioni.',
+    preview: 'Anteprima della filigrana sulla pagina {page}',
+    submit: 'Applica filigrana',
   },
 
   text: {

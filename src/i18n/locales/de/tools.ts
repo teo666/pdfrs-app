@@ -29,6 +29,7 @@ export default {
       label: 'Text',
       hint: 'Text: auf die Seiten schreiben, mit echtem, auswählbarem Text',
     },
+    watermark: { label: 'Wasserzeichen', hint: 'Wasserzeichen: ein Text wie „ENTWURF“ auf allen oder den ausgewählten Seiten' },
     merge: { label: 'Verbinden', hint: 'Mehrere Dokumente zu einem verbinden' },
     split: { label: 'Aufteilen', hint: 'Das Dokument in mehrere Teile aufteilen' },
     nup: {
@@ -75,6 +76,7 @@ export default {
       images: 'Bilder des Dokuments',
       history: 'Verlauf der Änderungen',
       outline: 'Inhaltsverzeichnis',
+      watermark: 'Wasserzeichen',
     },
     close: 'Bereich schließen',
     locked: '„{name}“ ist passwortgeschützt: entsperre es, um dieses Werkzeug zu verwenden.',
@@ -107,6 +109,38 @@ export default {
     formats:
       'PNG, JPEG, WebP oder GIF. Die Transparenz von PNGs bleibt erhalten; Bilder über 1600 Pixel werden verkleinert.',
     placedCount: '1 Bild | {n} Bilder',
+  },
+
+  watermark: {
+    intro: 'Ein Text quer über die Seiten, etwa „ENTWURF“ oder „VERTRAULICH“. Er kommt sofort ins Dokument, die Miniaturen zeigen ihn, wie er wird; Rückgängig oder der Verlauf entfernen ihn.',
+    noDocument: 'Öffne ein Dokument, um ein Wasserzeichen hinzuzufügen.',
+    defaultText: 'ENTWURF',
+    size: 'Größe',
+    sizeFit: 'An Seite anpassen',
+    sizePoints: 'Fest',
+    sizeLabel: 'Größe in Punkt',
+    angle: 'Neigung',
+    angles: {
+      rising: 'Diagonal, steigend',
+      horizontal: 'Waagerecht',
+      falling: 'Diagonal, fallend',
+      vertical: 'Senkrecht',
+    },
+    opacity: 'Deckkraft',
+    position: 'Position',
+    positions: {
+      top: 'Oben',
+      center: 'Mitte',
+      bottom: 'Unten',
+    },
+    layer: 'Ebene',
+    layers: {
+      over: 'Über dem Inhalt',
+      under: 'Unter dem Inhalt',
+    },
+    underHint: 'Unter dem Inhalt verdeckt es keinen Text, ist aber auf Seiten mit vollem Hintergrund, etwa Scans, nicht zu sehen.',
+    preview: 'Vorschau des Wasserzeichens auf Seite {page}',
+    submit: 'Wasserzeichen anwenden',
   },
 
   text: {

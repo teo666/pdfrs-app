@@ -4,6 +4,10 @@ const paths = {
   'rotate-left': ['M3 12a9 9 0 1 0 3-6.7L3 8', 'M3 3v5h5'],
   'rotate-right': ['M21 12a9 9 0 1 1-3-6.7L21 8', 'M21 3v5h-5'],
   /** Rotate-left with a cross inside: take the rotation away. */
+  /** A drop: the watermark tool. */
+  droplet: ['M12 2.7 17.7 8.4a8 8 0 1 1-11.4 0z'],
+  /** A page with a plus: an empty page. */
+  'page-plus': ['M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z', 'M14 3v6h6', 'M12 12v6', 'M9 15h6'],
   'rotate-reset': ['M3 12a9 9 0 1 0 3-6.7L3 8', 'M3 3v5h5', 'M10 10l4 4', 'M14 10l-4 4'],
   trash: ['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6', 'M10 11v6', 'M14 11v6'],
   restore: ['M9 14 4 9l5-5', 'M4 9h10.5a5.5 5.5 0 0 1 0 11H11'],

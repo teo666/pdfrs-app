@@ -41,6 +41,9 @@ export default {
     redo: 'Wiederholen',
     redoTitle: 'Wiederholen ({shortcut})',
     insert: 'Seiten einfügen',
+    blankPage: 'Leere Seite',
+    blankPageAfterSelection: 'Eine leere Seite nach den ausgewählten Seiten einfügen, so groß wie die davor',
+    blankPageAtEnd: 'Eine leere Seite am Ende einfügen, so groß wie die letzte',
     insertAfterSelection:
       'Seiten aus einer PDF- oder JPEG-Datei nach der letzten ausgewählten Seite einfügen',
     insertAtEnd: 'Seiten aus einer PDF- oder JPEG-Datei am Ende des Dokuments einfügen',

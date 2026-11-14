@@ -32,6 +32,7 @@ export default {
       label: 'Texte',
       hint: 'Texte : écrivez sur les pages, avec du vrai texte sélectionnable',
     },
+    watermark: { label: 'Filigrane', hint: 'Filigrane : un texte, comme « BROUILLON », sur toutes les pages ou sur celles sélectionnées' },
     merge: { label: 'Fusionner', hint: 'Fusionner plusieurs documents en un seul' },
     split: { label: 'Diviser', hint: 'Diviser le document en plusieurs parties' },
     nup: {
@@ -75,6 +76,7 @@ export default {
       images: 'Images du document',
       history: 'Historique des modifications',
       outline: 'Table des matières',
+      watermark: 'Filigrane',
     },
     close: 'Fermer le panneau',
     locked: '« {name} » est protégé par mot de passe : déverrouillez-le pour utiliser cet outil.',
@@ -107,6 +109,38 @@ export default {
     formats:
       'PNG, JPEG, WebP ou GIF. La transparence des PNG est conservée ; les images de plus de 1600 pixels sont réduites.',
     placedCount: '1 image | {n} images',
+  },
+
+  watermark: {
+    intro: 'Un texte répété sur les pages, comme « BROUILLON » ou « CONFIDENTIEL ». Il entre tout de suite dans le document et les miniatures le montrent tel quel ; Annuler ou l’Historique le retirent.',
+    noDocument: 'Ouvrez un document pour y mettre un filigrane.',
+    defaultText: 'BROUILLON',
+    size: 'Taille',
+    sizeFit: 'Adapter à la page',
+    sizePoints: 'Fixe',
+    sizeLabel: 'Taille en points',
+    angle: 'Inclinaison',
+    angles: {
+      rising: 'En diagonale, montante',
+      horizontal: 'Horizontal',
+      falling: 'En diagonale, descendante',
+      vertical: 'Vertical',
+    },
+    opacity: 'Opacité',
+    position: 'Position',
+    positions: {
+      top: 'En haut',
+      center: 'Au centre',
+      bottom: 'En bas',
+    },
+    layer: 'Plan',
+    layers: {
+      over: 'Sur le contenu',
+      under: 'Sous le contenu',
+    },
+    underHint: 'Sous le contenu, il ne cache aucun texte, mais il ne se voit pas sur les pages à fond plein, comme les numérisations.',
+    preview: 'Aperçu du filigrane sur la page {page}',
+    submit: 'Appliquer le filigrane',
   },
 
   text: {

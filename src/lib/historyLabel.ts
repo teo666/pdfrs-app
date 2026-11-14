@@ -96,6 +96,10 @@ export function historyLabel(entry: { label: string; action?: HistoryAction }): 
       const where = pages === 1 ? 'onePage' : pages > 1 ? 'manyPages' : 'noPage'
       return t(`history.${type}.${where}`, { count, page, pages }, count)
     }
+    case 'watermark':
+      return t('history.watermark', { page, count }, count)
+    case 'blankPage':
+      return t('history.blankPage', { position: num('position') })
     case 'replaceImage': {
       const where = pages === 1 ? 'onePage' : pages > 1 ? 'manyPages' : 'noPage'
       return t(`history.replaceImage.${where}`, { page, pages })

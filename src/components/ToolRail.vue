@@ -12,6 +12,7 @@ const tools: { id: ToolId; icon: IconName }[] = [
   { id: 'sign', icon: 'pen' },
   { id: 'image', icon: 'image' },
   { id: 'text', icon: 'type' },
+  { id: 'watermark', icon: 'droplet' },
   { id: 'merge', icon: 'merge-arrows' },
   { id: 'split', icon: 'scissors' },
   { id: 'nup', icon: 'layout-grid' },

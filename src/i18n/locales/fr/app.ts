@@ -41,6 +41,9 @@ export default {
     redo: 'Rétablir',
     redoTitle: 'Rétablir ({shortcut})',
     insert: 'Insérer des pages',
+    blankPage: 'Page blanche',
+    blankPageAfterSelection: 'Insérer une page blanche après les pages sélectionnées, de la taille de la précédente',
+    blankPageAtEnd: 'Insérer une page blanche à la fin, de la taille de la dernière',
     insertAfterSelection:
       'Ajouter les pages d’un PDF ou d’un JPEG après la dernière page sélectionnée',
     insertAtEnd: 'Ajouter les pages d’un PDF ou d’un JPEG à la fin du document',

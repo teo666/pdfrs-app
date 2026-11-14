@@ -26,6 +26,7 @@ export default {
       label: 'Text',
       hint: 'Text: write on top of the pages, with real, selectable text',
     },
+    watermark: { label: 'Watermark', hint: 'Watermark: a text, like “DRAFT”, on every page or on the selected ones' },
     merge: { label: 'Merge', hint: 'Merge several documents into one' },
     split: { label: 'Split', hint: 'Split the document into several parts' },
     nup: { label: 'N-up', hint: 'Several pages on each sheet, to print with less paper' },
@@ -63,6 +64,7 @@ export default {
       images: 'Document images',
       history: 'Change history',
       outline: 'Document outline',
+      watermark: 'Watermark',
     },
     close: 'Close the panel',
     locked: '“{name}” is password protected: unlock it to use this tool.',
@@ -94,6 +96,38 @@ export default {
     formats:
       'PNG, JPEG, WebP or GIF. PNG transparency is kept; images larger than 1600 pixels are scaled down.',
     placedCount: '1 image | {n} images',
+  },
+
+  watermark: {
+    intro: 'A text repeated across the pages, like “DRAFT” or “CONFIDENTIAL”. It goes into the document at once and the thumbnails show it as it is; Undo or the History take it away.',
+    noDocument: 'Open a document to watermark it.',
+    defaultText: 'DRAFT',
+    size: 'Size',
+    sizeFit: 'Fit the page',
+    sizePoints: 'Fixed',
+    sizeLabel: 'Size in points',
+    angle: 'Angle',
+    angles: {
+      rising: 'Diagonal, rising',
+      horizontal: 'Horizontal',
+      falling: 'Diagonal, falling',
+      vertical: 'Vertical',
+    },
+    opacity: 'Opacity',
+    position: 'Position',
+    positions: {
+      top: 'Top',
+      center: 'Centre',
+      bottom: 'Bottom',
+    },
+    layer: 'Layer',
+    layers: {
+      over: 'Over the content',
+      under: 'Under the content',
+    },
+    underHint: 'Under the content it covers no text, but it can’t be seen on pages with a solid background, such as scans.',
+    preview: 'Preview of the watermark on page {page}',
+    submit: 'Apply watermark',
   },
 
   text: {
