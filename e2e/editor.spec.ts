@@ -1458,6 +1458,36 @@ test('page numbers: in the order shown, on every page, undone', async ({ page })
   expect(streamsOf(await downloadedPdf(page))).not.toContain(hexOf('Pagina 1 di 4'))
 })
 
+test('an image as a watermark: chosen, previewed, applied to every page', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Filigrana' }).click()
+  const panel = page.getByRole('complementary', { name: 'Filigrana' })
+  await panel.getByRole('radio', { name: 'Immagine' }).click()
+  await expect(panel.getByRole('button', { name: 'Applica filigrana' })).toBeDisabled()
+
+  const chooserPromise = page.waitForEvent('filechooser')
+  await panel.getByRole('button', { name: 'Scegli un’immagine' }).click()
+  await (await chooserPromise).setFiles({
+    name: 'logo.png',
+    mimeType: 'image/png',
+    buffer: await canvasPicture(page, 120, 60, 'png'),
+  })
+  await expect(panel.getByRole('button', { name: 'Cambia immagine' })).toBeVisible()
+  await panel.getByRole('radio', { name: '% della larghezza' }).click()
+  await expect(panel.getByRole('figure').locator('img').nth(1)).toBeVisible()
+  await panel.getByRole('button', { name: 'Applica filigrana' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Filigrana aggiunta a 4 pagine' })).toBeVisible()
+
+  const pdf = Buffer.from(await downloadedPdf(page)).toString('latin1')
+  // One picture (and its mask) for the four pages, see-through.
+  expect(pdf.match(/\/Subtype\s*\/Image/g)?.length).toBe(2)
+  expect(pdf).toMatch(/\/SMask/)
+  expect(pdf).toMatch(/\/ca 0\.3/)
+})
+
 /** The active document, downloaded. */
 async function downloadedPdf(page: Page): Promise<Uint8Array> {
   const downloadPromise = page.waitForEvent('download')
