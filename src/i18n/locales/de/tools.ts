@@ -30,6 +30,7 @@ export default {
       hint: 'Text: auf die Seiten schreiben, mit echtem, auswählbarem Text',
     },
     watermark: { label: 'Wasserzeichen', hint: 'Wasserzeichen: ein Text wie „ENTWURF“ auf allen oder den ausgewählten Seiten' },
+    pageNumbers: { label: 'Nummern', hint: 'Seitenzahlen, Kopf- und Fußzeilen' },
     merge: { label: 'Verbinden', hint: 'Mehrere Dokumente zu einem verbinden' },
     split: { label: 'Aufteilen', hint: 'Das Dokument in mehrere Teile aufteilen' },
     nup: {
@@ -77,6 +78,7 @@ export default {
       history: 'Verlauf der Änderungen',
       outline: 'Inhaltsverzeichnis',
       watermark: 'Wasserzeichen',
+      pageNumbers: 'Seitenzahlen',
     },
     close: 'Bereich schließen',
     locked: '„{name}“ ist passwortgeschützt: entsperre es, um dieses Werkzeug zu verwenden.',
@@ -109,6 +111,37 @@ export default {
     formats:
       'PNG, JPEG, WebP oder GIF. Die Transparenz von PNGs bleibt erhalten; Bilder über 1600 Pixel werden verkleinert.',
     placedCount: '1 Bild | {n} Bilder',
+  },
+
+  pageNumbers: {
+    intro: 'Seitenzahlen, eine Kopf- oder Fußzeile, gleich auf allen oder den ausgewählten Seiten. Die Zahlen folgen der Reihenfolge, in der du die Seiten siehst, ohne die zu löschenden. Sie kommen sofort ins Dokument; Rückgängig entfernt sie.',
+    noDocument: 'Öffne ein Dokument, um seine Seiten zu nummerieren.',
+    text: 'Text',
+    presets: {
+      number: '1, 2, 3…',
+      pageOf: 'Seite 1 von 12',
+      slash: '1 / 12',
+      custom: 'Eigener Text',
+    },
+    pageOfTemplate: 'Seite {\'{\'}n{\'}\'} von {\'{\'}total{\'}\'}',
+    customDefault: 'Vertraulich · {\'{\'}date{\'}\'}',
+    customLabel: 'Eigener Text',
+    tokens: '{\'{\'}n{\'}\'} ist die Seitenzahl, {\'{\'}total{\'}\'} die Anzahl, {\'{\'}date{\'}\'} das heutige Datum.',
+    position: 'Position',
+    positions: {
+      'top-left': 'Oben links',
+      'top-center': 'Oben Mitte',
+      'top-right': 'Oben rechts',
+      'bottom-left': 'Unten links',
+      'bottom-center': 'Unten Mitte',
+      'bottom-right': 'Unten rechts',
+    },
+    size: 'Größe (pt)',
+    margin: 'Rand (mm)',
+    start: 'Erste Zahl',
+    skipFirst: 'Erste Seite auslassen (sie zählt, bleibt aber ohne Zahl)',
+    preview: 'Vorschau auf der ersten Seite',
+    submit: 'Anwenden',
   },
 
   watermark: {

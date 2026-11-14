@@ -26,6 +26,7 @@ export default {
       hint: 'Texto: escribe sobre las páginas, con texto real y seleccionable',
     },
     watermark: { label: 'Marca de agua', hint: 'Marca de agua: un texto, como «BORRADOR», en todas las páginas o en las seleccionadas' },
+    pageNumbers: { label: 'Números', hint: 'Números de página, encabezados y pies de página' },
     merge: { label: 'Unir', hint: 'Unir varios documentos en uno' },
     split: { label: 'Dividir', hint: 'Dividir el documento en varias partes' },
     nup: {
@@ -70,6 +71,7 @@ export default {
       history: 'Historial de cambios',
       outline: 'Índice del documento',
       watermark: 'Marca de agua',
+      pageNumbers: 'Números de página',
     },
     close: 'Cerrar el panel',
     locked: '«{name}» está protegido con contraseña: desbloquéalo para usar esta herramienta.',
@@ -102,6 +104,37 @@ export default {
     formats:
       'PNG, JPEG, WebP o GIF. La transparencia de los PNG se conserva; las imágenes de más de 1600 píxeles se reducen.',
     placedCount: '1 imagen | {n} imágenes',
+  },
+
+  pageNumbers: {
+    intro: 'Números de página, un encabezado o un pie de página, iguales en todas las páginas o en las seleccionadas. Los números siguen el orden en que ves las páginas, sin las que se van a eliminar. Entran en el documento al momento; se quitan con Deshacer.',
+    noDocument: 'Abre un documento para numerar sus páginas.',
+    text: 'Texto',
+    presets: {
+      number: '1, 2, 3…',
+      pageOf: 'Página 1 de 12',
+      slash: '1 / 12',
+      custom: 'Personalizado',
+    },
+    pageOfTemplate: 'Página {\'{\'}n{\'}\'} de {\'{\'}total{\'}\'}',
+    customDefault: 'Documento confidencial · {\'{\'}date{\'}\'}',
+    customLabel: 'Texto personalizado',
+    tokens: '{\'{\'}n{\'}\'} es el número de la página, {\'{\'}total{\'}\'} cuántas hay, {\'{\'}date{\'}\'} la fecha de hoy.',
+    position: 'Posición',
+    positions: {
+      'top-left': 'Arriba a la izquierda',
+      'top-center': 'Arriba en el centro',
+      'top-right': 'Arriba a la derecha',
+      'bottom-left': 'Abajo a la izquierda',
+      'bottom-center': 'Abajo en el centro',
+      'bottom-right': 'Abajo a la derecha',
+    },
+    size: 'Cuerpo (pt)',
+    margin: 'Margen (mm)',
+    start: 'Primer número',
+    skipFirst: 'Saltar la primera página (cuenta, pero queda sin número)',
+    preview: 'Vista previa en la primera página',
+    submit: 'Aplicar',
   },
 
   watermark: {

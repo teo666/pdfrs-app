@@ -22,6 +22,7 @@ export default {
     merged: 'Se han unido {n} documentos: los originales siguen abiertos',
     inserted: 'Se ha insertado 1 página | Se han insertado {n} páginas',
     watermarked: 'Marca de agua añadida a 1 página | Marca de agua añadida a {n} páginas',
+    pageLabels: 'Números añadidos a 1 página | Números añadidos a {n} páginas',
     blankPage: 'Página en blanco insertada en la posición {position}',
     moved: 'Se ha movido 1 página a «{target}» | Se han movido {n} páginas a «{target}»',
     copied: 'Se ha copiado 1 página a «{target}» | Se han copiado {n} páginas a «{target}»',

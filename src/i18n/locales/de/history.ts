@@ -19,6 +19,7 @@ export default {
     '1 Seite aus einem anderen Dokument einfügen | {count} Seiten aus einem anderen Dokument einfügen',
   insertPhoto: 'Foto einfügen',
   watermark: 'Wasserzeichen auf Seite {page} | Wasserzeichen auf {count} Seiten',
+  pageLabels: 'Seitenzahl auf Seite {page} | Seitenzahlen auf {count} Seiten',
   blankPage: 'Leere Seite an Position {position} einfügen',
   dropRestrictions: 'Einschränkungen der Datei aufheben',
   moveImage: 'Bild verschieben (Seite {page})',

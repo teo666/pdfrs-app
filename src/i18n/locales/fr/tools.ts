@@ -33,6 +33,7 @@ export default {
       hint: 'Texte : écrivez sur les pages, avec du vrai texte sélectionnable',
     },
     watermark: { label: 'Filigrane', hint: 'Filigrane : un texte, comme « BROUILLON », sur toutes les pages ou sur celles sélectionnées' },
+    pageNumbers: { label: 'Numéros', hint: 'Numéros de page, en-têtes et pieds de page' },
     merge: { label: 'Fusionner', hint: 'Fusionner plusieurs documents en un seul' },
     split: { label: 'Diviser', hint: 'Diviser le document en plusieurs parties' },
     nup: {
@@ -77,6 +78,7 @@ export default {
       history: 'Historique des modifications',
       outline: 'Table des matières',
       watermark: 'Filigrane',
+      pageNumbers: 'Numéros de page',
     },
     close: 'Fermer le panneau',
     locked: '« {name} » est protégé par mot de passe : déverrouillez-le pour utiliser cet outil.',
@@ -109,6 +111,37 @@ export default {
     formats:
       'PNG, JPEG, WebP ou GIF. La transparence des PNG est conservée ; les images de plus de 1600 pixels sont réduites.',
     placedCount: '1 image | {n} images',
+  },
+
+  pageNumbers: {
+    intro: 'Des numéros de page, un en-tête ou un pied de page, identiques sur toutes les pages ou sur celles sélectionnées. Les numéros suivent l’ordre dans lequel vous voyez les pages, sans celles à supprimer. Ils entrent tout de suite dans le document ; Annuler les retire.',
+    noDocument: 'Ouvrez un document pour numéroter ses pages.',
+    text: 'Texte',
+    presets: {
+      number: '1, 2, 3…',
+      pageOf: 'Page 1 sur 12',
+      slash: '1 / 12',
+      custom: 'Personnalisé',
+    },
+    pageOfTemplate: 'Page {\'{\'}n{\'}\'} sur {\'{\'}total{\'}\'}',
+    customDefault: 'Confidentiel · {\'{\'}date{\'}\'}',
+    customLabel: 'Texte personnalisé',
+    tokens: '{\'{\'}n{\'}\'} est le numéro de la page, {\'{\'}total{\'}\'} leur nombre, {\'{\'}date{\'}\'} la date du jour.',
+    position: 'Position',
+    positions: {
+      'top-left': 'En haut à gauche',
+      'top-center': 'En haut au centre',
+      'top-right': 'En haut à droite',
+      'bottom-left': 'En bas à gauche',
+      'bottom-center': 'En bas au centre',
+      'bottom-right': 'En bas à droite',
+    },
+    size: 'Corps (pt)',
+    margin: 'Marge (mm)',
+    start: 'Premier numéro',
+    skipFirst: 'Ignorer la première page (elle compte, mais reste sans numéro)',
+    preview: 'Aperçu sur la première page',
+    submit: 'Appliquer',
   },
 
   watermark: {

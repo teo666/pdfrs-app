@@ -21,6 +21,7 @@ export default {
     merged: 'Merged {n} documents: the originals stay open',
     inserted: 'Inserted 1 page | Inserted {n} pages',
     watermarked: 'Watermark added to 1 page | Watermark added to {n} pages',
+    pageLabels: 'Numbers added to 1 page | Numbers added to {n} pages',
     blankPage: 'Blank page inserted at position {position}',
     moved: 'Moved 1 page to “{target}” | Moved {n} pages to “{target}”',
     copied: 'Copied 1 page to “{target}” | Copied {n} pages to “{target}”',

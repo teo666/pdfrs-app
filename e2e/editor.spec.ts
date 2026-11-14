@@ -1414,6 +1414,50 @@ test('images already in the PDF: turned with the knob, straightened with a doubl
   await expect(viewer.locator('[data-image-rotate]')).toHaveAttribute('aria-valuenow', '0')
 })
 
+/** Every stream of a PDF, inflated where it's compressed, as lowercase text. */
+function streamsOf(pdf: Uint8Array): string {
+  const text = Buffer.from(pdf).toString('latin1')
+  const out: string[] = []
+  for (const match of text.matchAll(/stream\r?\n/g)) {
+    const start = match.index! + match[0].length
+    let end = text.indexOf('endstream', start)
+    while (end > start && (text[end - 1] === '\n' || text[end - 1] === '\r')) end--
+    const data = Buffer.from(pdf.subarray(start, end))
+    try {
+      out.push(inflateSync(data).toString('latin1'))
+    } catch {
+      out.push(data.toString('latin1'))
+    }
+  }
+  return out.join('\n').toLowerCase()
+}
+
+/** How a text is written in a content stream as a hex string. */
+const hexOf = (text: string) => Buffer.from(text, 'latin1').toString('hex')
+
+test('page numbers: in the order shown, on every page, undone', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'four_pages.pdf')
+  await expectAllThumbnails(page, 4)
+
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Numeri' }).click()
+  const panel = page.getByRole('complementary', { name: 'Numeri di pagina' })
+  await expect(panel.getByRole('radio', { name: 'Pagina 1 di 12' })).toBeChecked()
+  await expect(panel.getByRole('figure', { name: 'Anteprima sulla prima pagina' })).toContainText('Pagina 1 di 4')
+  await panel.getByRole('radio', { name: 'In basso a destra' }).click()
+  await panel.getByRole('button', { name: 'Applica' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Numeri aggiunti a 4 pagine' })).toBeVisible()
+  await expectAllThumbnails(page, 4)
+
+  const streams = streamsOf(await downloadedPdf(page))
+  expect(streams).toContain(hexOf('Pagina 1 di 4'))
+  expect(streams).toContain(hexOf('Pagina 4 di 4'))
+
+  await page.getByRole('button', { name: 'Annulla' }).click()
+  await expectAllThumbnails(page, 4)
+  expect(streamsOf(await downloadedPdf(page))).not.toContain(hexOf('Pagina 1 di 4'))
+})
+
 /** The active document, downloaded. */
 async function downloadedPdf(page: Page): Promise<Uint8Array> {
   const downloadPromise = page.waitForEvent('download')

@@ -113,6 +113,8 @@ export function historyLabel(entry: { label: string; action?: HistoryAction }): 
     case 'resizeImage':
     case 'rotateImage':
       return t(`history.${type}`, { page })
+    case 'pageLabels':
+      return t('history.pageLabels', { page, count }, count)
     case 'watermark':
       return t('history.watermark', { page, count }, count)
     case 'blankPage':

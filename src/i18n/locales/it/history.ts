@@ -18,6 +18,7 @@ export default {
     'Inserisci 1 pagina da un altro documento | Inserisci {count} pagine da un altro documento',
   insertPhoto: 'Inserisci foto',
   watermark: 'Filigrana sulla pagina {page} | Filigrana su {count} pagine',
+  pageLabels: 'Numero di pagina sulla pagina {page} | Numeri di pagina su {count} pagine',
   blankPage: 'Inserisci pagina bianca in posizione {position}',
   dropRestrictions: 'Togli le limitazioni del file',
   moveImage: 'Sposta immagine (pagina {page})',

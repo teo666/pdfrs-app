@@ -22,6 +22,7 @@ export default {
     merged: '{n} Dokumente verbunden: die Originale bleiben geöffnet',
     inserted: '1 Seite eingefügt | {n} Seiten eingefügt',
     watermarked: 'Wasserzeichen auf 1 Seite gesetzt | Wasserzeichen auf {n} Seiten gesetzt',
+    pageLabels: 'Zahlen auf 1 Seite gesetzt | Zahlen auf {n} Seiten gesetzt',
     blankPage: 'Leere Seite an Position {position} eingefügt',
     moved: '1 Seite nach „{target}“ verschoben | {n} Seiten nach „{target}“ verschoben',
     copied: '1 Seite nach „{target}“ kopiert | {n} Seiten nach „{target}“ kopiert',
