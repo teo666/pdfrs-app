@@ -140,6 +140,7 @@ Pacchetti alla data del 13 novembre 2026. Le tabelle si rigenerano con:
 | [read-fonts](https://github.com/googlefonts/fontations) | 0.46.0 | MIT OR Apache-2.0 |
 | [rustc-hash](https://github.com/rust-lang/rustc-hash) | 2.1.3 | Apache-2.0 OR MIT |
 | [scopeguard](https://github.com/bluss/scopeguard) | 1.2.0 | MIT OR Apache-2.0 |
+| [self_cell](https://github.com/Voultapher/self_cell) | 1.3.0 | Apache-2.0 OR GPL-2.0-only |
 | [serde](https://github.com/serde-rs/serde) | 1.0.229 | MIT OR Apache-2.0 |
 | [serde-wasm-bindgen](https://github.com/RReverser/serde-wasm-bindgen) | 0.6.5 | MIT |
 | [serde_core](https://github.com/serde-rs/serde) | 1.0.229 | MIT OR Apache-2.0 |
