@@ -246,6 +246,11 @@ export interface DocumentState {
    * (`loadPermissions`), null when it had none (not encrypted).
    */
   permissions: PdfPermissions | null | undefined
+  /**
+   * The document keeps those restrictions in what it saves (a file opened
+   * without a password that has some), until `dropRestrictions`.
+   */
+  restrictionsKept: boolean
 }
 
 /** An image of the document, with where it's drawn. */
@@ -460,6 +465,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (state.metadata !== null) void refreshMetadata(state.id)
     if (state.images !== null) void refreshImages(state.id)
     if (state.outline !== null) void refreshOutline(state.id)
+    if (state.permissions !== undefined) void refreshPermissions(state.id)
   }
 
   // --- Outline ------------------------------------------------------------------
@@ -478,15 +484,24 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Makes the restrictions of a document's file available (`permissions`), reading them the first time. */
   async function loadPermissions(id: DocumentId) {
+    if (stateOf(id)?.permissions === undefined) await refreshPermissions(id)
+  }
+
+  async function refreshPermissions(id: DocumentId) {
     const state = stateOf(id)
     const inner = internals.get(id)
-    if (!state || !inner || state.permissions !== undefined) return
+    if (!state || !inner) return
     try {
-      state.permissions = await inner.doc.getOriginalPermissions()
+      const restrictions = await inner.doc.getRestrictions()
+      state.permissions = restrictions?.permissions ?? null
+      state.restrictionsKept = restrictions?.kept ?? false
     } catch (err) {
       report(err)
     }
   }
+
+  /** The active document lets its restrictions go: from the next Applica modifiche or download, written without them. Undoable. */
+  const dropRestrictions = () => runBusy((doc) => doc.dropRestrictions())
 
   /**
    * Edits the active document's outline (see `PdfDocument.addOutlineEntry`
@@ -803,6 +818,7 @@ export const useEditorStore = defineStore('editor', () => {
       photoPages: {},
       outline: null,
       permissions: undefined,
+      restrictionsKept: false,
     })
     sync(id)
   }
@@ -1675,6 +1691,7 @@ export const useEditorStore = defineStore('editor', () => {
     editOutline,
     setOutlineOpen,
     loadPermissions,
+    dropRestrictions,
     revealedPage,
     revealPage,
     setPhotoPage,

@@ -20,6 +20,7 @@ export default {
   insertPhoto: 'Insert photo',
   watermark: 'Watermark on page {page} | Watermark on {count} pages',
   blankPage: 'Insert blank page at position {position}',
+  dropRestrictions: 'Remove the file’s restrictions',
   moveImage: 'Move image (page {page})',
   resizeImage: 'Resize image (page {page})',
   outlineAdd: 'Add “{title}” to the outline',

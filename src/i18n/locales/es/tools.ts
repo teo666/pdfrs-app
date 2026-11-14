@@ -299,6 +299,8 @@ export default {
     restrictionsNote: 'Las restricciones son una petición a los lectores de PDF: casi todos la respetan, pero no impiden de verdad imprimir o copiar.',
     current: 'Este archivo restringe {list}.',
     currentAdvice: 'Los cambios hechos aquí quitan las restricciones: las casillas de abajo parten de ellas, para volver a ponerlas en la copia protegida.',
+    keptAdvice: 'Los cambios hechos aquí las mantienen, con la misma contraseña para quitarlas.',
+    dropRestrictions: 'Quitar las restricciones',
   },
 
   properties: {

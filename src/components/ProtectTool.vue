@@ -106,7 +106,12 @@ async function make() {
       {{ t('tools.protect.show') }}
     </label>
 
-    <PermissionsNote :permissions="store.active.permissions" :advice="t('tools.protect.currentAdvice')" />
+    <PermissionsNote
+      :permissions="store.active.permissions"
+      :kept="store.active.restrictionsKept"
+      :advice="t('tools.protect.currentAdvice')"
+      @drop="store.dropRestrictions()"
+    />
 
     <fieldset class="flex flex-col gap-1.5">
       <legend class="mb-1.5 text-xs font-semibold text-fg-muted">

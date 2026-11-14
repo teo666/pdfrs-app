@@ -40,3 +40,18 @@ export async function imagePlacements(
   await wasm.default({ module_or_path: await readFile(fileURLToPath(new URL('pdfrs_bg.wasm', pkg))) })
   return (await wasm.list_images(new Uint8Array(bytes))).placements
 }
+
+/** The 4-page fixture with restrictions (no printing) and no password to open it. */
+export async function restrictedPdf(): Promise<Buffer> {
+  const wasm = await import(new URL('pdfrs.js', pkg).href)
+  await wasm.default({ module_or_path: await readFile(fileURLToPath(new URL('pdfrs_bg.wasm', pkg))) })
+  const source = await readFile(fileURLToPath(new URL('./fixtures/four_pages.pdf', import.meta.url)))
+  return Buffer.from(await wasm.encrypt_pdf(new Uint8Array(source), 'padrone', '', { permissions: { print: false } }))
+}
+
+/** What a PDF allows (`read_permissions`): null when it isn't encrypted. */
+export async function permissionsOf(bytes: Uint8Array): Promise<{ print: boolean } | null> {
+  const wasm = await import(new URL('pdfrs.js', pkg).href)
+  await wasm.default({ module_or_path: await readFile(fileURLToPath(new URL('pdfrs_bg.wasm', pkg))) })
+  return wasm.read_permissions(new Uint8Array(bytes))
+}

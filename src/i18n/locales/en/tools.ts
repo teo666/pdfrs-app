@@ -289,6 +289,8 @@ export default {
     restrictionsNote: 'Restrictions are a request to PDF readers: almost all of them honour it, but they don’t really stop printing or copying.',
     current: 'This file restricts {list}.',
     currentAdvice: 'Edits made here remove the restrictions: the boxes below start from them, to put them back in the protected copy.',
+    keptAdvice: 'Edits made here keep them, with the same password to lift them.',
+    dropRestrictions: 'Remove the restrictions',
   },
 
   properties: {

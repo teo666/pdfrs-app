@@ -47,6 +47,16 @@ vi.mock('pdfrs-editor', () => {
     async getOriginalPermissions() {
       return this.permissions
     }
+    /** A file with restrictions and no password: what it saves keeps them, until dropped. */
+    keepsRestrictions = false
+    async getRestrictions() {
+      return this.permissions ? { permissions: this.permissions, kept: this.keepsRestrictions } : null
+    }
+    async dropRestrictions() {
+      if (!this.keepsRestrictions) return
+      this.save()
+      this.keepsRestrictions = false
+    }
 
     constructor(bytes: Uint8Array, count: number) {
       this.bytes = bytes
@@ -444,6 +454,11 @@ vi.mock('pdfrs-editor', () => {
       const locked = bytes[11] === 1
       const doc = new FakeDocument(bytes, locked ? 0 : (bytes[10] ?? 3))
       if (locked) doc.lock = { password: 'segreta', pages: bytes[10] ?? 3 }
+      // Byte 13 (see restrictedPdfFile()): restrictions, no password to open it.
+      if (bytes[13] === 1) {
+        doc.permissions = { ...EVERYTHING_ALLOWED, print: false }
+        doc.keepsRestrictions = true
+      }
       this.docs.set(id, doc)
       return id
     }
@@ -585,6 +600,15 @@ function pdfFile(name: string, pages: number) {
 async function flushPreviews() {
   await new Promise((resolve) => setTimeout(resolve, 0))
   await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+/** Like pdfFile(), a file with restrictions that opens without a password. */
+function restrictedPdfFile(name: string, pages: number) {
+  const bytes = new Uint8Array(16)
+  bytes.set(new TextEncoder().encode('%PDF-1.7\n'))
+  bytes[10] = pages
+  bytes[13] = 1
+  return new File([bytes], name, { type: 'application/pdf' })
 }
 
 /** Like pdfFile(), with an outline. */
@@ -1254,6 +1278,20 @@ describe('editor store', () => {
     expect(unlocked.permissions).toBeUndefined() // not read until asked
     await store.loadPermissions(unlocked.id)
     expect(unlocked.permissions).toEqual({ ...ALL_ALLOWED, print: false })
+  })
+
+  it('a file with restrictions keeps them, until they are dropped', async () => {
+    const store = useEditorStore()
+    await store.openFiles([restrictedPdfFile('limitato.pdf', 2)])
+    const doc = store.active!
+    await store.loadPermissions(doc.id)
+    expect(doc.permissions?.print).toBe(false)
+    expect(doc.restrictionsKept).toBe(true)
+
+    await store.dropRestrictions()
+    await flushPreviews()
+    expect(doc.restrictionsKept).toBe(false)
+    expect(doc.canUndo).toBe(true)
   })
 
   it('protects a copy of a document, listed locked beside the original', async () => {

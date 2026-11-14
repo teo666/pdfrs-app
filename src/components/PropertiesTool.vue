@@ -114,7 +114,12 @@ const blurOnEnter = (event: KeyboardEvent) => (event.target as HTMLInputElement)
   </p>
 
   <template v-else>
-    <PermissionsNote :permissions="doc.permissions" :advice="t('tools.properties.permissionsAdvice')" />
+    <PermissionsNote
+      :permissions="doc.permissions"
+      :kept="doc.restrictionsKept"
+      :advice="t('tools.properties.permissionsAdvice')"
+      @drop="store.dropRestrictions()"
+    />
 
     <label v-for="item in textFields" :key="item.field" class="flex flex-col gap-1">
       <span class="flex items-center gap-1.5 text-xs font-semibold text-fg-muted">

@@ -309,6 +309,8 @@ export default {
     restrictionsNote: 'Einschränkungen sind eine Bitte an PDF-Programme: Fast alle halten sich daran, aber sie verhindern Drucken oder Kopieren nicht wirklich.',
     current: 'Diese Datei schränkt {list} ein.',
     currentAdvice: 'Änderungen hier heben die Einschränkungen auf: Die Kästchen unten übernehmen sie, um sie in der geschützten Kopie wieder zu setzen.',
+    keptAdvice: 'Änderungen hier behalten sie bei, mit demselben Passwort zum Aufheben.',
+    dropRestrictions: 'Einschränkungen aufheben',
   },
 
   properties: {

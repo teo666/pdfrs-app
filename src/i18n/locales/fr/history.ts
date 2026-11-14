@@ -20,6 +20,7 @@ export default {
   insertPhoto: 'Insérer une photo',
   watermark: 'Filigrane sur la page {page} | Filigrane sur {count} pages',
   blankPage: 'Insérer une page blanche en position {position}',
+  dropRestrictions: 'Retirer les restrictions du fichier',
   moveImage: 'Déplacer l’image (page {page})',
   resizeImage: 'Redimensionner l’image (page {page})',
   outlineAdd: 'Ajouter « {title} » à la table des matières',
