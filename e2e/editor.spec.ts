@@ -1354,6 +1354,66 @@ test('images already in the PDF: moved and resized in the viewer, at once, undon
   expect(undone.width).toBeCloseTo(before.width, 4)
 })
 
+test('images already in the PDF: turned with the knob, straightened with a double click', async ({ page }) => {
+  await page.goto('/')
+  await openFiles(page, 'photo.jpg')
+  await expectAllThumbnails(page, 1)
+  await page.getByRole('navigation', { name: 'Strumenti' }).getByRole('button', { name: 'Immagini' }).click()
+  await page
+    .getByRole('complementary', { name: 'Immagini del documento' })
+    .getByRole('button', { name: /400 × 300 px/ })
+    .click()
+  const viewer = page.getByRole('dialog', { name: 'Anteprima pagina' })
+  const outline = viewer.locator('[data-placement="p1#0"]')
+
+  // Smaller and lower first: the photo fills the page, and its knob would
+  // sit under the viewer's photo bar.
+  const start = (await outline.boundingBox())!
+  const corner = (await viewer.locator('[data-image-resize]').boundingBox())!
+  await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(corner.x - start.width / 2, corner.y - start.height / 2, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(async () => (await outline.boundingBox())!.width).toBeLessThan(start.width * 0.6)
+  const small = (await outline.boundingBox())!
+  await page.mouse.move(small.x + small.width / 2, small.y + small.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(small.x + small.width / 2 + 40, small.y + small.height / 2 + 120, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(async () => (await outline.boundingBox())!.y).toBeGreaterThan(small.y + 80)
+
+  const box = (await outline.boundingBox())!
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+
+  // The knob dragged to the right of the centre: a quarter turn clockwise.
+  const knob = (await viewer.locator('[data-image-rotate]').boundingBox())!
+  await page.mouse.move(knob.x + knob.width / 2, knob.y + knob.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(centre.x + 150, centre.y + 2, { steps: 8 })
+  await expect(viewer.getByText('90°', { exact: true })).toBeVisible()
+  await page.mouse.up()
+  // Standing up now: taller than wide on screen.
+  await expect
+    .poll(async () => {
+      const turned = (await outline.boundingBox())!
+      return turned.height > turned.width
+    })
+    .toBe(true)
+  await expect(viewer.locator('[data-image-rotate]')).toHaveAttribute('aria-valuenow', '90')
+
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  const turned = (await imagePlacements(await downloadedPdf(page)))[0]!
+  expect(turned.rotation).toBeCloseTo(90, 3)
+
+  // Double click on the knob: straight again.
+  // (The Immagini tool is still open: the viewer shows the outlines.)
+  await cards(page).first().getByRole('button', { name: /grandezza reale/ }).click()
+  await outline.click()
+  await viewer.locator('[data-image-rotate]').dblclick()
+  await expect(viewer.locator('[data-image-rotate]')).toHaveAttribute('aria-valuenow', '0')
+})
+
 /** The active document, downloaded. */
 async function downloadedPdf(page: Page): Promise<Uint8Array> {
   const downloadPromise = page.waitForEvent('download')

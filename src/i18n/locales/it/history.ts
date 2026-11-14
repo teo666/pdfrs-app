@@ -22,6 +22,7 @@ export default {
   dropRestrictions: 'Togli le limitazioni del file',
   moveImage: 'Sposta immagine (pagina {page})',
   resizeImage: 'Ridimensiona immagine (pagina {page})',
+  rotateImage: 'Ruota immagine (pagina {page})',
   outlineAdd: 'Aggiungi «{title}» all’indice',
   outlineRename: 'Rinomina «{from}» in «{title}» nell’indice',
   outlineRemove: 'Elimina «{title}» dall’indice | Elimina «{title}» dall’indice ({count} voci)',

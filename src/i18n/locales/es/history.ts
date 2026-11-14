@@ -23,6 +23,7 @@ export default {
   dropRestrictions: 'Quitar las restricciones del archivo',
   moveImage: 'Mover imagen (página {page})',
   resizeImage: 'Redimensionar imagen (página {page})',
+  rotateImage: 'Girar imagen (página {page})',
   outlineAdd: 'Añadir «{title}» al índice',
   outlineRename: 'Renombrar «{from}» como «{title}» en el índice',
   outlineRemove: 'Eliminar «{title}» del índice | Eliminar «{title}» del índice ({count} entradas)',

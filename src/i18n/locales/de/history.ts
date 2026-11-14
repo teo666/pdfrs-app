@@ -23,6 +23,7 @@ export default {
   dropRestrictions: 'Einschränkungen der Datei aufheben',
   moveImage: 'Bild verschieben (Seite {page})',
   resizeImage: 'Bildgröße ändern (Seite {page})',
+  rotateImage: 'Bild drehen (Seite {page})',
   outlineAdd: '„{title}“ zum Inhaltsverzeichnis hinzufügen',
   outlineRename: '„{from}“ in „{title}“ umbenennen',
   outlineRemove: '„{title}“ aus dem Inhaltsverzeichnis löschen | „{title}“ aus dem Inhaltsverzeichnis löschen ({count} Einträge)',

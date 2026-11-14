@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { resizeBox, unrotate, type ResizeMode } from '@/lib/box'
+import { normalize, resizeBox, snapAngle, unrotate, type ResizeMode } from '@/lib/box'
 import type { PlacementView } from '@/stores/editor'
 
 /**
@@ -12,9 +12,10 @@ import type { PlacementView } from '@/stores/editor'
  * ones waiting to be removed are shown, struck through. Inside the turned
  * page div, so fractions of the page are all it needs.
  *
- * In the viewer the selected one can also be moved and resized: the box
- * drags it, the corner resizes it keeping its proportions (Shift: from the
- * centre), the sides stretch it. While dragging, the new place is drawn
+ * In the viewer the selected one can also be moved, resized and turned: the
+ * box drags it, the corner resizes it keeping its proportions (Shift: from
+ * the centre), the sides stretch it, the knob above turns it (snapping onto
+ * right angles; Shift: 15° steps; a double click straightens it). While dragging, the new place is drawn
  * over the page - the picture underneath only changes once it's dropped
  * (`move`), when the document is changed. Esc lets go without moving. An
  * image in a Form other pages draw too can't move: it would move there too.
@@ -41,7 +42,8 @@ const {
 }>()
 const emit = defineEmits<{
   select: [id: string]
-  move: [id: string, box: { x: number; y: number; width: number; height: number }]
+  /** The new box, and the turn to give it besides (degrees clockwise, about its centre). */
+  move: [id: string, box: { x: number; y: number; width: number; height: number }, rotation: number]
 }>()
 const { t } = useI18n()
 
@@ -56,6 +58,15 @@ function clip(placement: PlacementView) {
   )
   return `polygon(${points.join(', ')})`
 }
+
+/**
+ * Where the turning knob goes: above the image, or - where the viewer's own
+ * bars would cover it - inside a big image near its top, or below one at
+ * the top of the page.
+ */
+const knobAt = (placement: PlacementView): 'above' | 'inside' | 'below' =>
+  placement.height > 0.5 ? 'inside' : placement.y < 0.12 ? 'below' : 'above'
+const knobBelow = (placement: PlacementView) => knobAt(placement) === 'below'
 
 const movable = (placement: PlacementView) =>
   interactive && !placement.removed && placement.sharedPages.length === 0 && pageWidth > 0
@@ -73,13 +84,17 @@ const upright = (placement: PlacementView) => {
 }
 
 type Box = { x: number; y: number; width: number; height: number }
-/** Where the selected image is being dragged to. */
-const draft = ref<(Box & { id: string }) | null>(null)
+/** Where the selected image is being dragged to, and how much it's being turned. */
+const draft = ref<(Box & { id: string; rotation: number }) | null>(null)
 let cancelDrag: (() => void) | null = null
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
-function startDrag(event: PointerEvent, placement: PlacementView, mode: 'move' | ResizeMode) {
+function startDrag(
+  event: PointerEvent,
+  placement: PlacementView,
+  mode: 'move' | 'rotate' | ResizeMode,
+) {
   if (event.button !== 0 || !movable(placement)) return
   event.preventDefault()
   event.stopPropagation()
@@ -94,6 +109,10 @@ function startDrag(event: PointerEvent, placement: PlacementView, mode: 'move' |
     height: placement.height,
   }
   const page = { width: pageWidth, height: pageHeight }
+  // Turning happens about the box's centre, which stays put on screen.
+  const frame = (event.currentTarget as HTMLElement).closest('[data-image-frame]')
+  const rect = frame?.getBoundingClientRect()
+  const centre = rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : start
   let moved = false
 
   const onMove = (move: PointerEvent) => {
@@ -101,9 +120,19 @@ function startDrag(event: PointerEvent, placement: PlacementView, mode: 'move' |
     moved = true
     // The pointer's movement on the (unturned) page, in page pixels.
     const along = unrotate(move.clientX - start.x, move.clientY - start.y, rotation)
-    if (mode === 'move') {
+    if (mode === 'rotate') {
+      // The knob sits above the box (or below): the angle from the centre to
+      // the pointer, plus (or minus) a quarter turn, is the image's angle on screen - minus
+      // the page's own pending rotation, which the layer already has.
+      const angle =
+        (Math.atan2(move.clientY - centre.y, move.clientX - centre.x) * 180) / Math.PI +
+        (knobBelow(placement) ? -90 : 90)
+      const target = normalize(snapAngle(normalize(angle - rotation), move.shiftKey))
+      draft.value = { id: placement.id, ...box, rotation: normalize(target - placement.rotation) }
+    } else if (mode === 'move') {
       draft.value = {
         id: placement.id,
+        rotation: 0,
         ...box,
         x: clamp(box.x + along.x / page.width, -box.width / 2, 1 - box.width / 2),
         y: clamp(box.y + along.y / page.height, -box.height / 2, 1 - box.height / 2),
@@ -112,6 +141,7 @@ function startDrag(event: PointerEvent, placement: PlacementView, mode: 'move' |
       const next = resizeBox({ ...box, rotation: 0 }, mode, along, page, move.shiftKey)
       draft.value = {
         id: placement.id,
+        rotation: 0,
         x: next.x,
         y: next.y,
         width: next.width,
@@ -127,8 +157,8 @@ function startDrag(event: PointerEvent, placement: PlacementView, mode: 'move' |
     window.removeEventListener('keydown', onKey, true)
     cancelDrag = null
     if (keep && moved && draft.value) {
-      const { x, y, width, height } = draft.value
-      emit('move', placement.id, { x, y, width, height })
+      const { x, y, width, height, rotation: turn } = draft.value
+      emit('move', placement.id, { x, y, width, height }, turn)
     }
     draft.value = null
   }
@@ -154,6 +184,13 @@ onBeforeUnmount(() => cancelDrag?.())
 const dragged = computed(() =>
   draft.value ? placements.find((p) => p.id === draft.value!.id) : undefined,
 )
+
+/** Straight again: turned back by its own angle. */
+function straighten(placement: PlacementView) {
+  if (!movable(placement) || placement.rotation === 0) return
+  const { x, y, width, height } = placement
+  emit('move', placement.id, { x, y, width, height }, -placement.rotation)
+}
 </script>
 
 <template>
@@ -211,6 +248,7 @@ const dragged = computed(() =>
       <div
         v-if="interactive && placement.id === selectedId && movable(placement) && !draft"
         class="pointer-events-none absolute"
+        data-image-frame
         :style="{
           left: percent(placement.x),
           top: percent(placement.y),
@@ -218,6 +256,30 @@ const dragged = computed(() =>
           height: percent(placement.height),
         }"
       >
+        <!-- Turn: a knob on a stem, above the box where it can be (see knobAt).
+             Double-click straightens it. -->
+        <div
+          class="pointer-events-auto absolute left-1/2 flex -translate-x-1/2 cursor-grab items-center active:cursor-grabbing"
+          :class="
+            {
+              above: '-top-7 flex-col',
+              inside: 'top-[15%] flex-col',
+              below: '-bottom-10 flex-col-reverse',
+            }[knobAt(placement)]
+          "
+          role="slider"
+          :aria-label="t('viewer.imageLayer.rotate')"
+          :aria-valuenow="Math.round(placement.rotation)"
+          aria-valuemin="-179"
+          aria-valuemax="180"
+          :title="t('viewer.imageLayer.rotateTitle', { degrees: Math.round(placement.rotation) })"
+          data-image-rotate
+          @pointerdown="startDrag($event, placement, 'rotate')"
+          @dblclick.stop="straighten(placement)"
+        >
+          <span class="size-4 rounded-full border-2 border-white bg-accent shadow-lift" />
+          <span class="h-3 w-0.5 bg-accent" />
+        </div>
         <div
           class="pointer-events-auto absolute top-1/2 -right-2 h-7 w-2.5 -translate-y-1/2 cursor-ew-resize rounded-full border-2 border-white bg-accent shadow-lift"
           role="slider"
@@ -261,6 +323,7 @@ const dragged = computed(() =>
         width: percent(draft.width),
         height: percent(draft.height),
         clipPath: upright(dragged) ? undefined : clip(dragged),
+        transform: draft.rotation ? `rotate(${draft.rotation}deg)` : undefined,
       }"
       data-image-draft
     >
@@ -273,5 +336,13 @@ const dragged = computed(() =>
       />
       <div v-else class="size-full bg-accent/30" />
     </div>
+    <!-- The angle it's going to, while turning. -->
+    <span
+      v-if="draft && dragged && draft.rotation"
+      class="pointer-events-none absolute -translate-x-1/2 rounded bg-black/75 px-1.5 py-0.5 text-xs font-semibold text-white"
+      :style="{ left: percent(draft.x + draft.width / 2), top: `calc(${percent(draft.y)} - 3.5rem)` }"
+    >
+      {{ Math.round(normalize(dragged.rotation + draft.rotation)) }}°
+    </span>
   </div>
 </template>

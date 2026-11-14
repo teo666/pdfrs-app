@@ -123,3 +123,21 @@ export function pointOnPage(
     y: cy + dx * Math.sin(r) + dy * Math.cos(r),
   }
 }
+
+/** While turning, angles this close to a right angle snap onto it. */
+const SNAP_DEGREES = 6
+/** With Shift held, the angle moves in steps of this many degrees. */
+const SHIFT_STEP = 15
+
+/** Snaps an angle onto right angles when close to one, or onto 15° steps with Shift. */
+export function snapAngle(degrees: number, shift: boolean) {
+  if (shift) return Math.round(degrees / SHIFT_STEP) * SHIFT_STEP
+  const right = Math.round(degrees / 90) * 90
+  return Math.abs(degrees - right) <= SNAP_DEGREES ? right : Math.round(degrees)
+}
+
+/** An angle in (-180, 180], the form the model keeps. */
+export function normalize(degrees: number) {
+  const turned = ((degrees % 360) + 360) % 360
+  return turned > 180 ? turned - 360 : turned
+}
