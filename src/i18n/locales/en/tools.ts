@@ -27,6 +27,7 @@ export default {
       hint: 'Text: write on top of the pages, with real, selectable text',
     },
     watermark: { label: 'Watermark', hint: 'Watermark: a text, like “DRAFT”, on every page or on the selected ones' },
+    pageNumbers: { label: 'Numbers', hint: 'Page numbers, headers and footers' },
     merge: { label: 'Merge', hint: 'Merge several documents into one' },
     split: { label: 'Split', hint: 'Split the document into several parts' },
     nup: { label: 'N-up', hint: 'Several pages on each sheet, to print with less paper' },
@@ -65,6 +66,7 @@ export default {
       history: 'Change history',
       outline: 'Document outline',
       watermark: 'Watermark',
+      pageNumbers: 'Page numbers',
     },
     close: 'Close the panel',
     locked: '“{name}” is password protected: unlock it to use this tool.',
@@ -96,6 +98,37 @@ export default {
     formats:
       'PNG, JPEG, WebP or GIF. PNG transparency is kept; images larger than 1600 pixels are scaled down.',
     placedCount: '1 image | {n} images',
+  },
+
+  pageNumbers: {
+    intro: 'Page numbers, a header or a footer, the same on every page or on the selected ones. The numbers follow the order you see the pages in, leaving out those to delete. They go into the document at once; Undo takes them away.',
+    noDocument: 'Open a document to number its pages.',
+    text: 'Text',
+    presets: {
+      number: '1, 2, 3…',
+      pageOf: 'Page 1 of 12',
+      slash: '1 / 12',
+      custom: 'Custom',
+    },
+    pageOfTemplate: 'Page {\'{\'}n{\'}\'} of {\'{\'}total{\'}\'}',
+    customDefault: 'Confidential · {\'{\'}date{\'}\'}',
+    customLabel: 'Custom text',
+    tokens: '{\'{\'}n{\'}\'} is the page number, {\'{\'}total{\'}\'} how many there are, {\'{\'}date{\'}\'} today’s date.',
+    position: 'Position',
+    positions: {
+      'top-left': 'Top left',
+      'top-center': 'Top centre',
+      'top-right': 'Top right',
+      'bottom-left': 'Bottom left',
+      'bottom-center': 'Bottom centre',
+      'bottom-right': 'Bottom right',
+    },
+    size: 'Size (pt)',
+    margin: 'Margin (mm)',
+    start: 'First number',
+    skipFirst: 'Skip the first page (it counts, but has no number)',
+    preview: 'Preview on the first page',
+    submit: 'Apply',
   },
 
   watermark: {

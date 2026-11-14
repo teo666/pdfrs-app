@@ -23,6 +23,7 @@ export default {
       hint: 'Testo: scrivi sopra le pagine, con testo vero e selezionabile',
     },
     watermark: { label: 'Filigrana', hint: 'Filigrana: un testo, come «BOZZA», su tutte le pagine o su quelle selezionate' },
+    pageNumbers: { label: 'Numeri', hint: 'Numeri di pagina, intestazioni e piè di pagina' },
     merge: { label: 'Unisci', hint: 'Unisci più documenti in uno' },
     split: { label: 'Dividi', hint: 'Dividi il documento in più parti' },
     nup: { label: 'N per foglio', hint: 'Più pagine su ogni foglio, per stampare con meno carta' },
@@ -58,6 +59,7 @@ export default {
       history: 'Cronologia delle modifiche',
       outline: 'Indice del documento',
       watermark: 'Filigrana',
+      pageNumbers: 'Numeri di pagina',
     },
     close: 'Chiudi il pannello',
     locked: '«{name}» è protetto da password: sbloccalo per usare questo strumento.',
@@ -90,6 +92,37 @@ export default {
     formats:
       'PNG, JPEG, WebP o GIF. La trasparenza dei PNG resta; le immagini più grandi di 1600 pixel vengono ridotte.',
     placedCount: '1 immagine | {n} immagini',
+  },
+
+  pageNumbers: {
+    intro: 'Numeri di pagina, un’intestazione o un piè di pagina, uguali su tutte le pagine o su quelle selezionate. I numeri seguono l’ordine in cui vedi le pagine, senza quelle da eliminare. Entrano subito nel documento; si tolgono con Annulla.',
+    noDocument: 'Apri un documento per numerarne le pagine.',
+    text: 'Testo',
+    presets: {
+      number: '1, 2, 3…',
+      pageOf: 'Pagina 1 di 12',
+      slash: '1 / 12',
+      custom: 'Personalizzato',
+    },
+    pageOfTemplate: 'Pagina {\'{\'}n{\'}\'} di {\'{\'}total{\'}\'}',
+    customDefault: 'Documento riservato · {\'{\'}date{\'}\'}',
+    customLabel: 'Testo personalizzato',
+    tokens: '{\'{\'}n{\'}\'} è il numero della pagina, {\'{\'}total{\'}\'} quante sono, {\'{\'}date{\'}\'} la data di oggi.',
+    position: 'Posizione',
+    positions: {
+      'top-left': 'In alto a sinistra',
+      'top-center': 'In alto al centro',
+      'top-right': 'In alto a destra',
+      'bottom-left': 'In basso a sinistra',
+      'bottom-center': 'In basso al centro',
+      'bottom-right': 'In basso a destra',
+    },
+    size: 'Corpo (pt)',
+    margin: 'Margine (mm)',
+    start: 'Primo numero',
+    skipFirst: 'Salta la prima pagina (conta, ma resta senza numero)',
+    preview: 'Anteprima sulla prima pagina',
+    submit: 'Applica',
   },
 
   watermark: {

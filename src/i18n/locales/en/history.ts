@@ -19,6 +19,7 @@ export default {
     'Insert 1 page from another document | Insert {count} pages from another document',
   insertPhoto: 'Insert photo',
   watermark: 'Watermark on page {page} | Watermark on {count} pages',
+  pageLabels: 'Page number on page {page} | Page numbers on {count} pages',
   blankPage: 'Insert blank page at position {position}',
   dropRestrictions: 'Remove the file’s restrictions',
   moveImage: 'Move image (page {page})',

@@ -13,6 +13,7 @@ const tools: { id: ToolId; icon: IconName }[] = [
   { id: 'image', icon: 'image' },
   { id: 'text', icon: 'type' },
   { id: 'watermark', icon: 'droplet' },
+  { id: 'pageNumbers', icon: 'hash' },
   { id: 'merge', icon: 'merge-arrows' },
   { id: 'split', icon: 'scissors' },
   { id: 'nup', icon: 'layout-grid' },

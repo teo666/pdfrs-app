@@ -20,6 +20,7 @@ import {
   type PdfPermissions,
   type ProtectOptions,
   type WatermarkOptions,
+  type PageLabelsOptions,
   type PageId,
   type PageInfo,
   type PdfImageInfo,
@@ -34,7 +35,7 @@ import {
   type NUpOptions,
 } from 'pdfrs-editor/operations'
 
-import { t } from '@/i18n'
+import { i18n, t } from '@/i18n'
 import { describeError } from '@/lib/errors'
 import { detectKind, downloadBytes, pdfFileName, readFile } from '@/lib/files'
 import { formatBytes } from '@/lib/format'
@@ -124,6 +125,7 @@ export type ToolId =
   | 'history'
   | 'outline'
   | 'watermark'
+  | 'pageNumbers'
 
 /** What an imposition tool makes: several pages per sheet, or a folded booklet. */
 export type Imposition =
@@ -1140,6 +1142,21 @@ export const useEditorStore = defineStore('editor', () => {
     })
 
   /**
+   * Page numbers, a header or a footer on the selected pages, or on every
+   * page shown. Applied right away, one undoable step; `{date}` in the text
+   * becomes today's date, in the app's language.
+   */
+  const addPageLabels = (options: PageLabelsOptions) =>
+    runBusy(async (doc, state) => {
+      const selected = selectedPages()
+      const pages =
+        selected.length > 0 ? selected : state.pages.filter((p) => !p.markedForDeletion).map((p) => p.id)
+      const date = new Intl.DateTimeFormat(i18n.global.locale.value, { dateStyle: 'long' }).format(new Date())
+      await doc.addPageLabels({ ...options, template: options.template.split('{date}').join(date) }, pages)
+      notify(t('store.notices.pageLabels', pages.length - (options.skipFirst ? 1 : 0)))
+    })
+
+  /**
    * Adds the pages of PDF/JPEG files to the active document: after the last
    * selected page if there's a selection, otherwise at the end.
    */
@@ -1708,6 +1725,7 @@ export const useEditorStore = defineStore('editor', () => {
     insertFiles,
     insertBlankPage,
     addWatermark,
+    addPageLabels,
     transferPages,
     protect,
     unlock,
