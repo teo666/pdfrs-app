@@ -15,7 +15,7 @@ runs:
   using: composite
   steps:
     - name: Check out the engine
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         repository: teo666/pdfrs
         ref: ${{ inputs.pdfrs-ref }}
@@ -40,11 +40,11 @@ runs:
       working-directory: pdfrs
       run: ./scripts/build-npm-package.sh
 
-    - uses: pnpm/action-setup@v4
+    - uses: pnpm/action-setup@v6
       with:
         package_json_file: pdfrs-app/package.json
 
-    - uses: actions/setup-node@v6
+    - uses: actions/setup-node@v7
       with:
         node-version: 24
         cache: pnpm
