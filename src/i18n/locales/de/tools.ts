@@ -145,8 +145,14 @@ export default {
   },
 
   watermark: {
-    intro: 'Ein Text quer über die Seiten, etwa „ENTWURF“ oder „VERTRAULICH“. Er kommt sofort ins Dokument, die Miniaturen zeigen ihn, wie er wird; Rückgängig oder der Verlauf entfernen ihn.',
+    intro: 'Ein Text quer über die Seiten, etwa „ENTWURF“ oder „VERTRAULICH“. Oder ein Bild, etwa ein Logo, mit seiner Transparenz. Er kommt sofort ins Dokument, die Miniaturen zeigen ihn, wie er wird; Rückgängig oder der Verlauf entfernen ihn.',
     noDocument: 'Öffne ein Dokument, um ein Wasserzeichen hinzuzufügen.',
+    kind: 'Wasserzeichen',
+    kinds: { text: 'Text', image: 'Bild' },
+    chooseImage: 'Bild auswählen',
+    changeImage: 'Bild ändern',
+    sizeShare: '% der Breite',
+    shareLabel: 'Breite im Verhältnis zur Seite',
     defaultText: 'ENTWURF',
     size: 'Größe',
     sizeFit: 'An Seite anpassen',

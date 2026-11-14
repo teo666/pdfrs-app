@@ -132,8 +132,14 @@ export default {
   },
 
   watermark: {
-    intro: 'A text repeated across the pages, like “DRAFT” or “CONFIDENTIAL”. It goes into the document at once and the thumbnails show it as it is; Undo or the History take it away.',
+    intro: 'A text repeated across the pages, like “DRAFT” or “CONFIDENTIAL”. Or an image, such as a logo, with its transparency. It goes into the document at once and the thumbnails show it as it is; Undo or the History take it away.',
     noDocument: 'Open a document to watermark it.',
+    kind: 'Watermark',
+    kinds: { text: 'Text', image: 'Image' },
+    chooseImage: 'Choose an image',
+    changeImage: 'Change image',
+    sizeShare: '% of the width',
+    shareLabel: 'Width compared with the page',
     defaultText: 'DRAFT',
     size: 'Size',
     sizeFit: 'Fit the page',

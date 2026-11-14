@@ -21,6 +21,7 @@ import {
   type ProtectOptions,
   type WatermarkOptions,
   type PageLabelsOptions,
+  type ImageWatermarkOptions,
   type PageId,
   type PageInfo,
   type PdfImageInfo,
@@ -1141,6 +1142,16 @@ export const useEditorStore = defineStore('editor', () => {
       notify(t('store.notices.watermarked', pages.length))
     })
 
+  /** An image as a watermark, on the selected pages or every page shown: as `addWatermark`. */
+  const addImageWatermark = (image: ImageAsset, options: ImageWatermarkOptions) =>
+    runBusy(async (doc, state) => {
+      const selected = selectedPages()
+      const pages =
+        selected.length > 0 ? selected : state.pages.filter((p) => !p.markedForDeletion).map((p) => p.id)
+      await doc.addImageWatermark(image, options, pages)
+      notify(t('store.notices.watermarked', pages.length))
+    })
+
   /**
    * Page numbers, a header or a footer on the selected pages, or on every
    * page shown. Applied right away, one undoable step; `{date}` in the text
@@ -1726,6 +1737,7 @@ export const useEditorStore = defineStore('editor', () => {
     insertBlankPage,
     addWatermark,
     addPageLabels,
+    addImageWatermark,
     transferPages,
     protect,
     unlock,

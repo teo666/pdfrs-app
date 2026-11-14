@@ -138,8 +138,14 @@ export default {
   },
 
   watermark: {
-    intro: 'Un texto repetido en las páginas, como «BORRADOR» o «CONFIDENCIAL». Entra en el documento al momento y las miniaturas lo muestran tal cual; se quita con Deshacer o desde el Historial.',
+    intro: 'Un texto repetido en las páginas, como «BORRADOR» o «CONFIDENCIAL». O una imagen, como un logotipo, con su transparencia. Entra en el documento al momento y las miniaturas lo muestran tal cual; se quita con Deshacer o desde el Historial.',
     noDocument: 'Abre un documento para ponerle una marca de agua.',
+    kind: 'Marca de agua',
+    kinds: { text: 'Texto', image: 'Imagen' },
+    chooseImage: 'Elegir una imagen',
+    changeImage: 'Cambiar imagen',
+    sizeShare: '% del ancho',
+    shareLabel: 'Ancho respecto a la página',
     defaultText: 'BORRADOR',
     size: 'Tamaño',
     sizeFit: 'Ajustar a la página',

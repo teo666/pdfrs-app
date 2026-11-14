@@ -126,8 +126,14 @@ export default {
   },
 
   watermark: {
-    intro: 'Un testo ripetuto sulle pagine, come «BOZZA» o «RISERVATO». Entra subito nel documento e le miniature lo mostrano com’è; si toglie con Annulla o dalla Cronologia.',
+    intro: 'Un testo ripetuto sulle pagine, come «BOZZA» o «RISERVATO». Oppure un’immagine, come un logo, con la sua trasparenza. Entra subito nel documento e le miniature lo mostrano com’è; si toglie con Annulla o dalla Cronologia.',
     noDocument: 'Apri un documento per metterci una filigrana.',
+    kind: 'Filigrana',
+    kinds: { text: 'Testo', image: 'Immagine' },
+    chooseImage: 'Scegli un’immagine',
+    changeImage: 'Cambia immagine',
+    sizeShare: '% della larghezza',
+    shareLabel: 'Larghezza rispetto alla pagina',
     defaultText: 'BOZZA',
     size: 'Dimensione',
     sizeFit: 'Adatta alla pagina',

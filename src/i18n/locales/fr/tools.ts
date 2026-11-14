@@ -145,8 +145,14 @@ export default {
   },
 
   watermark: {
-    intro: 'Un texte répété sur les pages, comme « BROUILLON » ou « CONFIDENTIEL ». Il entre tout de suite dans le document et les miniatures le montrent tel quel ; Annuler ou l’Historique le retirent.',
+    intro: 'Un texte répété sur les pages, comme « BROUILLON » ou « CONFIDENTIEL ». Ou une image, comme un logo, avec sa transparence. Il entre tout de suite dans le document et les miniatures le montrent tel quel ; Annuler ou l’Historique le retirent.',
     noDocument: 'Ouvrez un document pour y mettre un filigrane.',
+    kind: 'Filigrane',
+    kinds: { text: 'Texte', image: 'Image' },
+    chooseImage: 'Choisir une image',
+    changeImage: 'Changer d’image',
+    sizeShare: '% de la largeur',
+    shareLabel: 'Largeur par rapport à la page',
     defaultText: 'BROUILLON',
     size: 'Taille',
     sizeFit: 'Adapter à la page',
