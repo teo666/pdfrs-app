@@ -636,8 +636,8 @@ export const useEditorStore = defineStore('editor', () => {
    * `placement` to `box` (fractions of the page shown). Applied at once,
    * one undo step; the placement keeps its id.
    */
-  const moveImage = (placement: string, box: ImageBox) =>
-    runBusy((doc) => doc.moveImage(placement, box))
+  const moveImage = (placement: string, box: ImageBox, rotation = 0) =>
+    runBusy((doc) => doc.moveImage(placement, box, rotation))
 
   /**
    * Puts the picture `file` in the place of the active document's image

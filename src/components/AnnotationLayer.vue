@@ -5,7 +5,7 @@ import type { AnnotationId } from 'pdfrs-editor'
 
 import AppIcon from './AppIcon.vue'
 import TextStamp from './TextStamp.vue'
-import { resizeBox, unrotate } from '@/lib/box'
+import { normalize, resizeBox, snapAngle, unrotate } from '@/lib/box'
 import type { AnnotationBox, AnnotationView } from '@/stores/editor'
 
 const props = defineProps<{
@@ -37,11 +37,6 @@ function labelOf(annotation: AnnotationView) {
   return t(`viewer.annotationLayer.${kind}${selected}`)
 }
 
-/** While turning, angles this close to a right angle snap onto it. */
-const SNAP_DEGREES = 6
-/** With Shift held, the angle moves in steps of this many degrees. */
-const SHIFT_STEP = 15
-
 // While dragging, the box lives here and the model is untouched.
 const draft = ref<({ id: AnnotationId } & AnnotationBox) | null>(null)
 
@@ -62,19 +57,6 @@ function heightOf(annotation: AnnotationView, box: AnnotationBox) {
 function toPage(dx: number, dy: number) {
   const px = unrotate(dx, dy, props.rotation)
   return { x: px.x / props.pageWidth, y: px.y / props.pageHeight }
-}
-
-/** Snaps an angle onto right angles when close to one, or onto 15° steps with Shift. */
-function snapAngle(degrees: number, shift: boolean) {
-  if (shift) return Math.round(degrees / SHIFT_STEP) * SHIFT_STEP
-  const right = Math.round(degrees / 90) * 90
-  return Math.abs(degrees - right) <= SNAP_DEGREES ? right : Math.round(degrees)
-}
-
-/** An angle in (-180, 180], the form the model keeps. */
-function normalize(degrees: number) {
-  const turned = ((degrees % 360) + 360) % 360
-  return turned > 180 ? turned - 360 : turned
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)

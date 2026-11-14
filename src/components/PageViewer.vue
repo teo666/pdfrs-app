@@ -604,7 +604,7 @@ const zoomOptions: { mode: ViewerZoom; label: string; key: string }[] = [
                     :page-height="shown.height * zoom"
                     :ghost-url="placementPicture"
                     @select="selectPlacement"
-                    @move="(id, box) => store.moveImage(id, box)"
+                    @move="(id, box, turn) => store.moveImage(id, box, turn)"
                   />
                 </div>
               </div>
