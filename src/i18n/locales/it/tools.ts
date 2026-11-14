@@ -222,12 +222,38 @@ export default {
     show: 'Mostra la password',
     note: 'Le modifiche non ancora applicate sono comprese. Conserva la password: se la perdi, la copia protetta non si può più aprire.',
     submit: 'Crea copia protetta',
+    allowed: 'Chi apre il file con la password può',
+    permissions: {
+      print: 'Stampare',
+      printHighQuality: 'Stampare in alta qualità',
+      copy: 'Copiare testo e immagini',
+      modify: 'Modificare il contenuto',
+      annotate: 'Aggiungere commenti e compilare i moduli',
+      fillForms: 'Compilare i moduli',
+      assemble: 'Aggiungere, ruotare ed eliminare pagine',
+    },
+    denied: {
+      print: 'la stampa',
+      printHighQuality: 'la stampa in alta qualità',
+      copy: 'la copia di testo e immagini',
+      modify: 'le modifiche al contenuto',
+      annotate: 'i commenti',
+      fillForms: 'la compilazione dei moduli',
+      assemble: 'l’aggiunta, la rotazione e l’eliminazione di pagine',
+    },
+    ownerPassword: 'Password per togliere le limitazioni',
+    ownerHint: 'Diversa da quella di apertura: chi la conosce apre il file senza limitazioni.',
+    ownerSame: 'Deve essere diversa dalla password di apertura, altrimenti le limitazioni non valgono.',
+    restrictionsNote: 'Le limitazioni sono una richiesta ai lettori PDF: quasi tutti la rispettano, ma non impediscono davvero di stampare o copiare.',
+    current: 'Questo file limita {list}.',
+    currentAdvice: 'Le modifiche fatte qui tolgono le limitazioni: le caselle qui sotto partono da queste, per rimetterle nella copia protetta.',
   },
 
   properties: {
     intro:
       'Le informazioni che il PDF porta con sé e che i lettori mostrano nelle proprietà del file. Si scrivono con «Applica modifiche» o scaricando, e si annullano come le altre modifiche.',
     noDocument: 'Apri un documento per vederne le proprietà.',
+    permissionsAdvice: 'Le modifiche fatte qui tolgono le limitazioni; per rimetterle, crea una copia con «Proteggi».',
     loading: 'Lettura delle proprietà…',
     fields: {
       title: 'Titolo',

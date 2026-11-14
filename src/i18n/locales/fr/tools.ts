@@ -254,12 +254,38 @@ export default {
     show: 'Afficher le mot de passe',
     note: 'Les modifications pas encore appliquées sont incluses. Conservez le mot de passe : si vous le perdez, la copie protégée ne pourra plus être ouverte.',
     submit: 'Créer une copie protégée',
+    allowed: 'Qui ouvre le fichier avec le mot de passe peut',
+    permissions: {
+      print: 'Imprimer',
+      printHighQuality: 'Imprimer en haute qualité',
+      copy: 'Copier le texte et les images',
+      modify: 'Modifier le contenu',
+      annotate: 'Ajouter des commentaires et remplir les formulaires',
+      fillForms: 'Remplir les formulaires',
+      assemble: 'Ajouter, faire pivoter et supprimer des pages',
+    },
+    denied: {
+      print: 'l’impression',
+      printHighQuality: 'l’impression en haute qualité',
+      copy: 'la copie du texte et des images',
+      modify: 'les modifications du contenu',
+      annotate: 'les commentaires',
+      fillForms: 'le remplissage des formulaires',
+      assemble: 'l’ajout, la rotation et la suppression de pages',
+    },
+    ownerPassword: 'Mot de passe pour lever les restrictions',
+    ownerHint: 'Différent de celui d’ouverture : qui le connaît ouvre le fichier sans restrictions.',
+    ownerSame: 'Il doit être différent du mot de passe d’ouverture, sinon les restrictions ne servent à rien.',
+    restrictionsNote: 'Les restrictions sont une demande aux lecteurs PDF : presque tous la respectent, mais elles n’empêchent pas vraiment d’imprimer ou de copier.',
+    current: 'Ce fichier restreint {list}.',
+    currentAdvice: 'Les modifications faites ici retirent les restrictions : les cases ci-dessous en partent, pour les remettre dans la copie protégée.',
   },
 
   properties: {
     intro:
       'Les informations que le PDF transporte avec lui et que les lecteurs affichent dans les propriétés du fichier. Elles sont écrites avec « Appliquer les modifications » ou au téléchargement, et s’annulent comme les autres modifications.',
     noDocument: 'Ouvrez un document pour voir ses propriétés.',
+    permissionsAdvice: 'Les modifications faites ici retirent les restrictions ; pour les remettre, créez une copie avec « Protéger ».',
     loading: 'Lecture des propriétés…',
     fields: {
       title: 'Titre',
