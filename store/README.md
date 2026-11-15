@@ -6,7 +6,8 @@ Tutto quello che chiedono Chrome Web Store, Microsoft Edge Add-ons e Firefox Add
 
 | File | A cosa serve |
 | --- | --- |
-| `listing.md` | Riassunto e descrizione in cinque lingue. Nome e descrizione breve li leggono gli store dal manifest. |
+| `listing.md` | Riassunto e descrizione in cinque lingue, testo semplice (Chrome, Edge). Nome e descrizione breve li leggono gli store dal manifest. |
+| `amo.md` | Gli stessi testi nel Markdown di AMO, più informativa sulla privacy e note per i revisori. |
 | `screenshots/it/`, `screenshots/en/` | Cinque screenshot 1280×800 per lingua. |
 | `icon-128.png` | Icona dello store: disegno 96×96 in un quadrato trasparente 128×128, come chiede Chrome. |
 | `promo-440x280.png` | Tessera promozionale piccola (Chrome, facoltativa ma consigliata). |
@@ -58,13 +59,17 @@ Account gratuito: <https://addons.mozilla.org/developers/>.
 
 1. **Invia un nuovo componente aggiuntivo** → «Su questo sito» → carica `pdfrs-firefox-<versione>.zip`.
 2. **Codice sorgente: sì**. Il pacchetto contiene codice compilato e minificato (Vite, wasm-pack), quindi Mozilla chiede il sorgente per rifare la build e confrontarla. Carica `pdfrs-source-<versione>.zip`: `BUILD.md` lì dentro dice strumenti, versioni e comandi.
-3. Scheda:
-   - nome e riassunto da `listing.md`;
-   - categorie: «Strumenti per la produttività» (o «Altro»);
+3. Scheda (testi in `amo.md`):
+   - riassunto e descrizione per lingua;
+   - categoria: «My add-on doesn't fit into any of the categories» (Altro): AMO non ha una categoria Produttività;
    - licenza: **MIT**;
-   - informativa sulla privacy: l’indirizzo sopra;
-   - pagina di supporto: GitHub issues.
-4. Dopo l’approvazione: descrizione completa e screenshot dalla pagina di modifica della scheda.
+   - informativa sulla privacy: il testo in `amo.md`;
+   - sito di supporto: GitHub issues;
+   - note per i revisori: da `amo.md`.
+4. La domanda sul codice sorgente arriva dopo la scheda: rispondi sì e carica lo zip.
+5. Poi, dalla pagina di modifica della scheda: le descrizioni nelle altre lingue (il menu «Localize for»), l’icona `icon-128.png` (AMO non usa quella del manifest) e gli screenshot `screenshots/en/` con le didascalie.
+
+La 0.1.0 è stata inviata così il 15 novembre 2026: <https://addons.mozilla.org/developers/addon/pdfrs-pdf-editor/edit>.
 
 L’id dell’estensione (`pdfrs@pdfrs.app`, in `scripts/build-extension.mjs`) non va mai cambiato: è quello che lega le versioni successive.
 
