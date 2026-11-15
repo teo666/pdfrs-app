@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pdfrs — Privacy</title>
+    <meta name="description" content="pdfrs non raccoglie dati: i PDF restano sul tuo computer. · pdfrs collects no data: your PDFs stay on your computer." />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f8fa;
+        --fg: #1c2026;
+        --muted: #5b6370;
+        --line: #dfe3e8;
+        --accent: #2f5bd3;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --fg: #e8eaed;
+          --muted: #a2a9b4;
+          --line: #2a2f37;
+          --accent: #8aa8ff;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 system-ui, sans-serif;
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 3rem 1rem 4rem;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin: 2.5rem 0 0.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--line);
+      }
+      p,
+      li {
+        color: var(--fg);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>pdfrs — Privacy</h1>
+      <p class="muted">Ultimo aggiornamento / Last updated: 15 novembre 2026 / November 15, 2026</p>
+
+      <section lang="it">
+        <h2>Italiano</h2>
+        <p>
+          pdfrs è un editor PDF che gira interamente nel browser: sul sito
+          <a href="./">teo666.github.io/pdfrs-app</a> e come estensione per Chrome, Edge e Firefox.
+        </p>
+        <ul>
+          <li>
+            <strong>Nessun dato raccolto.</strong> pdfrs non raccoglie, non salva e non invia a nessuno
+            i tuoi file né informazioni su di te o su come lo usi. Non ci sono account, statistiche,
+            tracciamento o pubblicità.
+          </li>
+          <li>
+            <strong>I file restano sul tuo computer.</strong> I PDF e le immagini che apri vengono letti
+            ed elaborati dentro il browser, dal motore pdfrs compilato in WebAssembly. Non vengono
+            caricati su nessun server.
+          </li>
+          <li>
+            <strong>La rete serve solo all’app.</strong> Il sito scarica dal suo server soltanto i file
+            dell’app stessa e i suoi aggiornamenti; non invia niente. L’estensione non usa la rete:
+            contiene già tutto il necessario.
+          </li>
+          <li>
+            <strong>Cosa resta nel browser.</strong> Il browser ricorda solo le tue preferenze (lingua,
+            tema, dimensione delle miniature) nella memoria locale della pagina. Le firme che disegni
+            restano nella scheda e spariscono quando la chiudi.
+          </li>
+          <li>
+            <strong>Permessi.</strong> L’estensione non chiede permessi: apre soltanto l’editor in una
+            scheda.
+          </li>
+        </ul>
+        <p>
+          Il codice è open source: <a href="https://github.com/teo666/pdfrs-app">pdfrs-app</a> e
+          <a href="https://github.com/teo666/pdfrs">pdfrs</a>. Per domande:
+          <a href="https://github.com/teo666/pdfrs-app/issues">apri una segnalazione su GitHub</a>.
+        </p>
+      </section>
+
+      <section lang="en">
+        <h2>English</h2>
+        <p>
+          pdfrs is a PDF editor that runs entirely in your browser: on the website
+          <a href="./">teo666.github.io/pdfrs-app</a> and as an extension for Chrome, Edge and Firefox.
+        </p>
+        <ul>
+          <li>
+            <strong>No data collected.</strong> pdfrs does not collect, store or send anyone your files,
+            information about you, or how you use it. There are no accounts, analytics, tracking or ads.
+          </li>
+          <li>
+            <strong>Your files stay on your computer.</strong> The PDFs and images you open are read and
+            processed inside the browser, by the pdfrs engine compiled to WebAssembly. They are never
+            uploaded to any server.
+          </li>
+          <li>
+            <strong>The network is only for the app.</strong> The website downloads from its server only
+            the app’s own files and their updates; it sends nothing. The extension doesn’t use the
+            network: it already contains everything it needs.
+          </li>
+          <li>
+            <strong>What stays in the browser.</strong> The browser only remembers your preferences
+            (language, theme, thumbnail size) in the page’s local storage. The signatures you draw stay
+            in the tab and are gone when you close it.
+          </li>
+          <li>
+            <strong>Permissions.</strong> The extension asks for no permissions: it only opens the editor
+            in a tab.
+          </li>
+        </ul>
+        <p>
+          The code is open source: <a href="https://github.com/teo666/pdfrs-app">pdfrs-app</a> and
+          <a href="https://github.com/teo666/pdfrs">pdfrs</a>. Questions:
+          <a href="https://github.com/teo666/pdfrs-app/issues">open an issue on GitHub</a>.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

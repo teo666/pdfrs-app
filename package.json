@@ -1,8 +1,12 @@
 {
   "name": "pdfrs-app",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
+  "pdfrs": {
+    "ref": "v0.3.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
