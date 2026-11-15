@@ -142,7 +142,18 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Il workflow crea la release con i tre zip (Chrome, Firefox, web) e le note generate dai commit. Il tag deve corrispondere alla versione in `package.json`. Lanciato a mano compila gli stessi zip come artefatti, senza release.
+Il workflow crea la release con le note generate dai commit e quattro zip:
+- le due estensioni (Chrome e Firefox);
+- l'app per il web;
+- il sorgente dei due repository, con `BUILD.md`, che AMO chiede per rifare la build.
+
+Il tag deve corrispondere alla versione in `package.json`. Il motore si compila dalla versione di pdfrs scritta in `package.json` (`pdfrs.ref`). Lanciato a mano, il workflow compila gli stessi zip come artefatti, senza release.
+
+Pubblicare le estensioni negli store: [`store/README.md`](store/README.md).
+
+## Licenza
+
+MIT, vedi [LICENSE](LICENSE). Il motore pdfrs è MIT o Apache-2.0.
 
 ## Ringraziamenti
 

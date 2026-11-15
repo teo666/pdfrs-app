@@ -4,6 +4,12 @@
 #   pdfrs-chrome-<version>.zip    Chrome, Edge, Brave… (the Chrome Web Store / Edge Add-ons upload)
 #   pdfrs-firefox-<version>.zip   Firefox (the addons.mozilla.org upload)
 #   pdfrs-web-<version>.zip       the app, to put on any static web server, in any folder
+#   pdfrs-source-<version>.zip    the sources of both repositories as built, with
+#                                 BUILD.md: what addons.mozilla.org asks for to rebuild
+#                                 the (minified) extension and compare it
+#
+# The engine is built from the pdfrs version in package.json ("pdfrs.ref"),
+# so a release always has the same engine; by hand, another can be chosen.
 #
 # To release: set "version" in package.json (it is the extensions' version
 # too), commit, then tag and push:  git tag v0.1.0 && git push origin v0.1.0
@@ -19,8 +25,9 @@ on:
   workflow_dispatch:
     inputs:
       pdfrs_ref:
-        description: Branch, tag or commit of teo666/pdfrs to build the engine from
-        default: main
+        description: Branch, tag or commit of teo666/pdfrs to build the engine from (default, "pdfrs.ref" in package.json)
+        default: ''
+
 
 permissions:
   contents: write
@@ -43,10 +50,14 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "pdfrs=${{ inputs.pdfrs_ref }}" >> "$GITHUB_OUTPUT"
+          if [ -z "${{ inputs.pdfrs_ref }}" ]; then
+            echo "pdfrs=$(node -p "require('./package.json').pdfrs.ref")" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: ./pdfrs-app/.github/actions/engine
         with:
-          pdfrs-ref: ${{ inputs.pdfrs_ref || 'main' }}
+          pdfrs-ref: ${{ steps.version.outputs.pdfrs }}
 
       - name: Unit tests
         working-directory: pdfrs-app
@@ -72,6 +83,54 @@ jobs:
           cp dist-extension/pdfrs-firefox.zip "release/pdfrs-firefox-$VERSION.zip"
           (cd dist-web && zip -qr "../release/pdfrs-web-$VERSION.zip" .)
           ls -l release
+
+      # The two repositories exactly as built, and how to build them again,
+      # with the versions of every tool used here.
+      - name: Sources
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PDFRS_REF: ${{ steps.version.outputs.pdfrs }}
+        run: |
+          mkdir -p source
+          git -C pdfrs-app archive --format=tar --prefix=pdfrs-app/ HEAD | tar -x -C source
+          git -C pdfrs archive --format=tar --prefix=pdfrs/ HEAD | tar -x -C source
+          # Not in the pdfrs repository: the one this build resolved, so the
+          # crates are the very same versions.
+          cp pdfrs/Cargo.lock source/pdfrs/Cargo.lock
+          cat > source/BUILD.md <<EOF
+          # Building pdfrs $VERSION
+
+          The extensions (\`pdfrs-chrome-$VERSION.zip\`, \`pdfrs-firefox-$VERSION.zip\`) are built from
+          these two folders, which have to sit side by side: \`pdfrs-app\` (the app, commit
+          $(git -C pdfrs-app rev-parse HEAD)) and \`pdfrs\` (the engine, $PDFRS_REF, commit
+          $(git -C pdfrs rev-parse HEAD)).
+
+          ## Tools, as used for this release
+
+          - OS: $(lsb_release -ds 2>/dev/null || uname -sr)
+          - Rust: $(rustc --version), target wasm32-unknown-unknown
+          - wasm-pack: $(wasm-pack --version)
+          - Node.js: $(node --version)
+          - pnpm: $(pnpm --version)
+
+          wasm-pack downloads wasm-bindgen and wasm-opt itself; npm packages come from
+          the npm registry, Rust crates from crates.io, through the lockfiles
+          (\`pdfrs/Cargo.lock\` is the one this release was built with).
+
+          ## Commands
+
+          \`\`\`sh
+          rustup target add wasm32-unknown-unknown
+          cd pdfrs && ./scripts/build-npm-package.sh && cd ..
+          cd pdfrs/packages/pdfrs-editor && pnpm install --frozen-lockfile && cd ../../..
+          cd pdfrs-app && pnpm install --frozen-lockfile && pnpm build:extension
+          \`\`\`
+
+          The result is in \`pdfrs-app/dist-extension/\`: \`firefox/\` and \`pdfrs-firefox.zip\`
+          (the Firefox upload), \`chrome/\` and \`pdfrs-chrome.zip\`.
+          EOF
+          sed -i 's/^          //' source/BUILD.md
+          (cd source && zip -qr "../pdfrs-app/release/pdfrs-source-$VERSION.zip" .)
 
       - uses: actions/upload-artifact@v7
         with:

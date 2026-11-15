@@ -33,7 +33,7 @@ L'e2e `e2e/extension.spec.ts` la compila e la carica in Chromium da solo.
 
 ## Pubblicarla
 
-Da fare a mano, con un account sviluppatore:
+La guida completa, con testi, screenshot, informativa sulla privacy e cosa rispondere nei moduli, è [`store/README.md`](../store/README.md). In breve, da fare a mano con un account sviluppatore:
 
 - **Chrome Web Store**: carica `pdfrs-chrome.zip` dalla console per
   sviluppatori (serve un account a pagamento una tantum).
